@@ -1,0 +1,32 @@
+# Use ARM64-compatible Node base
+FROM node:22-bookworm-slim AS base
+
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg curl && apt-get clean
+
+FROM base AS dev
+WORKDIR /app
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Create non-root user
+RUN adduser --system --uid 1001 --ingroup node nextjs
+RUN mkdir -p /app/.next/cache/images && chown -R nextjs:node /app/.next/cache
+
+# Copy package manifest files only
+COPY package.json ./
+
+# Generate lockfile *inside* container to ensure platform correctness
+RUN npm install --package-lock-only --no-audit
+
+# Copy full project
+COPY . .
+
+# Install all dependencies (after lockfile exists)
+RUN npm install
+
+# Set user
+USER nextjs
+
+# Start dev server
+CMD ["npm", "run", "dev"]

@@ -1,14 +1,18 @@
+node_modules
+.git
+.next
+Dockerfile
+.dockerignore
+npm-debug.log
+
+docker-compose.yml
+
 /node_modules
 /.pnp
 .pnp.js
-.yarn/install-state.gz
 
-# next.js
 /.next/
 /out/
-
-# production
-/build
 
 # misc
 .DS_Store
@@ -16,16 +20,14 @@
 
 # debug
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # local env files
 .env
-.env*.local
-*.env
-
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
-
-.env.development.docker
-/app/generated/prisma
+nginx/

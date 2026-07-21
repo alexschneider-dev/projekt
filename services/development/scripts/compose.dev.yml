@@ -1,0 +1,104 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: postgres-projekt
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev_projekt:/var/lib/postgresql/data
+    networks:
+      - nextjs_dev
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d postgres"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-projekt
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+    volumes:
+      - redis_data_dev_projekt:/data
+    networks:
+      - nextjs_dev
+
+  nextjs-projekt:
+    profiles: ["dev"]
+    build:
+      context: ../../..
+      dockerfile: services/development/Dockerfile-dev
+    image: projekt:${PROJEKT_DEV_VERSION}
+    container_name: nextjs-projekt
+    restart: unless-stopped
+    user: "0:0"
+    working_dir: /app
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres?connection_limit=10&pool_timeout=50&connect_timeout=10
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../../../:/app
+      - nextjs_node_modules_dev_projekt:/app/node_modules
+    command: >
+      sh -c "
+        npm install &&
+        npx prisma generate &&
+        exec npm run dev -- --port 3000 --hostname 0.0.0.0
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - nextjs_dev
+
+  nginx:
+    profiles: ["dev"]
+    build:
+      context: ../nginx-dev
+      dockerfile: Dockerfile
+    image: nginx-dev-projekt:${NGINX_DEV_VERSION}
+    container_name: nginx-projekt
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - nginx_cache_dev_projekt:/var/cache/nginx
+    depends_on:
+      - nextjs-projekt
+    networks:
+      - nextjs_dev
+
+networks:
+  nextjs_dev:
+    name: nextjs_dev
+
+volumes:
+  postgres_data_dev_projekt:
+  redis_data_dev_projekt:
+  nextjs_node_modules_dev_projekt:
+  nginx_cache_dev_projekt:
