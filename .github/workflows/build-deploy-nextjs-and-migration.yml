@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "1.00"
+        description: "1.01"
         required: true
         type: string
 
@@ -13,7 +13,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: project-nextjs-production
+  group: projekt-nextjs-production
   cancel-in-progress: false
 
 jobs:
@@ -73,10 +73,10 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: |
-            ghcr.io/alexschneider-dev/project-migration:${{ inputs.version }}
-            ghcr.io/alexschneider-dev/project-migration:${{ github.sha }}
-          cache-from: type=gha,scope=project-migration
-          cache-to: type=gha,mode=max,scope=project-migration
+            ghcr.io/alexschneider-dev/projekt-migration:${{ inputs.version }}
+            ghcr.io/alexschneider-dev/projekt-migration:${{ github.sha }}
+          cache-from: type=gha,scope=projekt-migration
+          cache-to: type=gha,mode=max,scope=projekt-migration
 
       - name: Next.js image bauen und pushen
         uses: docker/build-push-action@v6
@@ -86,10 +86,10 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/alexschneider-dev/project:${{ inputs.version }}
-            ghcr.io/alexschneider-dev/project:${{ github.sha }}
-          cache-from: type=gha,scope=project-nextjs
-          cache-to: type=gha,mode=max,scope=project-nextjs
+            ghcr.io/alexschneider-dev/projekt:${{ inputs.version }}
+            ghcr.io/alexschneider-dev/projekt:${{ github.sha }}
+          cache-from: type=gha,scope=projekt-nextjs
+          cache-to: type=gha,mode=max,scope=projekt-nextjs
 
   # deploy:
   #   runs-on: ubuntu-latest
@@ -125,7 +125,7 @@ jobs:
   #           -o BatchMode=yes \
   #           -o StrictHostKeyChecking=yes \
   #           "${PROD_USER}@${PROD_HOST}" \
-  #           "sudo -n /usr/local/lib/project-deploy/backup-before-main-deploy.sh"
+  #           "sudo -n /usr/local/lib/projekt-deploy/backup-before-main-deploy.sh"
 
   #     - name: Datenbankmigration ausführen
   #       env:
@@ -140,7 +140,7 @@ jobs:
   #           -o BatchMode=yes \
   #           -o StrictHostKeyChecking=yes \
   #           "${PROD_USER}@${PROD_HOST}" \
-  #           "sudo -n /usr/local/lib/project-deploy/migrate.sh '${VERSION}'"
+  #           "sudo -n /usr/local/lib/projekt-deploy/migrate.sh '${VERSION}'"
 
   #     - name: Auf Produktion deployen
   #       env:
@@ -155,7 +155,7 @@ jobs:
   #           -o BatchMode=yes \
   #           -o StrictHostKeyChecking=yes \
   #           "${PROD_USER}@${PROD_HOST}" \
-  #           "sudo -n /usr/local/lib/project-deploy/deploy.sh nextjs '${VERSION}'"
+  #           "sudo -n /usr/local/lib/projekt-deploy/deploy.sh nextjs '${VERSION}'"
 
   #     - name: Website prüfen
   #       run: |
