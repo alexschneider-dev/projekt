@@ -1,17 +1,16 @@
 import "dotenv/config"
-import { defineConfig, env } from "prisma/config"
-import dotenv from "dotenv"
-
-dotenv.config({
-  path: "services/development/scripts/.env.development.docker",
-})
+import { defineConfig } from "prisma/config"
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
+
   migrations: {
     path: "prisma/migrations",
   },
+
   datasource: {
-    url: env("DATABASE_URL"),
+    url:
+      process.env.DATABASE_URL ??
+      "postgresql://ci:ci@localhost:5432/ci",
   },
 })

@@ -1,4 +1,4 @@
-name: Build nginx image
+name: Nginx bauen
 
 on:
   workflow_dispatch:
@@ -42,7 +42,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/alexschneider-dev/nginx:${{ inputs.version }}
-            ghcr.io/alexschneider-dev/nginx:${{ github.sha }}
-          cache-from: type=gha,scope=nginx
-          cache-to: type=gha,mode=max,scope=nginx
+            ghcr.io/alexschneider-dev/nginx-project:${{ inputs.version }}
+            ghcr.io/alexschneider-dev/nginx-project:${{ github.sha }}
+          cache-from: type=gha,scope=nginx-project
+          cache-to: type=gha,mode=max,scope=nginx-project
