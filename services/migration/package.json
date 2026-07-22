@@ -1,0 +1,9 @@
+{
+  "name": "projekt-migration",
+  "private": true,
+  "dependencies": {
+    "prisma": "7.9.0",
+    "@prisma/client": "7.9.0",
+    "dotenv": "^17.2.3"
+  }
+}
