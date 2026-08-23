@@ -19,7 +19,7 @@ case "$SERVICE" in
     ;;
   nginx)
     ENV_KEY="NGINX_VERSION"
-    SWARM_SERVICE="nginx-projekt"
+    SWARM_SERVICE="projekt-nginx"
     IMAGE="ghcr.io/alexschneider-dev/nginx-projekt"
     ;;
   *)
