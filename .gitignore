@@ -31,3 +31,4 @@ next-env.d.ts
 /app/generated/prisma
 system.sh
 devnotes.md
+.vscode
