@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "1.01"
+        description: "1.02"
         required: true
         type: string
 
@@ -91,84 +91,70 @@ jobs:
           cache-from: type=gha,scope=projekt-nextjs
           cache-to: type=gha,mode=max,scope=projekt-nextjs
 
-  # deploy:
-  #   runs-on: ubuntu-latest
-  #   needs: build
-  #   timeout-minutes: 15
-  #   environment: production
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 15
+    environment: Production
 
-  #   steps:
-  #     - name: SSH konfigurieren
-  #       env:
-  #         PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
-  #         PROD_KNOWN_HOSTS: ${{ secrets.PROD_KNOWN_HOSTS }}
-  #       run: |
-  #         set -Eeuo pipefail
+    steps:
+      - name: SSH konfigurieren
+        env:
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_KNOWN_HOSTS: ${{ secrets.PROD_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
 
-  #         install -m 700 -d ~/.ssh
+          install -m 700 -d ~/.ssh
 
-  #         printf '%s\n' "$PROD_SSH_KEY" > ~/.ssh/id_ed25519
-  #         chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$PROD_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
 
-  #         printf '%s\n' "$PROD_KNOWN_HOSTS" > ~/.ssh/known_hosts
-  #         chmod 600 ~/.ssh/known_hosts
+          printf '%s\n' "$PROD_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
-  #     - name: Datenbank-Backup erstellen
-  #       env:
-  #         PROD_HOST: ${{ secrets.PROD_HOST }}
-  #         PROD_USER: ${{ secrets.PROD_USER }}
-  #       run: |
-  #         set -Eeuo pipefail
+      - name: Datenbankmigration ausführen
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -Eeuo pipefail
 
-  #         ssh \
-  #           -i ~/.ssh/id_ed25519 \
-  #           -o BatchMode=yes \
-  #           -o StrictHostKeyChecking=yes \
-  #           "${PROD_USER}@${PROD_HOST}" \
-  #           "sudo -n /usr/local/lib/projekt-deploy/backup-before-main-deploy.sh"
+          ssh \
+            -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "${PROD_USER}@${PROD_HOST}" \
+            "sudo -n /usr/local/lib/projekt-deploy/migrate.sh '${VERSION}'"
 
-  #     - name: Datenbankmigration ausführen
-  #       env:
-  #         PROD_HOST: ${{ secrets.PROD_HOST }}
-  #         PROD_USER: ${{ secrets.PROD_USER }}
-  #         VERSION: ${{ inputs.version }}
-  #       run: |
-  #         set -Eeuo pipefail
+      - name: Auf Produktion deployen
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -Eeuo pipefail
 
-  #         ssh \
-  #           -i ~/.ssh/id_ed25519 \
-  #           -o BatchMode=yes \
-  #           -o StrictHostKeyChecking=yes \
-  #           "${PROD_USER}@${PROD_HOST}" \
-  #           "sudo -n /usr/local/lib/projekt-deploy/migrate.sh '${VERSION}'"
+          ssh \
+            -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "${PROD_USER}@${PROD_HOST}" \
+            "sudo -n /usr/local/lib/projekt-deploy/deploy.sh nextjs '${VERSION}'"
 
-  #     - name: Auf Produktion deployen
-  #       env:
-  #         PROD_HOST: ${{ secrets.PROD_HOST }}
-  #         PROD_USER: ${{ secrets.PROD_USER }}
-  #         VERSION: ${{ inputs.version }}
-  #       run: |
-  #         set -Eeuo pipefail
+      - name: Website prüfen
+        run: |
+          curl \
+            --silent \
+            --show-error \
+            --fail \
+            --retry 20 \
+            --retry-delay 3 \
+            --retry-all-errors \
+            --connect-timeout 5 \
+            --max-time 15 \
+            https://alex-schneider-dev.de/ \
+            >/dev/null
 
-  #         ssh \
-  #           -i ~/.ssh/id_ed25519 \
-  #           -o BatchMode=yes \
-  #           -o StrictHostKeyChecking=yes \
-  #           "${PROD_USER}@${PROD_HOST}" \
-  #           "sudo -n /usr/local/lib/projekt-deploy/deploy.sh nextjs '${VERSION}'"
-
-  #     - name: Website prüfen
-  #       run: |
-  #         curl \
-  #           --silent \
-  #           --show-error \
-  #           --fail \
-  #           --retry 20 \
-  #           --retry-delay 3 \
-  #           --retry-all-errors \
-  #           --connect-timeout 5 \
-  #           --max-time 15 \
-  #           https://alex-schneider-dev.de/ \
-  #           >/dev/null
-
-  #         echo "✅ Produktion ist erreichbar"
+          echo "✅ Produktion ist erreichbar"
