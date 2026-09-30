@@ -6,20 +6,25 @@ VERSION="${2:-}"
 
 if [[ -z "$SERVICE" || -z "$VERSION" ]]; then
   echo "Verwendung:"
-  echo "  ./deploy.sh projekt 1.00"
-  echo "  ./deploy.sh nginx-projekt 1.00"
+  echo "  ./deploy.sh nextjs 1.00"
+  echo "  ./deploy.sh nginx 1.00"
+  exit 1
+fi
+
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+  echo "Ungültige Version"
   exit 1
 fi
 
 case "$SERVICE" in
   nextjs)
     ENV_KEY="PROJEKT_VERSION"
-    SWARM_SERVICE="projekt"
+    SWARM_SERVICE="projekt_nextjs"
     IMAGE="ghcr.io/alexschneider-dev/projekt"
     ;;
   nginx)
     ENV_KEY="NGINX_VERSION"
-    SWARM_SERVICE="projekt-nginx"
+    SWARM_SERVICE="projekt_nginx"
     IMAGE="ghcr.io/alexschneider-dev/nginx-projekt"
     ;;
   *)
