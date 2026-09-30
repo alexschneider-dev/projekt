@@ -1,10 +1,11 @@
-import "dotenv/config"
-import { defineConfig } from "prisma/config"
+import 'dotenv/config';
+import path from 'node:path';
+import { defineConfig } from 'prisma/config';
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
-
+  earlyAccess: true,
+  schema: path.join(process.cwd(), "prisma"),
   migrations: {
-    path: "prisma/migrations",
+    path: path.join(process.cwd(), 'prisma', 'migrations'),
   },
-})
+});
