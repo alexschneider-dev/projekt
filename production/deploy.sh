@@ -100,10 +100,20 @@ docker pull "${IMAGE}:${VERSION}"
 docker stack deploy --detach=false --with-registry-auth --resolve-image always \
   -c "$work_dir/service.yml" -c "$work_dir/runtime.json" -c "$work_dir/image.json" projekt
 
+# Laufende Tasks können vor Ende der Swarm-Überwachungsphase konvergieren.
+# Deshalb bis zu fünf Minuten auf den endgültigen Update-Status warten.
+for ((attempt=0; attempt<150; attempt++)); do
+  STATE=$(docker service inspect "$SWARM_SERVICE" \
+    --format '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}')
+  [[ "$STATE" == "updating" ]] || break
+  sleep 2
+done
 ACTUAL_IMAGE=$(docker service inspect "$SWARM_SERVICE" \
   --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}')
-STATE=$(docker service inspect "$SWARM_SERVICE" \
-  --format '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}')
+if [[ "$STATE" == "updating" ]]; then
+  echo "Zeitlimit überschritten: $SWARM_SERVICE wird weiterhin aktualisiert." >&2
+  exit 1
+fi
 if [[ "${ACTUAL_IMAGE%%@*}" != "${IMAGE}:${VERSION}" || ( -n "$STATE" && "$STATE" != "completed" ) ]]; then
   echo "Deployment nicht erfolgreich (Status: $STATE); möglicher Rollback." >&2
   exit 1

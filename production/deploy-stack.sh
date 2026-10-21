@@ -21,11 +21,24 @@ docker stack config -c compose.swarm.yml -c "$RUNTIME" >/dev/null
 docker stack deploy --detach=false --resolve-image never --with-registry-auth \
   -c compose.swarm.yml -c "$RUNTIME" projekt
 
-for service in nextjs nginx postgres redis; do
-  state=$(docker service inspect "projekt_${service}" \
-    --format '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}')
-  case "$state" in
-    ""|completed) ;;
-    *) echo "Stack-Bereitstellung fehlgeschlagen: $service ($state)" >&2; exit 1 ;;
-  esac
+# Konvergierte Tasks bedeuten noch nicht, dass die Überwachungsphase beendet ist.
+# Für den gesamten Stack höchstens fünf Minuten auf den Abschluss warten.
+for ((attempt=0; attempt<150; attempt++)); do
+  pending=false
+  for service in nextjs nginx postgres redis; do
+    state=$(docker service inspect "projekt_${service}" \
+      --format '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}')
+    case "$state" in
+      ""|completed) ;;
+      updating) pending=true ;;
+      *) echo "Stack-Bereitstellung fehlgeschlagen: $service ($state)" >&2; exit 1 ;;
+    esac
+  done
+  if [[ "$pending" == false ]]; then
+    echo "Stack-Bereitstellung erfolgreich."
+    exit 0
+  fi
+  sleep 2
 done
+echo "Zeitlimit überschritten: Der Stack wird weiterhin aktualisiert." >&2
+exit 1

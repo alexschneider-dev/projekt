@@ -7,6 +7,37 @@ import { resolve, join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const root = resolve(import.meta.dirname, "..");
+
+for (const finalState of ["completed", "rollback_completed", "paused", "updating"]) {
+  test(`Stack wartet auf den Abschluss und bewertet ${finalState} korrekt`, t => {
+    const dir = fixture(t);
+    writeFileSync(join(dir, "runtime.json"), "{}");
+    for (const command of ["flock", "sleep"]) {
+      writeFileSync(join(dir, `bin/${command}`), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    }
+    writeFileSync(join(dir, "bin/docker"), `#!/bin/sh
+case "$1 $2" in
+  "service inspect")
+    case "$*" in
+      *UpdateStatus*)
+        if [ -f "$STATUS_DIR/$3" ]; then echo "$FINAL_STATE";
+        else touch "$STATUS_DIR/$3"; echo updating; fi ;;
+      *) echo example/image:1.0 ;;
+    esac ;;
+esac
+`, { mode: 0o755 });
+    writeFileSync(join(dir, "deploy-stack.sh"), readFileSync(join(root, "production/deploy-stack.sh"), "utf8")
+      .replace("/var/lock/projekt-deploy.lock", join(dir, "lock"))
+      .replace("/etc/projekt/runtime.json", join(dir, "runtime.json"))
+      .replace("attempt<150", "attempt<3"));
+    const result = run("bash", [join(dir, "deploy-stack.sh")], {
+      PATH: `${dir}/bin:${process.env.PATH}`, STATUS_DIR: dir, FINAL_STATE: finalState,
+    });
+    assert.equal(result.status, finalState === "completed" ? 0 : 1, result.stderr);
+    if (finalState === "updating") assert.match(result.stderr, /Zeitlimit überschritten/);
+  });
+}
+
 function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), "production-test-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -144,10 +175,16 @@ if (args[0] === 'stack' && args[1] === 'deploy') {
   process.stderr.write(r.stderr || ''); process.exit(r.status ?? 1);
 }
 if (args[0] === 'service' && args[1] === 'inspect') {
-  if (args.some(arg => arg.includes('UpdateStatus'))) console.log(process.env.TEST_STATE);
+  if (args.some(arg => arg.includes('UpdateStatus'))) {
+    const marker = process.env.CALL_LOG + '.status';
+    const seen = fs.existsSync(marker);
+    fs.writeFileSync(marker, '1');
+    console.log(seen ? process.env.TEST_STATE : 'updating');
+  }
   else console.log(process.env.TEST_IMAGE);
 }
 `, { mode: 0o755 });
+      writeFileSync(join(dir, "bin/sleep"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
       writeFileSync(join(dir, "bin/flock"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
       writeFileSync(join(dir, "deploy.sh"),
         readFileSync(join(root, "production/deploy.sh"), "utf8")
