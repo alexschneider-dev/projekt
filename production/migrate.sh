@@ -1,44 +1,75 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-TAG="${1:-}"
-if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+$ ]]; then
-  echo "Bitte Migration-Tag angeben, z. B. 1.02"
-  exit 1
-fi
+TAG="${1:?Bitte Migration-Tag angeben, z. B. 13.37}"
 
+SERVICE="projekt_migration"
 IMAGE="ghcr.io/alexschneider-dev/projekt-migration:${TAG}"
-NEXT_CONTAINERS=$(docker ps \
-  --filter "label=com.docker.swarm.service.name=projekt_nextjs" \
-  --filter "status=running" --format '{{.ID}}')
-NEXT_CONTAINER="${NEXT_CONTAINERS%%$'\n'*}"
-if [[ -z "$NEXT_CONTAINER" ]]; then
-  echo "Kein laufender Next.js-Container auf diesem Server gefunden"
-  exit 1
-fi
+NETWORK="projekt_net"
 
-DATABASE_URL=$(docker exec "$NEXT_CONTAINER" printenv DATABASE_URL)
-if [[ -z "$DATABASE_URL" ]]; then
-  echo "DATABASE_URL fehlt"
+cleanup() {
+  docker service rm "$SERVICE" >/dev/null 2>&1 || true
+}
+
+if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+$ ]]; then
+  echo "Ungültiger Migration-Tag" >&2
   exit 1
 fi
-export DATABASE_URL
+exec 9>/var/lock/projekt-deploy.lock
+flock -w 900 9
+
+DATABASE_SECRET=$(docker service inspect projekt_nextjs --format \
+  '{{range .Spec.TaskTemplate.ContainerSpec.Secrets}}{{if eq .File.Name "runtime_DATABASE_URL"}}{{.SecretName}}{{end}}{{end}}')
+ENTRYPOINT_CONFIG=$(docker service inspect projekt_nextjs --format \
+  '{{range .Spec.TaskTemplate.ContainerSpec.Configs}}{{if eq .File.Name "/production-entrypoint.sh"}}{{.ConfigName}}{{end}}{{end}}')
+if [[ -z "$DATABASE_SECRET" || -z "$ENTRYPOINT_CONFIG" ]]; then
+  echo "Zuerst Produktion auf Swarm Secrets umstellen." >&2
+  exit 1
+fi
 
 echo "Prüfe Image: $IMAGE"
 docker pull "$IMAGE"
 
-CONTAINER="projekt-migration-$(cat /proc/sys/kernel/random/uuid)"
-cleanup() {
-  docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-}
+cleanup
 trap cleanup EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
+
+docker service create \
+  --detach \
+  --name "$SERVICE" \
+  --network "$NETWORK" \
+  --restart-condition none \
+  --secret "source=$DATABASE_SECRET,target=runtime_DATABASE_URL" \
+  --config "source=$ENTRYPOINT_CONFIG,target=/production-entrypoint.sh" \
+  --entrypoint /bin/sh \
+  --with-registry-auth \
+  "$IMAGE" /production-entrypoint.sh ./node_modules/.bin/prisma migrate deploy >/dev/null
 
 echo "Migration gestartet ..."
 
-timeout --signal=TERM --kill-after=15s 240s \
-  docker run --rm --name "$CONTAINER" \
-    --network projekt_net --env DATABASE_URL "$IMAGE"
+for _ in $(seq 1 120); do
+  STATE=$(docker service ps "$SERVICE" \
+    --format '{{.CurrentState}}' \
+    | head -n 1)
 
-echo "Migration erfolgreich"
+  case "$STATE" in
+    Complete*)
+      docker service logs "$SERVICE"
+      echo "✅ Migration erfolgreich"
+      exit 0
+      ;;
+
+    Failed*|Rejected*|Orphaned*)
+      docker service logs "$SERVICE" || true
+      echo "❌ Migration fehlgeschlagen: $STATE"
+      exit 1
+      ;;
+
+    *)
+      sleep 2
+      ;;
+  esac
+done
+
+docker service logs "$SERVICE" || true
+echo "❌ Migration hat das Zeitlimit überschritten"
+exit 1

@@ -7,17 +7,17 @@
 /.next/
 /out/
 
-# production
+# Produktionsausgabe
 /build
 
-# misc
+# Sonstiges
 .DS_Store
 *.pem
 
-# debug
+# Diagnoseprotokolle
 npm-debug.log*
 
-# local env files
+# Lokale Umgebungsdateien
 .env
 .env*.local
 *.env
@@ -32,3 +32,7 @@ next-env.d.ts
 system.sh
 devnotes.md
 .vscode
+# Produktionskonfiguration bleibt auf dem Manager
+/production/env/
+/production/runtime*.json
+/production/versions.env

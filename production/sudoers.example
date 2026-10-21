@@ -1,0 +1,8 @@
+# USER durch den tatsächlichen Linux-Benutzer für GitHub Actions ersetzen.
+# Mit visudo -f /etc/sudoers.d/projekt-deploy installieren.
+# Dieses Konto darf Code installieren, der als root ausgeführt wird. Es gehört
+# deshalb einem vertrauenswürdigen Administrator der Produktionsumgebung.
+USER ALL=(root) NOPASSWD: /usr/local/lib/projekt-deploy/install-release.sh /tmp/projekt-deploy.*
+USER ALL=(root) NOPASSWD: /usr/local/lib/projekt-deploy/deploy.sh *
+USER ALL=(root) NOPASSWD: /usr/local/lib/projekt-deploy/migrate.sh *
+USER ALL=(root) NOPASSWD: /usr/local/lib/projekt-deploy/deploy-stack.sh ""

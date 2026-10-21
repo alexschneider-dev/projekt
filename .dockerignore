@@ -14,16 +14,16 @@ docker-compose.yml
 /.next/
 /out/
 
-# misc
+# Sonstiges
 .DS_Store
 *.pem
 
-# debug
+# Diagnoseprotokolle
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
+# Lokale Umgebungsdateien
 .env
 .env.*
 !.env.example
@@ -33,3 +33,7 @@ yarn-error.log*
 nginx/
 system.sh
 .vscode
+# Produktionskonfiguration bleibt auf dem Manager
+/production/env/
+/production/runtime*.json
+/production/versions.env

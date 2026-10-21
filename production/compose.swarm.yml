@@ -2,10 +2,7 @@ version: "3.9"
 
 services:
   nextjs:
-    image: ghcr.io/alexschneider-dev/projekt:${PROJEKT_VERSION}
-
-    env_file:
-      - ./env/nextjs.env
+    image: ${NEXTJS_IMAGE}
 
     environment:
       HOSTNAME: "0.0.0.0"
@@ -57,7 +54,7 @@ services:
           memory: 512M
 
   nginx:
-    image: ghcr.io/alexschneider-dev/nginx-projekt:${NGINX_VERSION}
+    image: ${NGINX_IMAGE}
 
     networks:
       - projekt_net
@@ -116,10 +113,7 @@ services:
           memory: 256M
 
   postgres:
-    image: postgres:17
-
-    env_file:
-      - ./env/postgres.env
+    image: ${POSTGRES_IMAGE}
 
     networks:
       - projekt_net
@@ -161,7 +155,7 @@ services:
 
 
   redis:
-    image: redis:7-alpine
+    image: ${REDIS_IMAGE}
 
     command:
       - redis-server

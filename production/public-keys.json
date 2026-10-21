@@ -1,0 +1,13 @@
+{
+  "nextjs": [
+    "NODE_ENV",
+    "HOSTNAME",
+    "PORT",
+    "NEXTAUTH_URL"
+  ],
+  "postgres": [
+    "POSTGRES_USER",
+    "POSTGRES_DB",
+    "PGDATA"
+  ]
+}

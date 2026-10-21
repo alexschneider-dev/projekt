@@ -6,24 +6,17 @@ VERSION="${2:-}"
 
 if [[ -z "$SERVICE" || -z "$VERSION" ]]; then
   echo "Verwendung:"
-  echo "  ./deploy.sh nextjs 1.00"
-  echo "  ./deploy.sh nginx 1.00"
-  exit 1
-fi
-
-if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
-  echo "Ungültige Version"
+  echo "  ./deploy.sh nextjs 13.29"
+  echo "  ./deploy.sh nginx 4.61"
   exit 1
 fi
 
 case "$SERVICE" in
   nextjs)
-    ENV_KEY="PROJEKT_VERSION"
     SWARM_SERVICE="projekt_nextjs"
     IMAGE="ghcr.io/alexschneider-dev/projekt"
     ;;
   nginx)
-    ENV_KEY="NGINX_VERSION"
     SWARM_SERVICE="projekt_nginx"
     IMAGE="ghcr.io/alexschneider-dev/nginx-projekt"
     ;;
@@ -33,70 +26,87 @@ case "$SERVICE" in
     ;;
 esac
 
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+  echo "Ungültige Version" >&2
+  exit 1
+fi
+
+# Gemeinsame Sperre für Service- und Stack-Bereitstellungen auf dem Manager.
+exec 9>/var/lock/projekt-deploy.lock
+flock -w 900 9
+
 cd "$(dirname "$0")"
+RUNTIME=/etc/projekt/runtime.json
+[[ -s "$RUNTIME" ]] || { echo "Datei fehlt oder ist leer: $RUNTIME" >&2; exit 1; }
+# Vor der Bereitstellung abbrechen, falls der ausgewählte Service nicht existiert.
+docker service inspect "$SWARM_SERVICE" >/dev/null
 
-if [[ ! -f versions.env ]]; then
-  echo "versions.env wurde nicht gefunden."
-  exit 1
-fi
+umask 077
+work_dir=$(mktemp -d)
+trap 'rm -rf -- "$work_dir"' EXIT
 
-if [[ ! -f compose.swarm.yml ]]; then
-  echo "compose.swarm.yml wurde nicht gefunden."
-  exit 1
-fi
+# Hier nur die Basis-YAML normalisieren. Docker lehnt leere JSON-Secret-Listen
+# mit --skip-interpolation ab; die Laufzeitkonfiguration erst danach ergänzen.
+# Für andere Services werden bei der Auswahl keine Image-Variablen benötigt.
+docker stack config --skip-interpolation \
+  -c compose.swarm.yml > "$work_dir/all.yml"
+node - "$SERVICE" "$work_dir" "${IMAGE}:${VERSION}" "$RUNTIME" <<'NODE'
+const fs = require("node:fs");
+const [service, directory, image, runtimePath] = process.argv.slice(2);
+const lines = fs.readFileSync(`${directory}/all.yml`, "utf8").split("\n");
+let inServices = false, keep = false, found = 0, sections = 0;
+const selected = [];
+for (const line of lines) {
+  if (/^services:\s*$/.test(line)) {
+    inServices = true;
+    sections++;
+    selected.push(line);
+    continue;
+  }
+  if (/^\S/.test(line)) inServices = false;
+  if (inServices) {
+    // Dies ist die von Docker normalisierte YAML. Bei einem geänderten
+    // Format der Service-Zuordnung sicherheitshalber abbrechen.
+    if (/^  \S/.test(line)) {
+      const match = /^  ([a-zA-Z0-9_-]+):\s*$/.exec(line);
+      if (!match) throw new Error("Unerwartetes Format der Docker-Service-Zuordnung");
+      keep = match[1] === service;
+      if (keep) found++;
+    }
+    if (keep) selected.push(line);
+  } else {
+    selected.push(line);
+  }
+}
+if (sections !== 1 || found !== 1) throw new Error("Ausgewählter Service fehlt oder ist nicht eindeutig");
+fs.writeFileSync(`${directory}/service.yml`, selected.join("\n"));
+// Laufzeitkonfiguration vor dem Zusammenführen auswählen, auch ohne Secrets.
+const runtime = JSON.parse(fs.readFileSync(runtimePath, "utf8"));
+fs.writeFileSync(`${directory}/runtime.json`, JSON.stringify({
+  ...runtime, services: { [service]: runtime.services?.[service] || {} },
+}));
+// Das angegebene Release-Image hat Vorrang vor Basis- und Laufzeitkonfiguration.
+fs.writeFileSync(`${directory}/image.json`, JSON.stringify({
+  version: "3.9", services: { [service]: { image } },
+}));
+NODE
 
-if ! grep -q "^${ENV_KEY}=" versions.env; then
-  echo "${ENV_KEY} fehlt in versions.env"
-  exit 1
-fi
-
-if ! docker service inspect "$SWARM_SERVICE" >/dev/null 2>&1; then
-  echo "Swarm-Service ${SWARM_SERVICE} wurde nicht gefunden."
-  exit 1
-fi
-
-CURRENT_IMAGE=$(docker service inspect "$SWARM_SERVICE" \
-  --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}')
-
-if [[ "$CURRENT_IMAGE" == "${IMAGE}:${VERSION}"* ]]; then
-  echo "${SERVICE} ${VERSION} läuft bereits. Kein Deployment nötig."
-  exit 0
-fi
-
-echo "Prüfe Image: ${IMAGE}:${VERSION}"
+# Nach dem Filtern bleibt nur der Image-Platzhalter des ausgewählten Service übrig.
+key="$(printf '%s' "$SERVICE" | tr '[:lower:]' '[:upper:]')_IMAGE"
+export "$key=${IMAGE}:${VERSION}"
+docker stack config -c "$work_dir/service.yml" -c "$work_dir/runtime.json" -c "$work_dir/image.json" >/dev/null
 docker pull "${IMAGE}:${VERSION}"
+# Niemals --prune ergänzen: Alle anderen projekt-Services fehlen hier absichtlich.
+docker stack deploy --detach=false --with-registry-auth --resolve-image always \
+  -c "$work_dir/service.yml" -c "$work_dir/runtime.json" -c "$work_dir/image.json" projekt
 
-OLD_VERSION=$(grep "^${ENV_KEY}=" versions.env | cut -d= -f2-)
-
-sed -i "s/^${ENV_KEY}=.*/${ENV_KEY}=${VERSION}/" versions.env
-
-set -a
-. ./versions.env
-set +a
-
-echo "Prüfe Stack-Konfiguration..."
-
-if ! docker stack config -c compose.swarm.yml >/dev/null; then
-  sed -i "s/^${ENV_KEY}=.*/${ENV_KEY}=${OLD_VERSION}/" versions.env
-  echo "Stack-Konfiguration ungültig. versions.env wurde zurückgesetzt."
+ACTUAL_IMAGE=$(docker service inspect "$SWARM_SERVICE" \
+  --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}')
+STATE=$(docker service inspect "$SWARM_SERVICE" \
+  --format '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}')
+if [[ "${ACTUAL_IMAGE%%@*}" != "${IMAGE}:${VERSION}" || ( -n "$STATE" && "$STATE" != "completed" ) ]]; then
+  echo "Deployment nicht erfolgreich (Status: $STATE); möglicher Rollback." >&2
   exit 1
 fi
-
-echo "Deploye ${SERVICE} ${VERSION}..."
-
-if ! docker service update \
-  --with-registry-auth \
-  --image "${IMAGE}:${VERSION}" \
-  "$SWARM_SERVICE"; then
-
-  sed -i "s/^${ENV_KEY}=.*/${ENV_KEY}=${OLD_VERSION}/" versions.env
-
-  echo "Deployment fehlgeschlagen."
-  echo "versions.env wurde auf ${OLD_VERSION} zurückgesetzt."
-  exit 1
-fi
-
-echo
-echo "Deployment erfolgreich."
-echo
+echo "Deployment erfolgreich: ${SERVICE} ${VERSION}"
 docker service ps "$SWARM_SERVICE"

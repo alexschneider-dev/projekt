@@ -1,0 +1,29 @@
+name: Dateien für die Produktionsbereitstellung synchronisieren
+description: Installiert die ausgecheckten Bereitstellungsscripte, ohne den Stack anzuwenden.
+inputs:
+  host:
+    required: true
+    description: SSH-Host der Produktionsumgebung
+  user:
+    required: true
+    description: SSH-Benutzer der Produktionsumgebung
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        PROD_HOST: ${{ inputs.host }}
+        PROD_USER: ${{ inputs.user }}
+      run: |
+        set -Eeuo pipefail
+        target="${PROD_USER}@${PROD_HOST}"
+        ssh_opts=(-i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=yes)
+        remote_dir=$(ssh "${ssh_opts[@]}" "$target" 'mktemp -d /tmp/projekt-deploy.XXXXXXXX')
+        [[ "$remote_dir" =~ ^/tmp/projekt-deploy\.[a-zA-Z0-9]+$ ]]
+        trap 'ssh "${ssh_opts[@]}" "$target" "rm -rf -- ${remote_dir}"' EXIT
+        scp "${ssh_opts[@]}" \
+          production/deploy.sh production/deploy-stack.sh production/migrate.sh \
+          production/compose.swarm.yml \
+          "$target:$remote_dir/"
+        ssh "${ssh_opts[@]}" "$target" \
+          "sudo -n /usr/local/lib/projekt-deploy/install-release.sh '$remote_dir'"
