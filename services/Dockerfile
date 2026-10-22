@@ -1,13 +1,14 @@
 FROM node:22-bookworm-slim AS base
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ffmpeg curl procps \
+  && apt-get install -y --no-install-recommends curl procps \
   && rm -rf /var/lib/apt/lists/*
 
 
 FROM base AS deps
 WORKDIR /app
 
+COPY tools/fast-glob ./tools/fast-glob
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 
 RUN \
@@ -22,6 +23,7 @@ FROM base AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/tools/fast-glob ./tools/fast-glob
 COPY . .
 
 RUN \

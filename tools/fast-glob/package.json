@@ -1,0 +1,10 @@
+{
+  "name": "fast-glob",
+  "version": "3.3.3",
+  "private": true,
+  "description": "Lokaler fast-glob-Adapter für die Dateisuche mit tinyglobby",
+  "main": "index.cjs",
+  "dependencies": {
+    "tinyglobby": "0.2.17"
+  }
+}

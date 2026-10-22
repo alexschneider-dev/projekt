@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "1.08"
+        description: "1.09"
         required: true
         type: string
       deploy:
@@ -49,6 +49,9 @@ jobs:
 
       - name: Abhängigkeiten installieren
         run: npm ci
+
+      - name: Adapter für die Dateisuche prüfen
+        run: npm run test:glob
 
       - name: Prisma Client generieren
         run: npx prisma generate
