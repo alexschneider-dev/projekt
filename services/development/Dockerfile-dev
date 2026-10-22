@@ -12,13 +12,13 @@ RUN adduser --system --uid 1001 --ingroup node nextjs
 RUN mkdir -p /app/.next/cache/images && chown -R nextjs:node /app/.next/cache
 
 COPY tools/fast-glob ./tools/fast-glob
-COPY package.json ./
+COPY package.json package-lock.json ./
 
-RUN npm install --package-lock-only --no-audit
+RUN npm ci --no-audit
 
 COPY . .
 
-RUN npm install
+RUN npx prisma generate
 
 USER nextjs
 

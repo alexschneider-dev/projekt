@@ -13,19 +13,6 @@ cd "$PROJECT_DIR"
 
 COLIMA_MEMORY="${COLIMA_MEMORY:-6}"
 COLIMA_CPU="${COLIMA_CPU:-5}"
-STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-300}"
-
-if [[ ! "$STARTUP_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
-  echo "❌ STARTUP_TIMEOUT muss eine positive Anzahl Sekunden sein." >&2
-  exit 1
-fi
-
-for tool in colima docker curl; do
-  if ! command -v "$tool" >/dev/null 2>&1; then
-    echo "❌ $tool wurde nicht gefunden." >&2
-    exit 1
-  fi
-done
 
 if ! colima status >/dev/null 2>&1; then
   echo "Colima wird gestartet..."
@@ -41,7 +28,7 @@ docker compose \
   --env-file "$ENV_FILE" \
   -f "$COMPOSE_FILE" \
   --profile dev \
-  up -d
+  up -d --build
 
 docker compose \
   --env-file "$ENV_FILE" \
@@ -49,121 +36,55 @@ docker compose \
   --profile dev \
   ps
 
-echo "Warte bis zu ${STARTUP_TIMEOUT} Sekunden auf https://localhost/..."
-STARTUP_DEADLINE=$((SECONDS + STARTUP_TIMEOUT))
-while true; do
-  REMAINING=$((STARTUP_DEADLINE - SECONDS))
-  if (( REMAINING <= 0 )); then
-    echo "❌ Die Website ist nach ${STARTUP_TIMEOUT} Sekunden noch nicht bereit." >&2
-    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile dev \
-      logs --tail=50 nextjs-projekt nginx >&2 || true
-    exit 1
-  fi
-
-  REQUEST_TIMEOUT=5
-  if (( REMAINING < REQUEST_TIMEOUT )); then
-    REQUEST_TIMEOUT=$REMAINING
-  fi
-
-  # Nur für das lokale Entwicklungszertifikat die Zertifikatsprüfung überspringen.
-  if HTTP_STATUS=$(curl --silent --insecure --noproxy '*' \
-    --connect-timeout "$REQUEST_TIMEOUT" --max-time "$REQUEST_TIMEOUT" \
-    --output /dev/null --write-out '%{http_code}' https://localhost/); then
-    if [[ "$HTTP_STATUS" == "200" ]]; then
-      break
-    fi
-  fi
-  sleep 1
-done
-
-echo "✅ Entwicklungsumgebung gestartet; Website ist erreichbar."
+echo "✅ Container gestartet; Next.js wird im Protokollfenster vorbereitet."
 echo "Website: https://localhost"
 
-LOGS_CMD="cd '$PROJECT_DIR' && docker logs --tail=500 -f nextjs-projekt"
+# Compose Watch bleibt während der Entwicklung im Protokollfenster aktiv.
+# Synchronisierte Dateien lösen Turbopack ohne Neustart von Next.js aus.
+LOGS_CMD="cd '$PROJECT_DIR' && docker compose --env-file '$ENV_FILE' -f '$COMPOSE_FILE' --profile dev up --watch --menu=false --no-deps nextjs-projekt"
 STATS_CMD="cd '$PROJECT_DIR' && docker stats --all --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'"
 
 export LOGS_CMD STATS_CMD
-TERM_MARKER="MONITOR"
+TERM_MARKER="PROJEKT_MONITOR"
 export TERM_MARKER
 
-# 1) ZUERST das Terminal-Fenster zur Überwachung öffnen bzw. in den Vordergrund holen
-#    (verhindert, dass VS Code den Fokus übernimmt)
+# 1) Zuerst die Terminal-Fenster öffnen, damit VS Code den Fokus nicht stört.
 
 osascript <<'EOF'
+on ensureMonitor(tabTitle, commandText)
+  tell application "Terminal"
+    set targetTab to missing value
+    repeat with candidateWindow in windows
+      repeat with candidateTab in tabs of candidateWindow
+        if custom title of candidateTab is tabTitle then
+          set targetTab to contents of candidateTab
+          exit repeat
+        end if
+      end repeat
+      if targetTab is not missing value then exit repeat
+    end repeat
+
+    if targetTab is missing value then
+      -- Ohne Ziel öffnet Terminal ein Fenster und startet den Befehl direkt.
+      set targetTab to do script commandText
+      set custom title of targetTab to tabTitle
+    else if not (busy of targetTab) then
+      -- Keine Eingaben an einen laufenden Watch- oder Statistikprozess senden.
+      do script commandText in targetTab
+    end if
+  end tell
+end ensureMonitor
+
 set logsCmd to system attribute "LOGS_CMD"
 set statsCmd to system attribute "STATS_CMD"
 set marker to system attribute "TERM_MARKER"
 
+my ensureMonitor(marker & " LOGS", logsCmd)
+my ensureMonitor(marker & " STATS", statsCmd)
 tell application "Terminal" to activate
-delay 0.4
-
-tell application "System Events"
-  set termProc to process "Terminal"
-  set frontmost of termProc to true
-  delay 0.3
-
-  -- Sicherstellen, dass Terminal im Vordergrund ist (ein erneuter Versuch bei Fokusproblemen mit Electron/VS Code)
-  set frontApp to name of first application process whose frontmost is true
-  if frontApp is not "Terminal" then
-    tell application "Terminal" to activate
-    delay 0.5
-    set frontApp to name of first application process whose frontmost is true
-    if frontApp is not "Terminal" then return
-  end if
-
-  -- Vorhandenes Überwachungsfenster anhand der Titelmarkierung finden
-  set winIndex to 0
-  repeat with i from 1 to count of windows of termProc
-    try
-      set t to name of window i of termProc
-      if t contains marker then
-        set winIndex to i
-        exit repeat
-      end if
-    end try
-  end repeat
-
-  if winIndex is 0 then
-    keystroke "n" using command down
-    delay 0.4
-
-    tell application "Terminal"
-      do script "printf '\\e]0;" & marker & "\\a'" in selected tab of front window
-    end tell
-    delay 0.2
-
-    keystroke "t" using command down
-    delay 0.4
-  else
-    perform action "AXRaise" of window winIndex of termProc
-    delay 0.3
-  end if
-
-  -- Tab 1 (Protokolle)
-  keystroke "1" using command down
-  delay 0.2
-end tell
-
-tell application "Terminal"
-  do script "printf '\\033c\\n'; " & logsCmd in selected tab of front window
-end tell
-
-tell application "System Events"
-  set termProc to process "Terminal"
-  set frontmost of termProc to true
-  delay 0.2
-
-  -- Tab 2 (Statistiken)
-  keystroke "2" using command down
-  delay 0.2
-end tell
-
-tell application "Terminal"
-  do script "printf '\\033c\\n'; " & statsCmd in selected tab of front window
-end tell
 EOF
 
-# 2) VS Code NACH dem Terminal-Fenster öffnen (verhindert einen Fokuswechsel durch Electron während des Skriptablaufs)
+# 2) VS Code nach den Terminal-Fenstern öffnen.
 osascript <<EOF
 set projectDir to "$PROJECT_DIR"
 
@@ -189,7 +110,7 @@ tell application "Google Chrome"
   end if
 
   tell front window
-    -- Aktuellen Tab wiederverwenden, statt einen neuen zu erstellen
+    -- Aktuellen Tab wiederverwenden.
     set URL of active tab to urlToOpen
   end tell
 end tell

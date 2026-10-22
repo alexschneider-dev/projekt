@@ -17,7 +17,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U postgres -d projekt"
+          "pg_isready -U postgres -d postgres"
         ]
       interval: 5s
       timeout: 5s
@@ -59,14 +59,45 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ../../../:/app
-      - nextjs_node_modules_dev_projekt:/app/node_modules
-    command: >
-      sh -c "
-        npm install &&
-        npx prisma generate &&
-        exec npm run dev -- --port 3000 --hostname 0.0.0.0
-      "
+      # Compose Watch überträgt Quellcode für native Linux-Dateiereignisse.
+      - type: bind
+        source: ../../../.env.local
+        target: /app/.env.local
+        read_only: true
+        bind:
+          create_host_path: false
+    develop:
+      watch:
+        - action: sync
+          path: ../../..
+          target: /app
+          initial_sync: true
+          ignore:
+            - .git/
+            - .next/
+            - node_modules/
+            - services/
+            - production/
+            - tools/fast-glob/
+            - prisma/
+            - prisma.config.ts
+            - .env
+            - .env.*
+            - package.json
+            - package-lock.json
+        - action: rebuild
+          path: ../../../package.json
+        - action: rebuild
+          path: ../../../package-lock.json
+        - action: rebuild
+          path: ../../../tools/fast-glob
+        - action: rebuild
+          path: ../Dockerfile-dev
+        - action: rebuild
+          path: ../../../prisma
+        - action: rebuild
+          path: ../../../prisma.config.ts
+    command: ["npm", "run", "dev", "--", "--port", "3000", "--hostname", "0.0.0.0"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,5 +131,4 @@ networks:
 volumes:
   postgres_data_dev_projekt:
   redis_data_dev_projekt:
-  nextjs_node_modules_dev_projekt:
   nginx_cache_dev_projekt:

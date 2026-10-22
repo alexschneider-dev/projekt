@@ -26,15 +26,15 @@ fi
 
 echo "Visual Studio Code wird geschlossen..."
 
-osascript \
-  -e 'tell application "System Events"' \
-  -e 'if exists process "Code" then' \
-  -e 'tell application "Visual Studio Code" to quit' \
-  -e 'end if' \
-  -e 'end tell' || {
-    echo "⚠️ Visual Studio Code konnte nicht geschlossen werden." >&2
-    STOP_STATUS=1
-  }
+# osascript \
+#   -e 'tell application "System Events"' \
+#   -e 'if exists process "Code" then' \
+#   -e 'tell application "Visual Studio Code" to quit' \
+#   -e 'end if' \
+#   -e 'end tell' || {
+#     echo "⚠️ Visual Studio Code konnte nicht geschlossen werden." >&2
+#     STOP_STATUS=1
+#   }
 
 echo "Google Chrome wird geschlossen..."
 
