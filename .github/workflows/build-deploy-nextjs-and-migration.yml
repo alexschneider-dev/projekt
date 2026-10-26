@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "1.09"
+        description: "1.10"
         required: true
         type: string
       deploy:
@@ -22,7 +22,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  audit:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/security-audit.yml
+
   build:
+    needs: audit
     runs-on: ubuntu-latest
     timeout-minutes: 45
 

@@ -2,8 +2,8 @@
   "name": "projekt-migration",
   "private": true,
   "dependencies": {
-    "prisma": "6.19.3",
-    "@prisma/client": "6.19.3",
-    "dotenv": "^17.2.3"
+    "prisma": "*",
+    "@prisma/client": "*",
+    "dotenv": "*"
   }
 }

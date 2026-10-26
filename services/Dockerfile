@@ -9,14 +9,10 @@ FROM base AS deps
 WORKDIR /app
 
 COPY tools/fast-glob ./tools/fast-glob
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+COPY package.json package-lock.json ./
+COPY services/migration/package.json ./services/migration/package.json
 
-RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+RUN npm ci
 
 
 FROM base AS builder
@@ -26,12 +22,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/tools/fast-glob ./tools/fast-glob
 COPY . .
 
-RUN \
-  if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+RUN npm run build
 
 
 FROM base AS runner

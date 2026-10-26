@@ -1,0 +1,52 @@
+name: Dependency security audit
+
+on:
+  schedule:
+    - cron: "23 6 * * *"
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+    paths:
+      - "**/package.json"
+      - "package-lock.json"
+      - ".github/workflows/security-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check for known vulnerabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm audit --package-lock-only --include=dev --audit-level=low 2>&1 | tee "$RUNNER_TEMP/npm-audit.txt"
+
+      - name: Publish audit summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          if [[ -f "$RUNNER_TEMP/npm-audit.txt" ]]; then
+            {
+              echo '## Dependency security audit'
+              echo ''
+              echo '```text'
+              cat "$RUNNER_TEMP/npm-audit.txt"
+              echo '```'
+              echo ''
+              echo 'This check reports findings only. Review and test dependency updates before merging.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

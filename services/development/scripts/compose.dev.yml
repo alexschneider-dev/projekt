@@ -90,6 +90,8 @@ services:
         - action: rebuild
           path: ../../../package-lock.json
         - action: rebuild
+          path: ../../migration/package.json
+        - action: rebuild
           path: ../../../tools/fast-glob
         - action: rebuild
           path: ../Dockerfile-dev
