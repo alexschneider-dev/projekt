@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth/access";
 import { SectionContent } from "@/components/dashboard/section-content";
 
+
 export default async function AdminPage() {
   await requireUser("admin");
   return (

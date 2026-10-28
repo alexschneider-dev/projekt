@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { hashPassword, verifyPassword, dummyHash } from "../lib/auth/password.mjs";
 import { hasRole } from "../lib/auth/roles.ts";
 
+
 test("passwords use unique salts and reject incorrect passwords", async () => {
   const password = "Ein langes Passwort 🔑";
   const first = await hashPassword(password);

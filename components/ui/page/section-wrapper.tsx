@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef } from "react";
 import BodyWrapper from "./body-wrapper";
 
+
 type SectionWrapperProps = ComponentPropsWithoutRef<"section"> & {
   variant?: "section" | "card";
 };

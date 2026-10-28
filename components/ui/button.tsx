@@ -1,5 +1,7 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
+
+
 const variants = {
   primary: "bg-primary text-primary-foreground enabled:hover:brightness-95",
   outline: "border-border bg-transparent enabled:hover:bg-accent",

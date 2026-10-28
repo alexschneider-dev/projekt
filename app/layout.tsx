@@ -4,6 +4,7 @@ import BodyWrapper from "@/components/ui/page/body-wrapper";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
+
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",

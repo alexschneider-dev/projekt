@@ -3,6 +3,7 @@ import type { Session } from "next-auth";
 import { roleLabels } from "@/lib/auth/roles";
 import { LogoutButton } from "@/components/auth/logout-button";
 
+
 export function DashboardHeader({ user }: { user: NonNullable<Session["user"]> }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-6 py-4">

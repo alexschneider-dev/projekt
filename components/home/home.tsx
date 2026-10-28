@@ -1,6 +1,7 @@
 import PageWrapper from "@/components/ui/page/page-wrapper";
 import Link from "next/link";
 
+
 export function Home() {
   return (
     <PageWrapper variant="centered">

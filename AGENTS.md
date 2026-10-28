@@ -3,6 +3,13 @@
 Diese Regeln gelten für Änderungen im gesamten Projekt. Neue ausdrückliche
 Anweisungen des Nutzers haben Vorrang.
 
+## Sprache
+
+- Im gesamten Projekt Deutsch verwenden: für Benutzeroberflächen, Meldungen,
+  Fehlertexte, Kommentare, Dokumentation und die Kommunikation mit dem Nutzer.
+- Technische Bezeichner, API-Namen und vorgegebene Begriffe von Bibliotheken
+  unverändert lassen, wenn sie für die technische Kompatibilität nötig sind.
+
 ## Benennung
 
 - Namen und lokale Pfade externer Referenzprojekte nicht in Projektdateien,
@@ -38,6 +45,16 @@ Anweisungen des Nutzers haben Vorrang.
 
 ## Formatierung
 
+- In jeder Quelldatei nach dem letzten Import genau zwei Leerzeilen vor dem
+  folgenden Code setzen, etwa vor der ersten Funktion, Konstante oder
+  Typdefinition. Das gilt auch, wenn dort zunächst ein Kommentar steht.
+- Bei mehr als einem Eintrag jeden Eintrag auf eine eigene Zeile setzen. Das gilt
+  für Objekte und Typdefinitionen, Funktionsparameter und Aufrufargumente,
+  Destrukturierungen, benannte Imports/Exports und Arrays sowie JSX-Props.
+  Auch kurze Ausdrücke nicht in eine Zeile zusammenziehen. Die schließende
+  Klammer steht bei solchen mehrzeiligen Ausdrücken auf einer eigenen Zeile.
+- Diese Regel auch auf bestehenden Code anwenden, der im Rahmen einer Änderung
+  bearbeitet wird.
 - JSX-Tags mit mehreren Props immer mehrzeilig schreiben: genau ein Prop bzw.
   Spread-Attribut pro Zeile, auch wenn alle Props in eine kurze Zeile passen würden.
 - Die schließende Klammer `>` bzw. `/>` dann in eine eigene Zeile setzen.
@@ -66,3 +83,29 @@ Anweisungen des Nutzers haben Vorrang.
 - Die Homepage bleibt öffentlich und enthält einen Link zur Login-Seite.
 - Keine automatische Weiterleitung zum Dashboard. Nach erfolgreichem Login zur
   Homepage navigieren; der interne Bereich bleibt über einen Link erreichbar.
+
+## API-Kommunikation und zentrale Fehler
+
+- Vorhandene Komponenten und Hilfsfunktionen zuerst suchen und wiederverwenden.
+  Bei ausdrücklich vorgegebenen Referenzprojekten die passenden vorhandenen
+  Muster übernehmen und an dieses Projekt anpassen.
+- Für JSON-API-Kommunikation `fetchJson` aus `lib/http/fetch-json.ts` verwenden;
+  die HTTP-Methode über die Optionen angeben.
+- Eigene API-Routen mit `apiHandler` und `successResponse` aus `lib/http`
+  implementieren. NextAuth behält seinen eigenen Authentifizierungsablauf.
+- Body, Query und Pfadparameter serverseitig mit `checkApiRequest`,
+  `checkApiQuery` und `checkApiParams` sowie den zentralen Zod-Schemas prüfen.
+- Fehler zentral nach Fachbereich in `lib/http/errors/` definieren, jeweils mit
+  `status`, `code` und `message`. Passende Definitionen wiederverwenden statt
+  Fehlermeldungen in Services, Hooks oder Komponenten zu duplizieren.
+- Keine fest eingetragenen Fehlertexte an Verwendungsstellen: Das gilt auch
+  für `throw new Error(...)`, `console.error(...)`, Skripte und Zod-Validierung.
+  Dort zentrale Fehlerdefinitionen verwenden; dynamischen Kontext getrennt
+  übergeben oder über eine zentrale Meldungsfunktion einsetzen.
+- Eigenständig ausführbare Werkzeuge und Produktionsskripte halten ihre Fehler
+  in einem eigenen `errors/`-Ordner innerhalb des jeweiligen Pakets, damit keine
+  Abhängigkeit von der Anwendungslaufzeit entsteht.
+- Beabsichtigte API-Fehler mit `throw createApiError(...)` auslösen.
+  `apiHandler` und `errorResponse` übernehmen die einheitliche Fehlerantwort
+  einschließlich allgemeiner Prisma-Fehler. Interne Fehlerdetails nicht an
+  den Client weitergeben.

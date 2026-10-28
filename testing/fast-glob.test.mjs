@@ -7,6 +7,7 @@ import { join, resolve } from "node:path";
 import { createRequire } from "node:module";
 import glob, { globSync } from "../tools/fast-glob/index.cjs";
 
+
 const require = createRequire(import.meta.url);
 function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), "projekt-glob-"));

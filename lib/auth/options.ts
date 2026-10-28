@@ -5,6 +5,7 @@ import { loginSchema } from "@/lib/schemas/auth/login.schema";
 import { prisma } from "@/lib/prisma";
 import { dummyHash, verifyPassword } from "./password.mjs";
 
+
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
   pages: { signIn: "/login", error: "/login" },
@@ -19,7 +20,7 @@ export const authOptions: NextAuthOptions = {
       if (!parsed.success) return null;
       const { email, password } = parsed.data;
       const key = createHash("sha256").update(email).digest("hex");
-      // Shared, atomic limit across app replicas: ten attempts per account / 15 minutes.
+      // Gemeinsames, atomares Limit über alle App-Instanzen: zehn Versuche pro Konto in 15 Minuten.
       const [limit] = await prisma.$queryRaw<{ attempts: number }[]>`
         INSERT INTO "LoginAttempt" ("key", "attempts", "expiresAt")
         VALUES (${key}, 1, NOW() + INTERVAL '15 minutes')

@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef } from "react";
 import { cn } from "@/lib/utils";
 
+
 const variants = {
   default: "mx-auto w-full max-w-6xl px-6 py-8",
   centered: "flex min-h-screen flex-col items-center justify-center gap-6 p-6",

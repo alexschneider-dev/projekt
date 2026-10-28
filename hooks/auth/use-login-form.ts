@@ -1,5 +1,6 @@
 "use client";
 
+import { ERROR_AUTH } from "@/lib/http/errors/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -18,7 +19,10 @@ export function useLoginForm() {
     register,
     handleSubmit,
     setError,
-    formState: { errors, isSubmitting },
+    formState: {
+      errors,
+      isSubmitting
+    },
   } = useForm<LoginFormInput, unknown, LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -29,29 +33,43 @@ export function useLoginForm() {
 
   const submit = handleSubmit(async (values) => {
     try {
-      const result = await signIn("credentials", {
-        ...values,
-        redirect: false,
-        callbackUrl: "/",
-      });
+      const result = await signIn(
+        "credentials",
+        {
+          ...values,
+          redirect: false,
+          callbackUrl: "/",
+        }
+      );
 
       if (!result?.ok || result.error) {
-        setError("root.server", {
-          type: "server",
-          message: "Anmeldung nicht möglich. Prüfe deine Zugangsdaten oder versuche es später erneut.",
-        });
+        setError(
+          "root.server",
+          {
+            type: "server",
+            message: ERROR_AUTH.LOGIN_FAILED.message,
+          }
+        );
         return;
       }
 
       router.replace("/");
       router.refresh();
     } catch {
-      setError("root.server", {
-        type: "server",
-        message: "Die Anmeldung ist gerade nicht erreichbar. Bitte versuche es erneut.",
-      });
+      setError(
+        "root.server",
+        {
+          type: "server",
+          message: ERROR_AUTH.LOGIN_UNAVAILABLE.message,
+        }
+      );
     }
   });
 
-  return { register, errors, busy: isSubmitting, submit };
+  return {
+    register,
+    errors,
+    busy: isSubmitting,
+    submit
+  };
 }

@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef } from "react";
 import BodyWrapper from "./body-wrapper";
 
+
 type PageWrapperProps = ComponentPropsWithoutRef<"main"> & {
   variant?: "default" | "centered" | "auth";
 };

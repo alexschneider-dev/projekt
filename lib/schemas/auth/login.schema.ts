@@ -1,16 +1,29 @@
+import { ERROR_VALIDATION } from "../../http/errors/validation.mjs";
 import { z } from "zod";
+
 
 export const loginSchema = z.object({
   email: z.string()
     .trim()
     .toLowerCase()
-    .min(1, "Bitte gib deine E-Mail-Adresse ein.")
-    .email("Bitte gib eine gültige E-Mail-Adresse ein.")
-    .max(254, "Die E-Mail-Adresse darf höchstens 254 Zeichen enthalten."),
-  // Login validates existing credentials; password creation has its own policy.
+    .min(
+      1,
+      ERROR_VALIDATION.EMAIL_REQUIRED.message
+    )
+    .email(ERROR_VALIDATION.EMAIL_INVALID.message)
+    .max(
+      254,
+      ERROR_VALIDATION.EMAIL_TOO_LONG.message
+    ),
   password: z.string()
-    .min(1, "Bitte gib dein Passwort ein.")
-    .max(128, "Das Passwort darf höchstens 128 Zeichen enthalten."),
+    .min(
+      1,
+      ERROR_VALIDATION.PASSWORD_REQUIRED.message
+    )
+    .max(
+      128,
+      ERROR_VALIDATION.PASSWORD_TOO_LONG.message
+    ),
 });
 
 export type LoginFormInput = z.input<typeof loginSchema>;
