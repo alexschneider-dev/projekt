@@ -1,7 +1,7 @@
-export default function Home() {
+import { Home } from "@/components/home/home";
+
+export default function HomePage() {
   return (
-    <main className="flex justify-center-safe items-center min-h-screen">
-      <p>Projekt</p>
-    </main>
+    <Home />
   );
 }

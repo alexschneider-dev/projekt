@@ -16,7 +16,9 @@
     "test:glob": "node --test testing/fast-glob.test.mjs",
     "audit:dependencies": "npm audit --package-lock-only --include=dev --audit-level=low",
     "prebuild": "npm run audit:dependencies",
-    "preanalyze": "npm run audit:dependencies"
+    "preanalyze": "npm run audit:dependencies",
+    "auth:create-user": "node scripts/create-user.mjs",
+    "test:auth": "node --experimental-strip-types --test testing/auth.test.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.0.0",
