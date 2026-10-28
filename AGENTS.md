@@ -71,6 +71,15 @@ Anweisungen des Nutzers haben Vorrang.
 - Feldfehler am jeweiligen Eingabefeld anzeigen und barrierefrei verknüpfen.
 - Formularzustand und Absende-Status über React Hook Form verwalten.
 
+## Abhängigkeiten und Sicherheitsprüfung
+
+- Die shadcn-Komponenten liegen als Quellcode im Projekt. Die `shadcn`-CLI nicht
+  als dauerhafte Projektabhängigkeit installieren; sie würde derzeit die
+  anfällige `deepmerge`-Abhängigkeit einbringen. Benötigte CSS-Varianten lokal
+  in `app/globals.css` halten, ohne Import aus dem CLI-Paket.
+- Nach Änderungen an Abhängigkeiten sowohl `npm audit` als auch die
+  Lockdatei-Prüfung `npm run audit:dependencies` ausführen.
+
 ## Formatierung
 
 - In jeder Quelldatei nach dem letzten Import genau zwei Leerzeilen vor dem

@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const { isAbsolute } = require("node:path");
 const tiny = require("tinyglobby");
 
-// Unterstützt bewusst die Schnittstelle, die Next.js, shadcn und ts-morph nutzen.
+// Unterstützt bewusst die Schnittstelle, die die Next.js-Lint-Regeln nutzen.
 // Neue Optionen müssen ausdrücklich geprüft werden, statt still ignoriert zu werden.
 const supported = new Set([
   "absolute",

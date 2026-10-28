@@ -84,20 +84,10 @@ test("Zugriffsfehler nur mit suppressErrors unterdrücken", async t => {
 });
 
 test("Alle Verbraucher lösen fast-glob zum lokalen Adapter auf", () => {
-  for (const name of ["shadcn", "@shadcn/registry", "@ts-morph/common", "@next/eslint-plugin-next"]) {
+  for (const name of ["@next/eslint-plugin-next"]) {
     const consumer = createRequire(require.resolve(name));
     assert.equal(consumer("fast-glob"), glob, name);
   }
-});
-
-test("ts-morph findet Quelldateien über den Adapter", async t => {
-  const cwd = fixture(t);
-  const { Project } = require("ts-morph");
-  const project = new Project({ skipAddingFilesFromTsConfig: true });
-  const sources = project.addSourceFilesAtPaths(join(cwd, "src/*.{ts,tsx}"));
-  assert.deepEqual(sources.map(file => file.getBaseName()).sort(), ["a.test.ts", "a.ts", "b.tsx"]);
-  const asyncSources = await project.addSourceFilesAtPaths(join(cwd, "other/*.ts"));
-  assert.equal(asyncSources[0].getBaseName(), "e.ts");
 });
 
 test("Next.js-Lint löst Verzeichnismuster auf", t => {
