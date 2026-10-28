@@ -1,5 +1,77 @@
 # Produktion: CI/CD und Swarm Secrets
 
+## Nginx hinter HAProxy
+
+Der separate Stack `projekt-edge` übernimmt die öffentlichen Ports 80 und 443.
+HAProxy leitet TCP-Verbindungen mit PROXY-Protokoll v2 an Nginx auf 8081/8443
+weiter. TLS und Zertifikate bleiben bei Nginx. Nur HAProxy und Nginx gehören in
+das externe Overlay-Netzwerk `projekt_frontend` (10.253.0.0/24). Nginx vertraut
+Client-Adressen ausschließlich aus diesem Netz und ersetzt eingehende
+`X-Forwarded-For`-Werte vor der Weiterleitung an Next.js.
+
+Nginx veröffentlicht selbst keine Host-Ports mehr. Dadurch können neue Tasks
+vor dem Stoppen der alten starten. SIGQUIT und 140 Sekunden Stop-Frist geben
+laufenden Anfragen Zeit zum Abschluss; Worker warten höchstens 120 Sekunden.
+HAProxy verwaltet bis zu vier Nginx-Tasks, einschließlich überlappender Updates.
+Die Platzierung auf einem Manager setzt derzeit einen einzelnen vorgesehenen
+Ingress-Manager voraus. HAProxy selbst hat eine Replik und ist kein redundanter
+Einstiegspunkt. Sein eigener Neustart kann Verbindungen unterbrechen.
+
+Limits gelten pro Client-IP und Nginx-Instanz; mehrere Repliken teilen ihre Zähler
+nicht. `burst` bezeichnet zusätzlich erlaubte Spitzen; alle Limits lehnen
+Überschreitungen mit HTTP 429 ab, ohne Anfragen künstlich zu verzögern.
+
+| Anfragen | Rate | Burst |
+| --- | --- | --- |
+| Seiten | 50/s, gemeinsame Zone mit API | 300 |
+| API und übrige Next.js-Anfragen | 50/s, gemeinsame Zone mit Seiten | 50 |
+| Passwort-Anmeldung (`POST /api/auth/callback/credentials`) | zusätzlich 1/s | 2 |
+| Optimierte Bilder | 50/s, eigene Zone | 150 |
+| Statische JS-, CSS- und WOFF2-Dateien | 100/s, eigene Zone | 300 |
+
+Session-Abfragen erhalten kein zusätzliches Login-Limit. Anwendungsseitiger
+Anmeldeschutz bleibt weiterhin erforderlich. Die Nginx-Bereitschaftsprüfung
+verwendet lokal `/health` auf Port 8080 und prüft nicht die Next.js-Verfügbarkeit.
+
+### Einmalige Umstellung des Eingangs
+
+Vor weiteren Deployments ein Wartungsfenster einplanen und den bisherigen
+Nginx-Image-Digest sowie die Service-Spezifikation sichern. Die Umstellung
+verursacht eine kurze Unterbrechung zwischen Freigabe und Übernahme der Ports.
+
+1. Prüfen, dass 10.253.0.0/24 nicht mit vorhandenen Netzen kollidiert. Bei einer
+   Änderung sowohl das Netzwerk als auch `set_real_ip_from` anpassen.
+2. Auf dem Manager `sudo docker network create --driver overlay --subnet
+   10.253.0.0/24 projekt_frontend` ausführen. Ein bereits vorhandenes Netz zuvor
+   mit `docker network inspect projekt_frontend` auf Typ und Subnetz prüfen.
+3. Das neue Nginx-Image bauen und über den Nginx-Workflow bereitstellen. Dieser
+   Schritt übernimmt auch die neue Service-Konfiguration ohne öffentliche Ports.
+   Den gesamten Stack nicht zuvor mit dem alten Nginx-Image bereitstellen:
+   Diesem fehlen die neuen Listener und der Healthcheck.
+4. Aus einem Checkout dieses Commits im Ordner `production` den separaten Eingang
+   starten: `sudo docker stack deploy -c compose.edge.yml projekt-edge`.
+5. `sudo docker stack services projekt-edge`, `sudo docker service ps
+   projekt_nginx`, HTTPS, HTTP-Weiterleitung, Login und Client-IP im Nginx-Log
+   prüfen. Zertifikatsprüfungen über `/.well-known/acme-challenge/` bleiben möglich.
+
+Für einen Rollback zuerst `sudo docker stack rm projekt-edge` ausführen und
+warten, bis seine Tasks die Ports freigegeben haben. Anschließend
+`sudo docker service rollback projekt_nginx` ausführen, solange die vorherige
+Service-Spezifikation mit veröffentlichten Ports noch vorliegt.
+
+Spätere Nginx-Releases verwenden weiterhin den bestehenden Workflow. Änderungen
+an HAProxy werden separat aus `production` mit `compose.edge.yml` bereitgestellt;
+sie werden nicht vom bestehenden CI-Installer übertragen. Bei Änderungen an
+`edge-haproxy.cfg` den Config-Namen `projekt_edge_haproxy_v1` versionieren, da
+Swarm Configs unveränderlich sind. Das Image ist per Digest fixiert; für einen
+Versionswechsel `EDGE_IMAGE` beim Edge-Deploy setzen und den Digest dokumentieren.
+
+Technische Grundlagen: [Nginx PROXY-Protokoll](https://docs.nginx.com/nginx/admin-guide/load-balancer/using-proxy-protocol/),
+[Nginx-Anfragelimits](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html)
+und [HAProxy PROXY-Protokoll](https://www.haproxy.com/documentation/haproxy-configuration-tutorials/proxying-essentials/client-ip-preservation/enable-proxy-protocol/).
+
+## Bestehender Anwendungs-Stack
+
 Next.js und Nginx verwenden einen gemeinsamen Deploy-Workflow. Jeder Lauf
 überträgt `compose.swarm.yml` und die Deploy-Scripte vom ausgewählten Commit.
 Der Service-Deploy übernimmt Image, Replicas, Limits, Healthchecks und

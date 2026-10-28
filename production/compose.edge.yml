@@ -1,0 +1,55 @@
+version: "3.9"
+
+# Separater Stack: Die bestehenden Service-Deployments verwalten seine Images nicht.
+services:
+  edge:
+    image: ${EDGE_IMAGE:-haproxy:3.2-alpine@sha256:5893840576071e6217cd52ebdcc14f454c6f7a631056fa6f4e0f40d3cac4215b}
+    networks:
+      - frontend
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
+    configs:
+      - source: edge_haproxy
+        target: /usr/local/etc/haproxy/haproxy.cfg
+    stop_grace_period: 140s
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O
+        - /dev/null
+        - http://127.0.0.1:8404/health
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        order: stop-first
+        failure_action: rollback
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+
+networks:
+  frontend:
+    external: true
+    name: projekt_frontend
+
+configs:
+  edge_haproxy:
+    name: projekt_edge_haproxy_v1
+    file: ./edge-haproxy.cfg

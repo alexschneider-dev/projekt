@@ -55,20 +55,12 @@ services:
 
   nginx:
     image: ${NGINX_IMAGE}
+    stop_signal: SIGQUIT
+    stop_grace_period: 140s
 
     networks:
       - projekt_net
-
-    ports:
-      - target: 80
-        published: 80
-        protocol: tcp
-        mode: host
-
-      - target: 443
-        published: 443
-        protocol: tcp
-        mode: host
+      - frontend
 
     volumes:
       - nginx_cache:/var/cache/nginx
@@ -83,15 +75,19 @@ services:
     healthcheck:
       test:
         - CMD
-        - /usr/sbin/nginx
-        - -t
-      interval: 30s
+        - wget
+        - -q
+        - -O
+        - /dev/null
+        - http://127.0.0.1:8080/health
+      interval: 5s
       timeout: 5s
       retries: 3
       start_period: 10s
 
     deploy:
       replicas: 1
+      endpoint_mode: dnsrr
 
       placement:
         constraints:
@@ -99,8 +95,12 @@ services:
 
       update_config:
         parallelism: 1
-        order: stop-first
+        order: start-first
         failure_action: rollback
+
+      rollback_config:
+        parallelism: 1
+        order: start-first
 
       restart_policy:
         condition: any
@@ -194,6 +194,10 @@ services:
           memory: 128M
 
 networks:
+  frontend:
+    external: true
+    name: projekt_frontend
+
   projekt_net:
     external: true
 
