@@ -21,7 +21,7 @@ Der Workflow `.github/workflows/security-audit.yml` prüft täglich um 06:23 UTC
 
 ## E-Mail über GitHub Actions
 
-Wie im Referenzprojekt erfolgt der Versand über GitHubs eigene Benachrichtigungen für fehlgeschlagene Workflow-Läufe; SMTP-Secrets sind nicht erforderlich. Im persönlichen GitHub-Konto unter Settings → Notifications → System → Actions E-Mail-Benachrichtigungen aktivieren und bei Bedarf auf fehlgeschlagene Workflows beschränken. Die Zustellung hängt von den persönlichen GitHub-Benachrichtigungseinstellungen und der Teilnahme am Workflow ab; der geplante Workflow wird zunächst dem Benutzer zugeordnet, der den Zeitplan zuletzt geändert hat.
+E-Mail-Benachrichtigungen zu fehlgeschlagenen Workflow-Läufen erfolgen über GitHubs eigene Benachrichtigungsfunktion; SMTP-Secrets sind nicht erforderlich. Im persönlichen GitHub-Konto unter Settings → Notifications → System → Actions E-Mail-Benachrichtigungen aktivieren und bei Bedarf auf fehlgeschlagene Workflows beschränken. Die Zustellung hängt von den persönlichen GitHub-Benachrichtigungseinstellungen und der Teilnahme am Workflow ab; der geplante Workflow wird zunächst dem Benutzer zugeordnet, der den Zeitplan zuletzt geändert hat.
 
 Geplante Läufe starten erst, wenn der Workflow auf dem Default-Branch liegt und Actions aktiviert ist. Nach dem Push den Audit-Workflow einmal manuell starten und die Benachrichtigungseinstellungen prüfen. Die Repository-Dateien allein aktivieren keine persönlichen E-Mail-Einstellungen.
 
