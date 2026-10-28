@@ -23,6 +23,8 @@ Anweisungen des Nutzers haben Vorrang.
 - Wiederverwendbare Formularelemente und Buttons zentral in `components/ui/` halten.
 - Tailwind für das Styling verwenden; Klassen zentral in den jeweiligen
   wiederverwendbaren Komponenten über `className` definieren.
+- Vorhandene Tailwind-Utilities gegenüber gleichwertigen Arbitrary Properties
+  bevorzugen, etwa `wrap-anywhere` statt `[overflow-wrap:anywhere]`.
 - Gemeinsame Seitenlayouts, etwa `<main>` mit Breite, Abständen und responsiven
   Regeln, in `components/ui/page/` mit `BodyWrapper`, `PageWrapper` und
   `SectionWrapper` kapseln. Seiten verwenden diese
@@ -32,10 +34,36 @@ Anweisungen des Nutzers haben Vorrang.
   innerhalb der gekapselten Komponenten erlaubt. Globale Design-Tokens bleiben
   in `app/globals.css`.
 - Zusammengehörige Formularlogik bei Bedarf in eigene Hooks auslagern.
+- Gemeinsame HTML-Grundstile wie die Darstellung von `h1` zentral in
+  `app/globals.css` unter `@layer base` definieren, statt Klassen zu wiederholen.
+- Links über `AppLink` und Navigationen über `Navigation` aus `components/ui/`
+  zusammensetzen. Unterschiede über benannte Varianten steuern; gemeinsame
+  Link- und Navigationsklassen nicht auf einzelnen Seiten duplizieren.
+- Absätze, Beschreibungen und Hinweistexte über `Text` aus `components/ui/text.tsx`
+  darstellen. Für unterschiedliche Zwecke die benannten Varianten verwenden;
+  Textgröße, Farbe und wiederkehrende Abstände nicht in Ansichten wiederholen.
+  Für Text innerhalb einer Zeile `as="span"` verwenden.
+- Feldfehler über `FormMessage` aus `components/ui/form.tsx` ausgeben.
+  `FormLabel` und `FormControl` übernehmen die Verknüpfung mit dem Eingabefeld.
+  Allgemeine Formularfehler außerhalb eines Feldes über `FieldError` ausgeben.
+- Bei UI-Änderungen auch benachbarte Ansichten auf wiederholte Textstile und
+  Layoutmuster prüfen. Vorhandene UI-Bausteine erweitern oder gemeinsam genutzte
+  Muster auslagern; für einzelne HTML-Tags ohne gemeinsamen Stil oder Verhalten
+  keine zusätzlichen Komponenten anlegen.
+- Interne Seitenrouten zentral in `lib/constants/routes.ts` pflegen und über
+  `ROUTES` verwenden, auch für Weiterleitungen und Authentifizierungsziele.
+  Keine fest eingetragenen Routen in Links oder Navigationsaufrufen verteilen.
 
 ## Formulare und Validierung
 
 - Formulare mit React Hook Form und `zodResolver` umsetzen.
+- Das gemeinsame shadcn-Formularmuster aus `components/ui/form.tsx` verwenden:
+  `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl` und `FormMessage`.
+  In Formularansichten weder `register()` noch `Controller` direkt verwenden.
+  `FormField` kapselt den internen React-Hook-Form-Controller; Eingaben erhalten
+  dessen Eigenschaften über `{...field}` im `render`-Callback.
+- Das native `<form>` innerhalb von `Form` übernimmt das Absenden; die Logik
+  bleibt bei Bedarf in einem eigenen Hook mit `useForm` und `zodResolver`.
 - Zod-Schemas in `lib/schemas/` nach Fachbereich auslagern und TypeScript-Typen
   daraus ableiten.
 - Frontend und Server verwenden dasselbe Schema, wenn dieselben Eingaben geprüft
@@ -58,6 +86,12 @@ Anweisungen des Nutzers haben Vorrang.
 - JSX-Tags mit mehreren Props immer mehrzeilig schreiben: genau ein Prop bzw.
   Spread-Attribut pro Zeile, auch wenn alle Props in eine kurze Zeile passen würden.
 - Die schließende Klammer `>` bzw. `/>` dann in eine eigene Zeile setzen.
+- Bei höchstens einer Eigenschaft dürfen kurze Inhalte einzeilig bleiben,
+  etwa `<h1>Projekt</h1>` oder `<AppLink href={ROUTES.login}>Anmelden</AppLink>`.
+  Längere Inhalte wie „Interner Bereich“ und Absatztexte auf eigene Zeilen
+  zwischen öffnendem und schließendem Tag schreiben. Der öffnende Tag darf
+  dabei mit einer Eigenschaft einzeilig bleiben. Ab zwei Eigenschaften steht
+  weiterhin jede Eigenschaft auf einer eigenen Zeile.
 - Auch bestehende Komponenten, die im Rahmen einer Änderung bearbeitet werden,
   nach dieser Regel formatieren.
 

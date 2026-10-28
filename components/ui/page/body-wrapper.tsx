@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 
 
 const variants = {
+  dashboard: "min-h-screen bg-background",
   default: "mx-auto w-full max-w-6xl px-6 py-8",
   centered: "flex min-h-screen flex-col items-center justify-center gap-6 p-6",
   auth: "flex min-h-screen items-center justify-center bg-muted/40 px-5 py-12",
@@ -12,9 +13,18 @@ const variants = {
 };
 
 type WrapperTag =
-  | { isMain: true; isSection?: never }
-  | { isMain?: never; isSection: true }
-  | { isMain?: false; isSection?: false };
+  | {
+    isMain: true;
+    isSection?: never
+  }
+  | {
+    isMain?: never;
+    isSection: true
+  }
+  | {
+    isMain?: false;
+    isSection?: false
+  };
 
 export type BodyWrapperProps = ComponentPropsWithoutRef<"div"> & WrapperTag & {
   variant?: keyof typeof variants;
@@ -33,7 +43,10 @@ export default function BodyWrapper({
 
   return (
     <Tag
-      className={cn(layout && variants[layout], className)}
+      className={cn(
+        layout && variants[layout],
+        className
+      )}
       {...props}
     >
       {children}

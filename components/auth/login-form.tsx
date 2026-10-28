@@ -1,58 +1,92 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { FormField } from "@/components/ui/form-field";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  FieldError,
+  FieldGroup,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { useLoginForm } from "@/hooks/auth/use-login-form";
 
 
 export function LoginForm() {
-  const { register, errors, busy, submit } = useLoginForm();
-  const serverError = errors.root?.server?.message;
+  const {
+    form,
+    busy,
+    submit,
+  } = useLoginForm();
+  const serverError = form.formState.errors.root?.server?.message;
 
   return (
-    <form
-      onSubmit={submit}
-      className="flex flex-col gap-5"
-      aria-busy={busy}
-      noValidate
-    >
-      <FormField
-        id="email"
-        label="E-Mail"
-        error={errors.email?.message}
-        {...register("email")}
-        type="email"
-        autoComplete="username"
-        required
-        maxLength={254}
-        disabled={busy}
-      />
-      <FormField
-        id="password"
-        label="Passwort"
-        error={errors.password?.message}
-        {...register("password")}
-        type="password"
-        autoComplete="current-password"
-        required
-        maxLength={128}
-        disabled={busy}
-      />
-      {serverError && (
-        <p
-          role="alert"
-          className="text-sm text-destructive"
-        >
-          {serverError}
-        </p>
-      )}
-      <Button
-        type="submit"
-        disabled={busy}
-        fullWidth
+    <Form {...form}>
+      <form
+        onSubmit={submit}
+        aria-busy={busy}
+        noValidate
       >
-        {busy ? "Anmeldung läuft …" : "Anmelden"}
-      </Button>
-    </form>
+        <FieldGroup>
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>E-Mail</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="email"
+                    autoComplete="username"
+                    required
+                    maxLength={254}
+                    disabled={busy}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Passwort</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    maxLength={128}
+                    disabled={busy}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          {serverError && (
+            <FieldError>
+              {serverError}
+            </FieldError>
+          )}
+          <Button
+            type="submit"
+            disabled={busy}
+            fullWidth
+          >
+            {busy ? "Anmeldung läuft …" : "Anmelden"}
+          </Button>
+        </FieldGroup>
+      </form>
+    </Form>
   );
 }

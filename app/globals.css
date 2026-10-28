@@ -123,6 +123,10 @@ body {
 }
 
 @layer base {
+  h1 {
+    @apply text-3xl font-semibold;
+    overflow-wrap: anywhere;
+  }
   * {
     @apply border-border outline-ring/50;
   }

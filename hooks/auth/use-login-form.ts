@@ -1,5 +1,6 @@
 "use client";
 
+import { ROUTES } from "@/lib/constants/routes";
 import { ERROR_AUTH } from "@/lib/http/errors/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
@@ -15,15 +16,7 @@ import {
 export function useLoginForm() {
 
   const router = useRouter();
-  const {
-    register,
-    handleSubmit,
-    setError,
-    formState: {
-      errors,
-      isSubmitting
-    },
-  } = useForm<LoginFormInput, unknown, LoginFormValues>({
+  const form = useForm<LoginFormInput, unknown, LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
@@ -31,19 +24,19 @@ export function useLoginForm() {
     },
   });
 
-  const submit = handleSubmit(async (values) => {
+  const submit = form.handleSubmit(async (values) => {
     try {
       const result = await signIn(
         "credentials",
         {
           ...values,
           redirect: false,
-          callbackUrl: "/",
+          callbackUrl: ROUTES.home,
         }
       );
 
       if (!result?.ok || result.error) {
-        setError(
+        form.setError(
           "root.server",
           {
             type: "server",
@@ -53,10 +46,10 @@ export function useLoginForm() {
         return;
       }
 
-      router.replace("/");
+      router.replace(ROUTES.home);
       router.refresh();
     } catch {
-      setError(
+      form.setError(
         "root.server",
         {
           type: "server",
@@ -67,9 +60,8 @@ export function useLoginForm() {
   });
 
   return {
-    register,
-    errors,
-    busy: isSubmitting,
-    submit
+    form,
+    busy: form.formState.isSubmitting,
+    submit,
   };
 }
