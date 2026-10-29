@@ -24,6 +24,7 @@ runs:
         scp "${ssh_opts[@]}" \
           production/deploy.sh production/deploy-stack.sh production/migrate.sh \
           production/compose.swarm.yml production/runtime-overlay.mjs \
+          production/compose.edge.yml production/edge-haproxy.cfg \
           "$target:$remote_dir/"
         ssh "${ssh_opts[@]}" "$target" \
           "sudo -n /usr/local/lib/projekt-deploy/install-release.sh '$remote_dir'"

@@ -56,5 +56,5 @@ networks:
 
 configs:
   edge_haproxy:
-    name: projekt_edge_haproxy_v1
+    name: ${EDGE_CONFIG_NAME:-projekt_edge_haproxy_v1}
     file: ./edge-haproxy.cfg

@@ -15,9 +15,7 @@ verloren gehen. Datenvolumes von Loki, Tempo und Prometheus sowie die Aufbewahru
 in S3 werden dadurch nicht begrenzt.
 
 Nach Commit und Push übernimmt der Workflow **Stack-Konfiguration für Produktion
-bereitstellen** die Einstellungen für die Anwendung ohne Image-Neubau.
-Edge separat aus dem aktualisierten Checkout im Ordner `production` mit
-`sudo docker stack deploy -c compose.edge.yml projekt-edge` bereitstellen.
+bereitstellen** die Einstellungen für Anwendung und Edge ohne Image-Neubau.
 Monitoring wird separat über **Monitoring prüfen und bereitstellen** aktualisiert.
 Betroffene Container werden dabei ersetzt; Dienste mit einer Replik können kurz
 unterbrochen werden. `runtime.json` kann diese Logging-Einstellungen nicht
@@ -89,12 +87,29 @@ warten, bis seine Tasks die Ports freigegeben haben. Anschließend
 `sudo docker service rollback projekt_nginx` ausführen, solange die vorherige
 Service-Spezifikation mit veröffentlichten Ports noch vorliegt.
 
-Spätere Nginx-Releases verwenden weiterhin den bestehenden Workflow. Änderungen
-an HAProxy werden separat aus `production` mit `compose.edge.yml` bereitgestellt;
-sie werden nicht vom bestehenden CI-Installer übertragen. Bei Änderungen an
-`edge-haproxy.cfg` den Config-Namen `projekt_edge_haproxy_v1` versionieren, da
-Swarm Configs unveränderlich sind. Das Image ist per Digest fixiert; für einen
-Versionswechsel `EDGE_IMAGE` beim Edge-Deploy setzen und den Digest dokumentieren.
+Spätere Nginx-Releases verwenden weiterhin den bestehenden Workflow. Der Workflow
+**Stack-Konfiguration für Produktion bereitstellen** synchronisiert auch
+`compose.edge.yml` und `edge-haproxy.cfg` und aktualisiert den bestehenden
+Edge-Stack automatisch. Beide Stack-Konfigurationen werden vor dem Deployment
+geprüft; anschließend wird der Update-Status aller fünf Dienste einschließlich
+Edge überwacht. Ein Edge-Rollback oder pausiertes Update lässt den Workflow
+fehlschlagen. Die laufenden Image-Referenzen bleiben dabei erhalten.
+
+Geänderte HAProxy-Inhalte erhalten automatisch einen aus ihrem SHA-256-Hash
+gebildeten Swarm-Config-Namen. Alte Configs werden für mögliche Rollbacks behalten.
+Image-Wechsel und die erstmalige Einrichtung des Edge-Stacks bleiben separate
+Betriebsschritte; die obige Erstinstallation muss bereits abgeschlossen sein.
+
+Bei bestehenden Installationen einmalig den Installer aus dem aktualisierten
+Checkout auf dem Server ersetzen, bevor der Workflow gestartet wird:
+
+```sh
+sudo install -o root -g root -m 0755 production/install-release.sh /usr/local/lib/projekt-deploy/install-release.sh
+```
+
+Der Installer wird bewusst nicht durch CI selbst überschrieben. Seine erweiterte
+Dateiliste erlaubt danach die automatische Installation der Edge-Dateien;
+zusätzliche sudoers-Regeln sind nicht erforderlich.
 
 Technische Grundlagen: [Nginx PROXY-Protokoll](https://docs.nginx.com/nginx/admin-guide/load-balancer/using-proxy-protocol/),
 [Nginx-Anfragelimits](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html)
@@ -165,6 +180,7 @@ sudo install -o root -g root -m 0755 \
   /usr/local/lib/projekt-deploy/
 sudo install -o root -g root -m 0644 \
   production/compose.swarm.yml production/runtime-overlay.mjs \
+  production/compose.edge.yml production/edge-haproxy.cfg \
   /usr/local/lib/projekt-deploy/
 sudo visudo -f /etc/sudoers.d/projekt-deploy
 ```

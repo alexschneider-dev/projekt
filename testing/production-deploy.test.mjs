@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 const root = resolve(import.meta.dirname, "..");
 
 for (const finalState of ["completed", "rollback_completed", "paused", "updating"]) {
-  test(`Stack wartet auf den Abschluss und bewertet ${finalState} korrekt`, t => {
+  test(`Stack wartet auf Edge und bewertet ${finalState} korrekt`, t => {
     const dir = fixture(t);
 
     writeFileSync(join(dir, "runtime.json"), "{}");
@@ -24,7 +24,8 @@ case "$1 $2" in
   "service inspect")
     case "$*" in
       *UpdateStatus*)
-        if [ -f "$STATUS_DIR/$3" ]; then echo "$FINAL_STATE";
+        if [ "$3" != "projekt-edge_edge" ]; then echo completed;
+        elif [ -f "$STATUS_DIR/$3" ]; then echo "$FINAL_STATE";
         else touch "$STATUS_DIR/$3"; echo updating; fi ;;
       *) echo example/image:1.0 ;;
     esac ;;
@@ -55,6 +56,13 @@ function fixture(t) {
     join(dir, "runtime-overlay.mjs"),
     readFileSync(join(root, "production/runtime-overlay.mjs"))
   );
+
+  for (const file of [
+    "compose.edge.yml",
+    "edge-haproxy.cfg"
+  ]) {
+    writeFileSync(join(dir, file), readFileSync(join(root, "production", file)));
+  }
 
   return dir;
 }
@@ -311,7 +319,7 @@ case "$1 $2" in
       *) echo "example/$3:2.0@sha256:live" ;;
     esac ;;
   "stack deploy")
-    printf '%s\\n' "$*" > "$CALL_LOG"
+    printf '%s\\n' "$*" >> "$CALL_LOG"
     env | sort >> "$CALL_LOG" ;;
 esac
 `, { mode: 0o755 });
@@ -329,6 +337,10 @@ esac
   const calls = readFileSync(log, "utf8");
 
   assert.match(calls, /--resolve-image never/);
+  assert.match(calls, /-c compose.edge.yml projekt-edge/);
+  assert.match(calls, /-c compose.swarm.yml .* projekt/);
+  assert.match(calls, /EDGE_IMAGE=example\/projekt-edge_edge:2.0@sha256:live/);
+  assert.match(calls, /EDGE_CONFIG_NAME=projekt_edge_haproxy_[a-f0-9]{64}/);
 
   for (const service of ["nextjs", "nginx", "postgres", "redis"]) {
     assert.ok(calls.includes(`${service.toUpperCase()}_IMAGE=example/projekt_${service}:2.0@sha256:live`));
