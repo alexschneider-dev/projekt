@@ -179,7 +179,7 @@ Für eine bereits laufende Installation ist eine versionierte Rotation erforderl
 
 ```sh
 release_source=$(mktemp -d /tmp/projekt-observability.XXXXXXXX)
-cp -R production/observability/. "$release_source/"
+git archive HEAD production/observability | tar -x -C "$release_source" --strip-components=2
 sudo bash production/observability/install-release.sh "$release_source"
 ```
 
@@ -393,3 +393,26 @@ Daten und Passwort-Hashes; Downloads entsprechend geschützt aufbewahren.
 Der isolierte Wiederherstellungstest verwendet ausschließlich temporäre Container:
 `python3 production/observability/test-postgres-integration.py`.
 Zum Abschalten `sudo systemctl disable --now projekt-postgres-backup.timer` ausführen.
+
+
+## Dashboard-Abgleich und Event Loop
+
+Das provisionierte Dashboard heißt **Projekt – Betrieb und Diagnose**
+(UID `projekt-production`). Es enthält **Node.js Event Loop p99** neben
+**Node.js Heap**. Die Event-Loop-Metrik stammt von Next.js, nicht vom Browser.
+Ein vollständig fehlendes Panel von einem Panel mit „No data“ unterscheiden:
+Bei fehlendem Panel Dashboard-UID und bereitgestellte Konfiguration prüfen;
+bei fehlenden Daten `nodejs_eventloop_lag_p99_seconds` in Prometheus und Thanos prüfen.
+
+Die projektrelevanten Anzeigen der Vorlage sind übernommen. Elasticsearch,
+Chat-Metriken und ein nicht vorhandener Anwendungs-Cron bleiben ausgenommen.
+PostgreSQL- und Grafana-Sicherungen haben eigene Anzeigen; WebSocket-Dauer kann
+Grafana Live erfassen und ist keine HTTP-Latenz. Ohne entsprechende abgeschlossene
+Verbindungen bleibt diese Anzeige leer.
+
+Der Alarm **Anhaltende Swap-Aktivität** reagiert auf mehr als 100 Speicherseiten/s
+(Ein- plus Auslagerungen, Mittelwert über fünf Minuten), wenn dieser Zustand
+fünf Minuten anhält. `FIRING` bedeutet, dass die Regel ausgelöst hat; es ist keine
+Entwarnung und kein bloßer Versandtest. Einlagerungen nach Start oder Sicherung
+können die Regel auslösen. Mit `vmstat 1 60`, verfügbarem RAM, Antwortzeiten und
+I/O-Wartezeit bewerten; die erste vmstat-Zeile ist der Mittelwert seit Systemstart.

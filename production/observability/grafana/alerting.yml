@@ -1695,8 +1695,10 @@ groups:
       team: operations
     annotations:
       summary: Anhaltende Swap-Aktivität
-      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
-        production/observability/README.md.'
+      description: 'Die Summe der Swap-Ein- und Auslagerungen liegt im 5-Minuten-Mittel
+        seit mindestens 5 Minuten über 100 Speicherseiten/s. vmstat si/so, verfügbaren
+        RAM, I/O-Wartezeit und Antwortzeiten prüfen. Einlagerungen nach dem Start
+        allein beweisen keine Überlastung. Vorgehen: production/observability/README.md.'
     data:
     - refId: A
       datasourceUid: prometheus-live

@@ -693,7 +693,8 @@
           "displayMode": "list",
           "placement": "bottom"
         }
-      }
+      },
+      "description": "99. Perzentil der Verzögerung des serverseitigen Node.js-Event-Loops pro Scrape-Intervall. Keine Browser-Metrik. Fehlende Daten sind kein Nullwert; Next.js-Ziel und Metrik-Endpunkt prüfen."
     },
     {
       "id": 12,
@@ -1034,13 +1035,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json request_time=\"request_time\", request_path=\"path\", response_status=\"status\" | response_status != 101 | request_path !~ \"^/(socket[.]io|grafana)(/.*)?$\" | request_path != \"/collect\" | request_path != \"/observability-health\" | unwrap request_time | __error__=\"\" [5m]) by (service_name)",
-          "legendFormat": "Shop"
-        },
-        {
-          "refId": "B",
-          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json request_time=\"request_time\", request_path=\"path\", response_status=\"status\" | response_status != 101 | request_path =~ \"^/socket[.]io(/.*)?$\" | unwrap request_time | __error__=\"\" [5m]) by (service_name)",
-          "legendFormat": "Sockets"
+          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json request_time=\"request_time\", request_path=\"path\", response_status=\"status\" | response_status != 101 | request_path !~ \"^/grafana(/.*)?$\" | request_path != \"/collect\" | request_path != \"/observability-health\" | unwrap request_time | __error__=\"\" [5m]) by (service_name)",
+          "legendFormat": "Anwendung"
         },
         {
           "refId": "C",
@@ -1139,8 +1135,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json upstream_time=\"upstream_time\", response_status=\"status\", request_path=\"path\" | response_status != 101 | request_path !~ \"^/(socket[.]io|grafana)(/.*)?$\" | request_path != \"/collect\" | request_path != \"/observability-health\" | upstream_time =~ \"^[0-9]+([.][0-9]+)?$\" | unwrap upstream_time | __error__=\"\" [5m]) by (service_name)",
-          "legendFormat": "Shop upstream p95"
+          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json upstream_time=\"upstream_time\", response_status=\"status\", request_path=\"path\" | response_status != 101 | request_path !~ \"^/grafana(/.*)?$\" | request_path != \"/collect\" | request_path != \"/observability-health\" | upstream_time =~ \"^[0-9]+([.][0-9]+)?$\" | unwrap upstream_time | __error__=\"\" [5m]) by (service_name)",
+          "legendFormat": "Anwendung upstream p95"
         }
       ],
       "fieldConfig": {
@@ -1222,7 +1218,7 @@
     },
     {
       "id": 121,
-      "title": "Swap-Aktivität pro Sekunde",
+      "title": "Swap-Aktivität (Speicherseiten/s)",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1237,7 +1233,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(node_vmstat_pswpin[5m]) + rate(node_vmstat_pswpout[5m])"
+          "expr": "rate(node_vmstat_pswpin[5m])",
+          "legendFormat": "Einlagerungen · {{instance}}"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(node_vmstat_pswpout[5m])",
+          "legendFormat": "Auslagerungen · {{instance}}"
         }
       ],
       "fieldConfig": {
@@ -1245,7 +1247,8 @@
           "unit": "ops"
         },
         "overrides": []
-      }
+      },
+      "description": "Ein- und Auslagerungen getrennt. Belegter Swap allein bedeutet keine laufende Überlastung. Der Alarm betrachtet ihre Summe über fünf Minuten."
     },
     {
       "id": 122,
@@ -1300,6 +1303,89 @@
         },
         "overrides": []
       }
+    },
+    {
+      "id": 124,
+      "title": "Alter der PostgreSQL-Sicherung",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 216
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - postgres_backup_last_success_timestamp_seconds"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 125,
+      "title": "Letzte PostgreSQL-Sicherung erfolgreich",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 216
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "postgres_backup_last_run_success"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 110,
+      "title": "WebSocket-Verbindungsdauer p95",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 224,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json request_time=\"request_time\", response_status=\"status\" | response_status = 101 | unwrap request_time | __error__=\"\" [5m]) by (service_name)",
+          "legendFormat": "WebSocket-Verbindungsdauer"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "description": "Verbindungsdauer abgeschlossener WebSockets, etwa Grafana Live; keine HTTP-Latenz. Ohne abgeschlossene WebSocket-Verbindungen bleiben die Daten leer."
     }
   ],
   "annotations": {
