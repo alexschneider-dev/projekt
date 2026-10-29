@@ -20,6 +20,9 @@ files=(
   errors/messages.sh
   errors/messages.mjs
   storage-admin.sh
+  backup/postgres.py
+  backup/projekt-postgres-backup.service
+  backup/projekt-postgres-backup.timer
   backup/storage.py
   backup/snapshot.py
   backup/projekt-monitoring-backup.service
@@ -47,5 +50,8 @@ bash "$release/deploy.sh"
 ln -sfn "$release" /usr/local/lib/projekt-observability/current
 install -o root -g root -m 0644 "$release/backup/projekt-monitoring-backup.service" /etc/systemd/system/
 install -o root -g root -m 0644 "$release/backup/projekt-monitoring-backup.timer" /etc/systemd/system/
+install -o root -g root -m 0644 "$release/backup/projekt-postgres-backup.service" /etc/systemd/system/
+install -o root -g root -m 0644 "$release/backup/projekt-postgres-backup.timer" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now projekt-monitoring-backup.timer
+systemctl enable --now projekt-postgres-backup.timer

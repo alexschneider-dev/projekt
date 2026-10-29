@@ -3,7 +3,7 @@ set -Eeuo pipefail
 umask 077
 cd "$(dirname "$0")"
 source errors/messages.sh
-[[ ${1:-} =~ ^(prepare|backup)$ ]] || { echo "$OBS_USAGE_ERROR" >&2; exit 1; }
+[[ ${1:-} =~ ^(prepare|backup|postgres-backup)$ ]] || { echo "$OBS_USAGE_ERROR" >&2; exit 1; }
 set -a
 source /etc/projekt/observability.env
 set +a

@@ -1437,6 +1437,105 @@ groups:
             type: last
             params: []
           type: query
+  - uid: postgres-backup-overdue
+    title: PostgreSQL-Sicherung fehlt oder ist älter als 8 Stunden
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: PostgreSQL-Sicherung fehlt oder ist älter als 8 Stunden
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: (time() - postgres_backup_last_success_timestamp_seconds > bool 28800)
+          or absent(postgres_backup_last_success_timestamp_seconds)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: postgres-backup-failed
+    title: PostgreSQL-Sicherung oder Rückleseprüfung fehlgeschlagen
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: PostgreSQL-Sicherung oder Rückleseprüfung fehlgeschlagen
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: postgres_backup_last_run_success == bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
   - uid: thanos-compactor-halted
     title: Verdichtung des Metrikarchivs angehalten
     condition: C

@@ -485,6 +485,7 @@ def prepare():
             "projekt/production/loki",
             "projekt/production/metrics",
             "projekt/production/tempo",
+            "projekt/production/postgres",
             PREFIX.rstrip("/"),
         ]:
             key = f"{prefix}/_permission-check/{os.urandom(12).hex()}"
@@ -508,7 +509,7 @@ def prepare():
     print("S3-Schreib-, Lese- und Löschprüfung erfolgreich; Thanos-Secret vorhanden.")
 
 
-def backup_metric(success):
+def backup_metric(success, database="grafana"):
     code = r"""import pathlib,time,sys
 p=pathlib.Path('/backup/observability/grafana-backup.prom')
 p.parent.mkdir(parents=True,exist_ok=True)
@@ -520,6 +521,7 @@ tmp.write_text(last+'\n'+'grafana_backup_last_run_success '+sys.argv[1]+'\n')
 tmp.chmod(0o644)
 tmp.replace(p)
 """
+    code = code.replace("grafana", database)
     docker(
         "run",
         "--rm",
@@ -544,7 +546,11 @@ def main():
         raise RuntimeError(ERRORS["E8"])
     os.umask(0o077)
     action = sys.argv[1]
-    if action == "backup":
+    if action == "postgres-backup":
+        import postgres
+
+        postgres.main()
+    elif action == "backup":
         try:
             backup()
         except BaseException:

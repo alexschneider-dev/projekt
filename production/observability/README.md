@@ -242,6 +242,7 @@ Alle Objekte liegen unter dem eigenen Präfix `projekt/production/`:
 | Security-Logs einschließlich Nginx-Fehler | 30 Tage, ebenfalls `loki/` |
 | Metriken | 730 Tage, `metrics/` über Thanos |
 | Traces | 90 Tage, `tempo/` |
+| PostgreSQL-Sicherungen | lokal 14 Tage, S3 unbegrenzt, `postgres/` |
 | Grafana-Sicherungen | 30 Kalendertage und 12 Kalendermonate, `grafana-backups/` |
 
 Nginx-Betriebslogs enthalten normalisierte Pfade ohne Querystring und Client-IP;
@@ -331,3 +332,58 @@ im Diagnosepanel. Sie sind kein Nachweis eines harmlosen Browser-Abbruchs: Bei
 wiederholten Meldungen Nginx-Logs und sichtbare Ladefehler prüfen. HTTP 500,
 Schreib-Timeouts, andere Logger und andere Dienste bleiben im Fehlerpanel.
 Die Integrationstests enthalten entsprechende Gegenbeispiele.
+
+## PostgreSQL-Sicherungen
+
+Der Release-Installer installiert und aktiviert zusätzlich `projekt-postgres-backup.timer`.
+Bei bestehenden Installationen zuerst die aktuelle `install-release.sh` wie oben
+beschrieben als `/usr/local/lib/projekt-deploy/install-observability-release.sh`
+installieren, dann das Monitoring-Release bereitstellen. Der Timer läuft alle sechs
+Stunden um 00:30, 06:30, 12:30 und 18:30 UTC mit bis zu fünf Minuten Verzögerung.
+Verpasste Termine werden beim Start nachgeholt. Für die erste Sicherung:
+
+```sh
+sudo systemctl start projekt-postgres-backup.service
+sudo journalctl -u projekt-postgres-backup.service -n 40 --no-pager
+sudo systemctl status projekt-postgres-backup.timer --no-pager
+```
+
+`pg_dumpall` im laufenden Container `projekt_postgres` sichert alle Datenbanken und
+Rollen einschließlich Passwort-Hashes als komprimiertes SQL. Der lokale Socket
+muss den Betriebssystembenutzer `postgres` ohne Passwort zulassen; andernfalls
+bricht der Lauf ab. Die Client-Version entspricht dadurch der Server-Version.
+Jede Datenbank wird konsistent gesichert; es gibt keinen gemeinsamen Snapshot über
+mehrere Datenbanken und keine Wiederherstellung auf beliebige Zeitpunkte (WAL).
+
+Bucket, Endpunkt, Region und versioniertes S3-Secret entsprechen exakt der
+Log-Konfiguration (`LOKI_S3_*`, `OBS_SECRET_REVISION`). Es werden keine neuen
+Zugangsdaten angelegt. Der Schlüssel benötigt Schreib- und Leserechte für
+`projekt/production/postgres/`. Bucket-Lifecycle-Regeln prüfen: Das Werkzeug
+löscht keine PostgreSQL-Objekte aus S3.
+
+Lokale Archive liegen mit restriktiven Rechten in `/etc/projekt/postgres-backups`.
+Nach erfolgreichem Upload und vollständigem SHA-256-Rücklesevergleich werden eigene
+lokale Archive älter als 14 Tage entfernt. Bei Fehlern bleibt die lokale Kopie
+liegen; Plattenplatz bei anhaltenden Fehlern überwachen. Der gemeinsame Deploy-Lock
+verhindert Überschneidungen mit Deployment und Grafana-Sicherung. Grafana alarmiert
+bei Fehlern sowie fehlender oder mehr als acht Stunden alter erfolgreicher Sicherung.
+
+Für eine Wiederherstellung das gewünschte `.sql.gz` über einen autorisierten
+S3-Client herunterladen und `gzip -t` ausführen. Einen isolierten, leeren
+PostgreSQL-Server derselben Hauptversion mit einem separaten Bootstrap-Superuser
+(z. B. `restore_admin`) starten. Das vermeidet den Konflikt mit der im Dump
+enthaltenen Rolle `postgres`. Anschließend beispielsweise:
+
+```sh
+set -o pipefail
+gzip -dc /sicherer/pfad/sicherung.sql.gz | docker exec -i --user postgres POSTGRES_TEST_CONTAINER psql -U restore_admin -d postgres -v ON_ERROR_STOP=1
+```
+
+Rollen, Tabellen und fachliche Daten prüfen, bevor die Anwendung auf die
+wiederhergestellte Datenbank umgestellt wird. Das SQL niemals ungeprüft gegen die
+laufende Produktionsdatenbank ausführen. Datenbank-Backups enthalten vertrauliche
+Daten und Passwort-Hashes; Downloads entsprechend geschützt aufbewahren.
+
+Der isolierte Wiederherstellungstest verwendet ausschließlich temporäre Container:
+`python3 production/observability/test-postgres-integration.py`.
+Zum Abschalten `sudo systemctl disable --now projekt-postgres-backup.timer` ausführen.

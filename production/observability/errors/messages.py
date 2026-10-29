@@ -1,4 +1,6 @@
 ERRORS = {
+    "POSTGRES_DUMP": "Der vollständige PostgreSQL-Dump ist fehlgeschlagen; es wurde nichts hochgeladen.",
+    "POSTGRES_EMPTY": "Der PostgreSQL-Dump ist leer; es wurde nichts hochgeladen.",
     "S3_LOGS": "Task-Logs konnten nicht abgerufen werden.",
     "S3_UNKNOWN": "nicht erkannt",
     "S3_DIAGNOSTIC_WRITE": "Diagnosedatei konnte nicht geschrieben werden.",

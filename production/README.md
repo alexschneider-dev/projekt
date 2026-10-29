@@ -246,3 +246,9 @@ Nginx-/Stack-Deployment das dort beschriebene externe Netzwerk
 `projekt_grafana_proxy` erstellen. S3, SMTP und Elasticsearch-Endpunkt müssen vor
 Inbetriebnahme des Monitorings konfiguriert werden. Das Vorbereiten dieser Dateien
 führt noch keine Installation auf dem Server aus.
+
+## PostgreSQL-Backups nach S3
+
+Vollständige Sicherungen laufen alle sechs Stunden über den Monitoring-Installer
+und verwenden denselben privaten S3-Bucket wie die Logs. Einrichtung, Aufbewahrung
+und Wiederherstellung sind unter [PostgreSQL-Sicherungen](observability/README.md#postgresql-sicherungen) beschrieben.
