@@ -143,6 +143,13 @@ abgefragt. Bei Einführung von Redis-ACLs zuerst Exporter und Secret-Zuweisung a
 neuen Testobjekten in den Monitoring-Präfixen. Es migriert oder verändert keine
 bestehenden Tempo-Daten; diese Installation beginnt direkt mit S3.
 
+Bei fehlgeschlagenen temporären S3-Tasks sichert das Werkzeug den Task-Status
+und die letzten Logzeilen vor der Bereinigung in
+`/etc/projekt/monitoring-storage/s3-failure-*.json` (Modus `0600`).
+Die Terminalmeldung nennt einen erkannten S3-Fehlercode und den Dateipfad.
+Die private Diagnose lokal prüfen und nach Behebung löschen; Rohlogs nicht
+ungeprüft weitergeben. Für einen erneuten Speichertest keine Secrets neu erzeugen.
+
 ## Bereitstellung
 
 1. Das Proxy-Netz muss vor dem nächsten Nginx-/Stack-Deploy existieren.

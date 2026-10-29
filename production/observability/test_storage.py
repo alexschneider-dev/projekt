@@ -204,7 +204,11 @@ class SecretBackupTests(unittest.TestCase):
             storage,
             "docker",
             side_effect=docker,
-        ):
+        ), patch.object(
+            storage,
+            "task_failure",
+            return_value=RuntimeError(ERRORS["S3_TASK"]),
+        ) as diagnostic:
             if state == "complete":
                 self.assertEqual(
                     service.aws(
@@ -222,6 +226,8 @@ class SecretBackupTests(unittest.TestCase):
                         "s3api",
                         "list-buckets",
                     )
+        if state != "complete":
+            diagnostic.assert_called_once()
         return calls
 
     def test_aws_uses_swarm_secret_without_host_credentials(self):
@@ -263,6 +269,47 @@ class SecretBackupTests(unittest.TestCase):
                 "rm",
             ),
         )
+
+    def test_failure_diagnostics_capture_stderr_privately(self):
+        from unittest.mock import patch
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as tmp, patch.object(
+            storage,
+            "ROOT",
+            Path(tmp),
+        ), patch.object(
+            storage.subprocess,
+            "run",
+            return_value=subprocess.CompletedProcess(
+                [],
+                0,
+                stdout="",
+                stderr="AccessDenied: private-test-detail",
+            ),
+        ):
+            error = storage.task_failure(
+                "test-service",
+                {"State": "failed"},
+                ERRORS["S3_TASK"],
+            )
+            self.assertIn(
+                "AccessDenied",
+                str(error),
+            )
+            self.assertNotIn(
+                "private-test-detail",
+                str(error),
+            )
+            report = next(Path(tmp).glob("s3-failure-*.json"))
+            self.assertEqual(
+                report.stat().st_mode & 0o777,
+                0o600,
+            )
+            self.assertIn(
+                "private-test-detail",
+                report.read_text(),
+            )
 
     def test_failed_aws_task_is_removed(self):
         calls = self.run_aws("failed")

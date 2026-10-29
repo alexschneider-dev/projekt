@@ -73,6 +73,80 @@ def settings():
     }
 
 
+def task_failure(
+    name,
+    status,
+    message,
+):
+    # Diagnose vor dem Entfernen sichern; keine Rohlogs in Terminal oder Chat ausgeben.
+    try:
+        result = subprocess.run(
+            [
+                "docker",
+                "service",
+                "logs",
+                "--raw",
+                "--no-task-ids",
+                "--no-resolve",
+                "--tail",
+                "80",
+                name,
+            ],
+            text=True,
+            capture_output=True,
+            timeout=15,
+        )
+        logs = result.stdout + result.stderr
+    except (OSError, subprocess.TimeoutExpired):
+        logs = ERRORS["S3_LOGS"]
+    details = json.dumps(
+        {
+            "service": name,
+            "status": status,
+            "logs": logs,
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
+    code = next(
+        (
+            code
+            for code in [
+                "AccessDenied",
+                "InvalidAccessKeyId",
+                "SignatureDoesNotMatch",
+                "NoSuchBucket",
+                "AuthorizationHeaderMalformed",
+                "RequestTimeTooSkewed",
+                "InvalidToken",
+                "ExpiredToken",
+            ]
+            if code in details
+        ),
+        ERRORS["S3_UNKNOWN"],
+    )
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            prefix="s3-failure-",
+            suffix=".json",
+            dir=ROOT,
+            delete=False,
+        ) as output:
+            output.write(details)
+            path = output.name
+    except OSError:
+        path = ERRORS["S3_DIAGNOSTIC_WRITE"]
+    return RuntimeError(
+        ERRORS["S3_DIAGNOSTIC"].format(
+            message=message,
+            code=code,
+            path=path,
+        )
+    )
+
+
 class S3:
     def __init__(self):
         self.cfg = settings()
@@ -108,6 +182,7 @@ class S3:
     ):
         # Nur Swarm-Tasks können Secrets erhalten; keine Kopie auf die Host-Platte.
         name = "projekt-monitoring-s3-" + os.urandom(8).hex()
+        status = {}
         try:
             docker(
                 "service",
@@ -156,7 +231,11 @@ class S3:
                 )
                 if task:
                     if len(task.splitlines()) != 1:
-                        raise RuntimeError(ERRORS["S3_TASK"])
+                        raise task_failure(
+                            name,
+                            status,
+                            ERRORS["S3_TASK"],
+                        )
                     status = json.loads(
                         docker(
                             "inspect",
@@ -176,7 +255,11 @@ class S3:
                             ).get("ExitCode")
                             != 0
                         ):
-                            raise RuntimeError(ERRORS["S3_TASK"])
+                            raise task_failure(
+                                name,
+                                status,
+                                ERRORS["S3_TASK"],
+                            )
                         return docker(
                             "service",
                             "logs",
@@ -192,9 +275,17 @@ class S3:
                         "orphaned",
                         "remove",
                     ]:
-                        raise RuntimeError(ERRORS["S3_TASK"])
+                        raise task_failure(
+                            name,
+                            status,
+                            ERRORS["S3_TASK"],
+                        )
                 time.sleep(1)
-            raise RuntimeError(ERRORS["S3_TIMEOUT"])
+            raise task_failure(
+                name,
+                status,
+                ERRORS["S3_TIMEOUT"],
+            )
         finally:
             docker(
                 "service",

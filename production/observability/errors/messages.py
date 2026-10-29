@@ -1,4 +1,8 @@
 ERRORS = {
+    "S3_LOGS": "Task-Logs konnten nicht abgerufen werden.",
+    "S3_UNKNOWN": "nicht erkannt",
+    "S3_DIAGNOSTIC_WRITE": "Diagnosedatei konnte nicht geschrieben werden.",
+    "S3_DIAGNOSTIC": "{message} Fehlercode: {code}. Private Diagnose: {path}",
     "UPSTREAM_MISSING": "Das Backend hat keine Anfrage erhalten.",
     "S3_TASK": "Der temporäre S3-Task ist fehlgeschlagen.",
     "S3_TIMEOUT": "Der temporäre S3-Task hat das Zeitlimit überschritten.",
