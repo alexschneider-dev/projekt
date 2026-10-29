@@ -70,7 +70,7 @@ jobs:
           npm ci
           npx prisma generate
           npm run check
-          node --experimental-strip-types --test testing/observability.test.mjs
+          node --experimental-strip-types --test testing/observability.test.mjs testing/grafana-access.test.mjs
       - name: Grafana-Provisionierung und Nginx-Zugriff prüfen
         run: |
           python production/observability/test-grafana-integration.py

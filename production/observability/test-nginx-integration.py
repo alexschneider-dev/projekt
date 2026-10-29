@@ -15,10 +15,10 @@ class Handler(BaseHTTPRequestHandler):
         cookie = self.headers.get('Cookie', '')
         if self.path == '/api/observability/auth':
             role = cookie.removeprefix('role=')
-            self.send_response(204 if role in ['ADMIN', 'SUPER_ADMIN'] else 403 if role == 'USER' else 401)
-            if role in ['ADMIN', 'SUPER_ADMIN']:
+            self.send_response(204 if role == 'SUPER_ADMIN' else 403 if role in ['USER', 'ADMIN'] else 401)
+            if role == 'SUPER_ADMIN':
                 self.send_header('X-Webauth-User', 'projekt-test')
-                self.send_header('X-Webauth-Role', 'Admin' if role == 'SUPER_ADMIN' else 'Editor')
+                self.send_header('X-Webauth-Role', 'Admin')
             self.end_headers()
         else:
             self.send_response(200)
@@ -205,19 +205,20 @@ def main():
                     if line.lower().startswith("location:")
                 )
                 assert location == f"https://alex-schneider-dev.de{target}", location
-            body, status = request(
-                "Cookie: role=USER",
-                "X-Webauth-User: admin",
-            )
-            assert status == "403", (
-                status,
-                body,
-            )
+            for role in [
+                "USER",
+                "ADMIN",
+            ]:
+                body, status = request(
+                    f"Cookie: role={role}",
+                    "X-Webauth-User: admin",
+                    "X-Webauth-Role: Admin",
+                )
+                assert status == "403", (
+                    status,
+                    body,
+                )
             for role, expected in [
-                (
-                    "ADMIN",
-                    "Editor",
-                ),
                 (
                     "SUPER_ADMIN",
                     "Admin",

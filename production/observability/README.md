@@ -20,8 +20,8 @@ Datenbank-Backup-Dienste werden nicht als scheinbar funktionierende Datenquellen
 - Prometheus erfasst Metriken alle 30 Sekunden. Thanos lädt abgeschlossene Blöcke
   nach S3 und verbindet aktuelle und historische Abfragen.
 - Grafana unter `/grafana/` verwendet die bestehende NextAuth-Anmeldung. Jeder
-  Zugriff wird serverseitig gegen den aktuellen Benutzer geprüft. `ADMIN` erhält
-  Grafana `Editor`, `SUPER_ADMIN` erhält Organisationsrolle `Admin`.
+  Zugriff wird serverseitig gegen den aktuellen Benutzer geprüft. Nur `SUPER_ADMIN` erhält
+  Zugriff mit der Grafana-Organisationsrolle `Admin`; `ADMIN` und `USER` werden abgewiesen.
   Das ist keine globale Grafana-Serveradministratorrolle.
 - Die Homepage bleibt nach der Anmeldung das Ziel. Monitoring ist über die Navigation
   im internen Bereich erreichbar. Nicht angemeldete Grafana-Aufrufe führen zum Login.
@@ -223,9 +223,9 @@ installierten Backup-Code. Deshalb für neue Releases den Installer verwenden.
 
 ## Abnahme
 
-- Als anonymer Benutzer und als `USER` darf kein Grafana-Zugriff möglich sein.
+- Als anonymer Benutzer sowie als `USER` und `ADMIN` darf kein Grafana-Zugriff möglich sein.
   Fremde `X-Webauth-*`-Header dürfen das nicht umgehen.
-- Als `ADMIN` und `SUPER_ADMIN` Dashboard, Logs und Traces öffnen. Benutzer danach
+- Als `SUPER_ADMIN` Dashboard, Logs und Traces öffnen. Benutzer danach
   deaktivieren beziehungsweise Rolle entziehen und erneuten Zugriff prüfen.
 - Testfehler im Browser und eine serverseitige Anfrage erzeugen, in Grafana
   nachsehen. Keine Anfrageinhalte, Cookies oder Zugangsdaten dürfen exportiert werden.
