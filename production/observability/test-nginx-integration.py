@@ -151,12 +151,13 @@ def main():
                 )[1]
                 == "302"
             )
-            assert (
-                request(
-                    "Cookie: role=user",
-                    "X-Webauth-User: admin",
-                )[1]
-                == "403"
+            body, status = request(
+                "Cookie: role=USER",
+                "X-Webauth-User: admin",
+            )
+            assert status == "403", (
+                status,
+                body,
             )
             for role, expected in [
                 (
