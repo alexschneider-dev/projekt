@@ -1,14 +1,13 @@
 # Vollständiges Monitoring
 
-Der separate Swarm-Stack `observability` enthält alle 16 Monitoring-Dienste:
+Der separate Swarm-Stack `observability` enthält 15 Monitoring-Dienste:
 Grafana, Prometheus, Loki, Tempo, Alloy, node_exporter, cAdvisor,
-PostgreSQL-/Redis-/Elasticsearch-/Nginx-Exporter, Swarm-Exporter sowie
+PostgreSQL-/Redis-/Nginx-Exporter, Swarm-Exporter sowie
 Thanos Sidecar, Store, Query und Compact. Die Anwendung bleibt im Stack `projekt`.
 
 Die Dateien bereiten die Installation vor. Es wird kein Server automatisch umgestellt.
-S3, SMTP und ein erreichbarer Elasticsearch-Endpunkt müssen noch eingerichtet werden.
-Das Projekt selbst betreibt derzeit kein Elasticsearch; der vorbereitete Exporter
-ersetzt keinen Elasticsearch-Server. Nicht vorhandene Chat-, Cron- und
+S3 und SMTP müssen vor der Installation eingerichtet sein.
+Elasticsearch und dessen Exporter sind nicht enthalten; `ELASTICSEARCH_URL` wird nicht benötigt. Nicht vorhandene Chat-, Cron- und
 Datenbank-Backup-Dienste werden nicht als scheinbar funktionierende Datenquellen angezeigt.
 
 ## Datenfluss und Zugriff
@@ -39,7 +38,7 @@ Datenbank-Backup-Dienste werden nicht als scheinbar funktionierende Datenquellen
 ## 2 GB RAM und Swap
 
 Die Konfiguration ist ein Versuch für geringe Last, keine zugesicherte Kapazität.
-Alle 16 Dienste bleiben aktiv. Kleinere Go-Speicherziele, begrenzte Abfrageparallelität,
+Alle 15 Dienste bleiben aktiv. Kleinere Go-Speicherziele, begrenzte Abfrageparallelität,
 30-Sekunden-Scrapes und `stop-first`-Updates der Monitoring-Dienste reduzieren Spitzen.
 Containerlimits gelten einzeln; ihre Summe ist weder reservierter RAM noch eine
 Garantie für die Nutzung von Swap. Swarm bietet hier kein separat konfiguriertes
@@ -79,9 +78,6 @@ Backup-Timer. Für mehrere Manager ist eine gesonderte Speicherplanung erforderl
 1. Eigenen privaten S3-Bucket und SMTP-Zugang bereitstellen. `settings.env.example`
    nach `/etc/projekt/observability.env` kopieren (`root:root`, Modus `0600`) und
    alle Platzhalter ersetzen. S3-Endpunkt als HTTPS-Origin ohne Pfad angeben.
-   `ELASTICSEARCH_URL` muss vom Overlay erreichbar sein und darf keine Zugangsdaten
-   enthalten. Bei einem geschützten Elasticsearch ist dessen Authentifizierung
-   vor der Inbetriebnahme zusätzlich einzurichten; keine Passwörter in URLs schreiben.
 2. Prüfen, dass `10.254.0.0/24` nicht kollidiert. Bei einer Änderung auch
    Grafanas `GF_AUTH_PROXY_WHITELIST` und die Prüfung in `deploy.sh` anpassen.
 3. Einmalig die Infrastruktur vorbereiten:
@@ -168,8 +164,8 @@ Es enthält nur Repository-Dateien, keine Produktions-Secrets.
 
 Der Deploy prüft Einstellungen, Secrets, Netz und Node-Platzierung, bevor er
 Services verändert. Swarm Configs erhalten inhaltsabhängige Namen. Alte Configs
-bleiben für Rollbacks erhalten. Anschließend müssen alle 16 Dienste, alle 17
-Metrik-Jobs, Datenbank-/Redis-/Elasticsearch-/Nginx-Verbindungen und Thanos-Abfragen
+bleiben für Rollbacks erhalten. Anschließend müssen alle 15 Dienste, alle 16
+Metrik-Jobs, Datenbank-/Redis-/Nginx-Verbindungen und Thanos-Abfragen
 erfolgreich sein. Ein Fehler beendet das Deployment mit Fehlerstatus; es erfolgt
 kein unkontrollierter Rollback des gesamten Stacks.
 

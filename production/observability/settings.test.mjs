@@ -13,25 +13,30 @@ const valid = {
   LOKI_S3_BUCKET: "monitoring",
   LOKI_S3_ENDPOINT: "https://s3.test",
   LOKI_S3_REGION: "region-1",
-  ELASTICSEARCH_URL: "http://elasticsearch:9200",
   AWS_CLI_IMAGE: "amazon/aws-cli:2.31.18",
 };
 
-test("Vollständige Einstellungen werden akzeptiert", () => {
-  assert.doesNotThrow(() => validateSettings(valid));
-});
-
-test("Platzhalter, Geheimnisse in URLs und unsichere S3-Endpunkte werden abgewiesen", () => {
-  for (const patch of [
-    { SMTP_HOST: "REPLACE_WITH_HOST" },
-    { LOKI_S3_ENDPOINT: "http://s3.test" },
-    { ELASTICSEARCH_URL: "https://user:secret@es.test" },
-    { OBS_SECRET_REVISION: "../../secret" },
-    { GRAFANA_ROOT_URL: "https://monitor.test/" },
-  ]) {
-    assert.throws(() => validateSettings({
-      ...valid,
-      ...patch,
-    }));
+test(
+  "Einstellungen ohne Elasticsearch werden akzeptiert",
+  () => {
+    assert.doesNotThrow(() => validateSettings(valid));
   }
-});
+);
+
+test(
+  "Platzhalter, Geheimnisse in URLs und unsichere S3-Endpunkte werden abgewiesen",
+  () => {
+    for (const patch of [
+      { SMTP_HOST: "REPLACE_WITH_HOST" },
+      { LOKI_S3_ENDPOINT: "http://s3.test" },
+      { LOKI_S3_ENDPOINT: "https://user:secret@s3.test" },
+      { OBS_SECRET_REVISION: "../../secret" },
+      { GRAFANA_ROOT_URL: "https://monitor.test/" },
+    ]) {
+      assert.throws(() => validateSettings({
+        ...valid,
+        ...patch,
+      }));
+    }
+  }
+);

@@ -50,7 +50,6 @@ def check(fetch):
         "nginx-exporter",
         "postgres-exporter",
         "redis-exporter",
-        "elasticsearch-exporter",
         "nextjs",
         "thanos-query",
         "thanos-sidecar",
@@ -90,30 +89,6 @@ def check(fetch):
         raise RuntimeError(ERRORS["E11"])
     if any(float(v["value"][1]) != 1 for v in result):
         raise RuntimeError(ERRORS["E12"])
-    # Der aktuelle Exporter liefert den Clusterzustand statt einer health_up-Metrik.
-    elasticsearch = json.loads(
-        fetch(
-            "http://prometheus:9090/api/v1/query?"
-            + urlencode(
-                {
-                    "query": 'sum(elasticsearch_cluster_health_status{color=~"green|yellow"})',
-                }
-            )
-        )
-    )
-    states = elasticsearch.get(
-        "data",
-        {},
-    ).get(
-        "result",
-        [],
-    )
-    if (
-        elasticsearch.get("status") != "success"
-        or not states
-        or float(states[0]["value"][1]) < 1
-    ):
-        raise RuntimeError(ERRORS["ELASTICSEARCH"])
     values = json.loads(
         fetch(
             "http://thanos-query:10902/api/v1/query?"

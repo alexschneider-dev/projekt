@@ -39,13 +39,6 @@ scrape_configs:
     type: A
     port: 9121
     refresh_interval: 30s
-- job_name: elasticsearch-exporter
-  dns_sd_configs:
-  - names:
-    - tasks.observability_elasticsearch-exporter
-    type: A
-    port: 9114
-    refresh_interval: 30s
 - job_name: nginx-exporter
   dns_sd_configs:
   - names:

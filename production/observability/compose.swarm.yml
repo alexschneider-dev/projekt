@@ -377,37 +377,6 @@ services:
       options:
         max-size: 10m
         max-file: '3'
-  elasticsearch-exporter:
-    image: quay.io/prometheuscommunity/elasticsearch-exporter:v1.11.0
-    networks:
-    - monitoring
-    - app
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-        - node.labels.observability == true
-      resources:
-        limits:
-          memory: 64M
-        reservations:
-          memory: 16M
-      restart_policy:
-        condition: any
-        delay: 5s
-      update_config:
-        order: stop-first
-        failure_action: rollback
-    command:
-    - --es.uri=${ELASTICSEARCH_URL}
-    - --es.all
-    - --es.indices
-    - --es.timeout=10s
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: '3'
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:1.5.3
     networks:

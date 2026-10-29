@@ -19,7 +19,6 @@ class HealthCheckTests(unittest.TestCase):
         down=None,
         redis="1",
         archive_warning=False,
-        es="1",
     ):
         jobs = [
             "grafana",
@@ -33,7 +32,6 @@ class HealthCheckTests(unittest.TestCase):
             "nginx-exporter",
             "postgres-exporter",
             "redis-exporter",
-            "elasticsearch-exporter",
             "nextjs",
             "thanos-query",
             "thanos-sidecar",
@@ -75,26 +73,6 @@ class HealthCheckTests(unittest.TestCase):
                         },
                     }
                 )
-            if "elasticsearch_cluster_health_status" in url:
-                return json.dumps(
-                    {
-                        "status": "success",
-                        "data": {
-                            "result": (
-                                []
-                                if es is None
-                                else [
-                                    {
-                                        "value": [
-                                            0,
-                                            es,
-                                        ]
-                                    }
-                                ]
-                            )
-                        },
-                    }
-                )
             if "/query?" in url:
                 return json.dumps(
                     {
@@ -121,7 +99,7 @@ class HealthCheckTests(unittest.TestCase):
 
         health.check(fetch)
 
-    def test_healthy(self):
+    def test_healthy_without_elasticsearch(self):
         self.run_check()
 
     def test_missing_discovery_is_failure(self):
@@ -151,14 +129,3 @@ class HealthCheckTests(unittest.TestCase):
             "unvollständige Ergebnisse",
         ):
             self.run_check(archive_warning=True)
-
-    def test_missing_or_red_elasticsearch_is_failure(self):
-        for state in [
-            None,
-            "0",
-        ]:
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "Elasticsearch",
-            ):
-                self.run_check(es=state)

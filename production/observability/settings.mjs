@@ -12,7 +12,6 @@ export function validateSettings(env) {
     "LOKI_S3_BUCKET",
     "LOKI_S3_ENDPOINT",
     "LOKI_S3_REGION",
-    "ELASTICSEARCH_URL",
     "AWS_CLI_IMAGE",
   ];
 
@@ -29,7 +28,6 @@ export function validateSettings(env) {
   for (const key of [
     "GRAFANA_ROOT_URL",
     "LOKI_S3_ENDPOINT",
-    "ELASTICSEARCH_URL",
   ]) {
     let url;
 
@@ -44,7 +42,7 @@ export function validateSettings(env) {
         "https:",
         "http:"
       ].includes(url.protocol) ||
-      (key !== "ELASTICSEARCH_URL" && url.protocol !== "https:") ||
+      url.protocol !== "https:" ||
       (key === "LOKI_S3_ENDPOINT" && url.pathname !== "/") ||
       (key === "GRAFANA_ROOT_URL" && url.pathname !== "/grafana/")) {
       throw new Error(ERRORS.SETTINGS);

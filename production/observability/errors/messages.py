@@ -2,7 +2,6 @@ ERRORS = {
     "UPSTREAM_MISSING": "Das Backend hat keine Anfrage erhalten.",
     "S3_TASK": "Der temporäre S3-Task ist fehlgeschlagen.",
     "S3_TIMEOUT": "Der temporäre S3-Task hat das Zeitlimit überschritten.",
-    "ELASTICSEARCH": "Elasticsearch ist nicht erreichbar, liefert keine Zustandsmetriken oder ist rot.",
     "COMMAND": "{program} {action} fehlgeschlagen ({status}):\n{output}",
     "HTTP": "HTTP-Anfrage fehlgeschlagen ({status}): {body}",
     "E9": "Die Prometheus-Zielabfrage ist fehlgeschlagen.",

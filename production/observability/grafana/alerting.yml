@@ -299,55 +299,6 @@ groups:
             type: last
             params: []
           type: query
-  - uid: missing-elasticsearch-exporter
-    title: 'Telemetrie fehlt: elasticsearch-exporter'
-    condition: C
-    for: 5m
-    noDataState: OK
-    execErrState: Alerting
-    labels:
-      severity: warning
-      team: operations
-    annotations:
-      summary: 'Telemetrie fehlt: elasticsearch-exporter'
-      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
-        production/observability/README.md.'
-    data:
-    - refId: A
-      datasourceUid: prometheus-live
-      relativeTimeRange:
-        from: 600
-        to: 0
-      model:
-        refId: A
-        expr: absent(up{job="elasticsearch-exporter"})
-        instant: true
-        range: false
-        intervalMs: 15000
-        maxDataPoints: 43200
-    - refId: C
-      datasourceUid: __expr__
-      relativeTimeRange:
-        from: 0
-        to: 0
-      model:
-        refId: C
-        type: threshold
-        expression: A
-        conditions:
-        - evaluator:
-            params:
-            - 0
-            type: gt
-          operator:
-            type: and
-          query:
-            params:
-            - C
-          reducer:
-            type: last
-            params: []
-          type: query
   - uid: missing-nginx-exporter
     title: 'Telemetrie fehlt: nginx-exporter'
     condition: C
@@ -1093,55 +1044,6 @@ groups:
             type: last
             params: []
           type: query
-  - uid: es-red
-    title: Elasticsearch-Cluster ist rot
-    condition: C
-    for: 2m
-    noDataState: OK
-    execErrState: Alerting
-    labels:
-      severity: critical
-      team: operations
-    annotations:
-      summary: Elasticsearch-Cluster ist rot
-      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
-        production/observability/README.md.'
-    data:
-    - refId: A
-      datasourceUid: prometheus-live
-      relativeTimeRange:
-        from: 600
-        to: 0
-      model:
-        refId: A
-        expr: elasticsearch_cluster_health_status{color="red"} == bool 1
-        instant: true
-        range: false
-        intervalMs: 15000
-        maxDataPoints: 43200
-    - refId: C
-      datasourceUid: __expr__
-      relativeTimeRange:
-        from: 0
-        to: 0
-      model:
-        refId: C
-        type: threshold
-        expression: A
-        conditions:
-        - evaluator:
-            params:
-            - 0
-            type: gt
-          operator:
-            type: and
-          query:
-            params:
-            - C
-          reducer:
-            type: last
-            params: []
-          type: query
   - uid: node-oom
     title: Speicherabbrüche auf dem Host
     condition: C
@@ -1262,55 +1164,6 @@ groups:
       model:
         refId: A
         expr: nginx_up == bool 0
-        instant: true
-        range: false
-        intervalMs: 15000
-        maxDataPoints: 43200
-    - refId: C
-      datasourceUid: __expr__
-      relativeTimeRange:
-        from: 0
-        to: 0
-      model:
-        refId: C
-        type: threshold
-        expression: A
-        conditions:
-        - evaluator:
-            params:
-            - 0
-            type: gt
-          operator:
-            type: and
-          query:
-            params:
-            - C
-          reducer:
-            type: last
-            params: []
-          type: query
-  - uid: es-health-missing
-    title: Elasticsearch-Zustandsmetriken fehlen
-    condition: C
-    for: 3m
-    noDataState: OK
-    execErrState: Alerting
-    labels:
-      severity: warning
-      team: operations
-    annotations:
-      summary: Elasticsearch-Zustandsmetriken fehlen
-      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
-        production/observability/README.md.'
-    data:
-    - refId: A
-      datasourceUid: prometheus-live
-      relativeTimeRange:
-        from: 600
-        to: 0
-      model:
-        refId: A
-        expr: absent(elasticsearch_cluster_health_status)
         instant: true
         range: false
         intervalMs: 15000
