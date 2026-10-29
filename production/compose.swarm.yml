@@ -60,7 +60,7 @@ services:
         limits:
           memory: 1G
         reservations:
-          memory: 512M
+          memory: 256M
 
   nginx:
     image: ${NGINX_IMAGE}

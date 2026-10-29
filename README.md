@@ -9,3 +9,9 @@ und geschützten Bereichen für die Rollen `USER`, `ADMIN` und `SUPER_ADMIN`.
 
 Das Repository enthält Anwendung, wiederverwendbare UI-Komponenten, Tests und
 Deployment-Konfiguration. Details zum Betrieb stehen in [production/README.md](production/README.md).
+
+## PostgreSQL-Backups
+
+PostgreSQL-Backups werden alle sechs Stunden automatisch im bestehenden S3-Log-Bucket
+gespeichert und per Prüfsumme überprüft. Details zur Aufbewahrung und Wiederherstellung:
+[Backup-Dokumentation](production/observability/README.md#postgresql-sicherungen).
