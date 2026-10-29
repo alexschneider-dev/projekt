@@ -7,18 +7,12 @@ export const ERROR_CONFIG = {
   INVALID_SECRET: {
     status: 400,
     code: "INVALID_SECRET",
-    message: (
-      service,
-      key
-    ) => `Nicht unterstützter Secret-Schlüssel oder -Wert: ${service}.${key}`,
+    message: (service, key) => `Nicht unterstützter Secret-Schlüssel oder -Wert: ${service}.${key}`,
   },
   SECRET_NAME_TOO_LONG: {
     status: 400,
     code: "SECRET_NAME_TOO_LONG",
-    message: (
-      service,
-      key
-    ) => `Secret-Name zu lang: ${service}.${key}; kürzere Revision verwenden`,
+    message: (service, key) => `Secret-Name zu lang: ${service}.${key}; kürzere Revision verwenden`,
   },
   DATABASE_URL_MISSING: {
     status: 400,

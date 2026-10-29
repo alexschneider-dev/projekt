@@ -14,7 +14,6 @@ import {
 
 
 export function useLoginForm() {
-
   const router = useRouter();
   const form = useForm<LoginFormInput, unknown, LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -26,36 +25,28 @@ export function useLoginForm() {
 
   const submit = form.handleSubmit(async (values) => {
     try {
-      const result = await signIn(
-        "credentials",
-        {
-          ...values,
-          redirect: false,
-          callbackUrl: ROUTES.home,
-        }
-      );
+      const result = await signIn("credentials", {
+        ...values,
+        redirect: false,
+        callbackUrl: ROUTES.home,
+      });
 
       if (!result?.ok || result.error) {
-        form.setError(
-          "root.server",
-          {
-            type: "server",
-            message: ERROR_AUTH.LOGIN_FAILED.message,
-          }
-        );
+        form.setError("root.server", {
+          type: "server",
+          message: ERROR_AUTH.LOGIN_FAILED.message,
+        });
+
         return;
       }
 
       router.replace(ROUTES.home);
       router.refresh();
     } catch {
-      form.setError(
-        "root.server",
-        {
-          type: "server",
-          message: ERROR_AUTH.LOGIN_UNAVAILABLE.message,
-        }
-      );
+      form.setError("root.server", {
+        type: "server",
+        message: ERROR_AUTH.LOGIN_UNAVAILABLE.message,
+      });
     }
   });
 

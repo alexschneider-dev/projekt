@@ -43,10 +43,7 @@ export default function BodyWrapper({
 
   return (
     <Tag
-      className={cn(
-        layout && variants[layout],
-        className
-      )}
+      className={cn(layout && variants[layout], className)}
       {...props}
     >
       {children}

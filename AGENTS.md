@@ -82,11 +82,30 @@ Anweisungen des Nutzers haben Vorrang.
 
 ## Formatierung
 
+- Anweisungen nach zusammengehörigen Arbeitsschritten gruppieren, etwa Daten
+  laden, Zugriffsrechte prüfen, eine Antwort erzeugen, Header setzen und das
+  Ergebnis zurückgeben. Zwischen solchen Gruppen genau eine Leerzeile setzen;
+  innerhalb einer Gruppe keine Leerzeilen einfügen. Zusammengehörige Prüfungen
+  oder aufeinanderfolgende Aufrufe am selben Objekt bleiben jeweils zusammen.
+  Die Gruppierung richtet sich nach dem Zweck der Anweisungen, nicht allein
+  nach ihrer Syntax. Diese Regel im gesamten Projekt anwenden.
 - In jeder Quelldatei nach dem letzten Import genau zwei Leerzeilen vor dem
   folgenden Code setzen, etwa vor der ersten Funktion, Konstante oder
   Typdefinition. Das gilt auch, wenn dort zunächst ein Kommentar steht.
+- Funktionsparameter und Aufrufargumente innerhalb von `()` bei bis zu fünf
+  Einträgen in einer Zeile schreiben, sofern die gesamte Signatur oder der
+  Aufruf kurz und gut lesbar bleibt, etwa `!hasRole(session.user.role, ADMIN)`.
+  Bei langen Zeilen auch mit höchstens fünf Parametern oder Argumenten umbrechen;
+  dabei Generics und Rückgabetypen in die Beurteilung der Zeilenlänge einbeziehen.
+  Als Richtwert gelten 120 Zeichen pro Zeile. Einzelne lange Zeichenketten
+  werden dafür nicht aufgeteilt.
+  Bei mehr als fünf Einträgen immer umbrechen. Bei einem Umbruch jeden Parameter
+  bzw. jedes Argument auf eine eigene Zeile setzen und die schließende Klammer
+  auf eine eigene Zeile stellen. Der Rückgabetyp folgt direkt auf diese Klammer.
+  Enthaltene Objekte, Arrays und Funktionskörper behalten ihre eigenen
+  Formatierungsregeln.
 - Bei mehr als einem Eintrag jeden Eintrag auf eine eigene Zeile setzen. Das gilt
-  für Objekte und Typdefinitionen, Funktionsparameter und Aufrufargumente,
+  für Objekte und Typdefinitionen,
   Destrukturierungen, benannte Imports/Exports und Arrays sowie JSX-Props.
   Auch kurze Ausdrücke nicht in eine Zeile zusammenziehen. Die schließende
   Klammer steht bei solchen mehrzeiligen Ausdrücken auf einer eigenen Zeile.
@@ -120,9 +139,20 @@ Anweisungen des Nutzers haben Vorrang.
 ## Login, Rollen und Navigation
 
 - NextAuth für Login mit E-Mail und Passwort verwenden; kein Better Auth.
-- Interne Rollen: `user`, `admin` und `super_admin`.
+- Interne Rollen: `USER`, `ADMIN` und `SUPER_ADMIN`.
+- Rollenwerte über die direkt exportierten Konstanten `USER`, `ADMIN` und
+  `SUPER_ADMIN` aus `lib/auth/roles.ts` verwenden.
+  Rollen externer Dienste separat zentral definieren und importieren, etwa
+  `GRAFANA_ROLES` aus `lib/observability/roles.ts`.
 - Kundenrollen separat von internen Rollen modellieren.
 - Zugriffsrechte serverseitig prüfen; ausgeblendete UI ersetzt keine Autorisierung.
+- API-Zugriffsrechte zentral mit `requireRole` aus `lib/auth/api-guard.ts` prüfen.
+  Das Ergebnis als `apiGate` verwenden und bei `!apiGate.ok` dessen `response`
+  zurückgeben. Die Rollenprüfung berücksichtigt die interne Rollenhierarchie.
+- Geschützte Seiten und Layouts verwenden ebenfalls `requireRole` und `apiGate`.
+  Bei verweigertem Zugriff `redirectAfterAccessDenied(apiGate.response)` aus
+  `lib/auth/access.ts` aufrufen: ohne Anmeldung zur Login-Seite, bei fehlenden
+  Rechten zur Homepage. Session- und Rollenprüfungen nicht erneut implementieren.
 - Die Homepage bleibt öffentlich und enthält einen Link zur Login-Seite.
 - Keine automatische Weiterleitung zum Dashboard. Nach erfolgreichem Login zur
   Homepage navigieren; der interne Bereich bleibt über einen Link erreichbar.
@@ -136,6 +166,9 @@ Anweisungen des Nutzers haben Vorrang.
   die HTTP-Methode über die Optionen angeben.
 - Eigene API-Routen mit `apiHandler` und `successResponse` aus `lib/http`
   implementieren. NextAuth behält seinen eigenen Authentifizierungsablauf.
+- HTTP-Statuscodes in der Anwendung über `HTTP_STATUS` aus `lib/http/status.ts`
+  verwenden, auch in zentralen Fehlerdefinitionen und für erfolgreiche Antworten.
+  `HTTP_STATUS` wird zusätzlich über `lib/http/errors` exportiert.
 - Body, Query und Pfadparameter serverseitig mit `checkApiRequest`,
   `checkApiQuery` und `checkApiParams` sowie den zentralen Zod-Schemas prüfen.
 - Fehler zentral nach Fachbereich in `lib/http/errors/` definieren, jeweils mit

@@ -2,6 +2,8 @@ import { AppLink } from "@/components/ui/app-link";
 import { Navigation } from "@/components/ui/navigation";
 import {
   hasRole,
+  ADMIN,
+  SUPER_ADMIN,
   type InternalRole,
 } from "@/lib/auth/roles";
 import { ROUTES } from "@/lib/constants/routes";
@@ -19,28 +21,30 @@ export function DashboardNavigation({ role }: { role: InternalRole }) {
       >
         Übersicht
       </AppLink>
-      {hasRole(
-        role,
-        "admin",
-      ) && (
-          <AppLink
-            href={ROUTES.admin}
-            variant="navigation"
-          >
-            Administration
-          </AppLink>
-        )}
-      {hasRole(
-        role,
-        "super_admin",
-      ) && (
-          <AppLink
-            href={ROUTES.superAdmin}
-            variant="navigation"
-          >
-            Super-Admin
-          </AppLink>
-        )}
+      {hasRole(role, ADMIN) && (
+        <AppLink
+          href={ROUTES.admin}
+          variant="navigation"
+        >
+          Administration
+        </AppLink>
+      )}
+      {hasRole(role, ADMIN) && (
+        <AppLink
+          href={ROUTES.grafana}
+          variant="navigation"
+        >
+          Monitoring
+        </AppLink>
+      )}
+      {hasRole(role, SUPER_ADMIN) && (
+        <AppLink
+          href={ROUTES.superAdmin}
+          variant="navigation"
+        >
+          Super-Admin
+        </AppLink>
+      )}
     </Navigation>
   );
 }

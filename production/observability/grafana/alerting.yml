@@ -1,0 +1,1853 @@
+apiVersion: 1
+groups:
+- orgId: 1
+  name: production
+  folder: Projekt
+  interval: 1m
+  rules:
+  - uid: target-down
+    title: Telemetrie-Ziel nicht erreichbar
+    condition: C
+    for: 3m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Telemetrie-Ziel nicht erreichbar
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: up == bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: missing-nextjs
+    title: 'Telemetrie fehlt: nextjs'
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: 'Telemetrie fehlt: nextjs'
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: absent(up{job="nextjs"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: missing-node
+    title: 'Telemetrie fehlt: node'
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: 'Telemetrie fehlt: node'
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: absent(up{job="node"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: missing-cadvisor
+    title: 'Telemetrie fehlt: cadvisor'
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: 'Telemetrie fehlt: cadvisor'
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: absent(up{job="cadvisor"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: missing-postgres-exporter
+    title: 'Telemetrie fehlt: postgres-exporter'
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: 'Telemetrie fehlt: postgres-exporter'
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: absent(up{job="postgres-exporter"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: missing-redis-exporter
+    title: 'Telemetrie fehlt: redis-exporter'
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: 'Telemetrie fehlt: redis-exporter'
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: absent(up{job="redis-exporter"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: missing-elasticsearch-exporter
+    title: 'Telemetrie fehlt: elasticsearch-exporter'
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: 'Telemetrie fehlt: elasticsearch-exporter'
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: absent(up{job="elasticsearch-exporter"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: missing-nginx-exporter
+    title: 'Telemetrie fehlt: nginx-exporter'
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: 'Telemetrie fehlt: nginx-exporter'
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: absent(up{job="nginx-exporter"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: missing-swarm-exporter
+    title: 'Telemetrie fehlt: swarm-exporter'
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: 'Telemetrie fehlt: swarm-exporter'
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: absent(up{job="swarm-exporter"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: missing-alloy
+    title: 'Telemetrie fehlt: alloy'
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: 'Telemetrie fehlt: alloy'
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: absent(up{job="alloy"})
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: http-errors
+    title: 'Next.js: Fehleranteil über 2 %'
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: critical
+      team: operations
+    annotations:
+      summary: 'Next.js: Fehleranteil über 2 %'
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: (sum(rate(app_http_request_duration_seconds_count{status_code=~"5.."}[5m]))
+          / clamp_min(sum(rate(app_http_request_duration_seconds_count[5m])), 0.001)
+          > bool 0.02) and (sum(increase(app_http_request_duration_seconds_count[5m]))
+          > 100)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: http-p95
+    title: 'Next.js: p95 über einer Sekunde'
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: 'Next.js: p95 über einer Sekunde'
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: (histogram_quantile(0.95, sum by (le, route) (rate(app_http_request_duration_seconds_bucket[5m])))
+          > bool 1) and on(route) (sum by(route)(increase(app_http_request_duration_seconds_count[5m]))
+          > 100)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: disk-low
+    title: Freier Speicherplatz unter 15 %
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Freier Speicherplatz unter 15 %
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs",mountpoint!~"/host.*"}
+          / node_filesystem_size_bytes < bool 0.15) and on(instance,device,mountpoint)
+          (node_filesystem_readonly == 0)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: memory-low
+    title: Verfügbarer RAM unter 10 %
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Verfügbarer RAM unter 10 %
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < bool 0.1
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: cpu-high
+    title: CPU-Auslastung über 90 %
+    condition: C
+    for: 15m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: CPU-Auslastung über 90 %
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: 1 - avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m]))
+          > bool 0.9
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: swarm-replicas
+    title: Swarm-Repliken fehlen
+    condition: C
+    for: 3m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: critical
+      team: operations
+    annotations:
+      summary: Swarm-Repliken fehlen
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: swarm_service_desired_replicas - swarm_service_running_replicas > bool
+          0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: swarm-api
+    title: Swarm-Exporter kann Docker nicht abfragen
+    condition: C
+    for: 3m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: critical
+      team: operations
+    annotations:
+      summary: Swarm-Exporter kann Docker nicht abfragen
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: swarm_collection_success == bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: pg-down
+    title: PostgreSQL nicht erreichbar
+    condition: C
+    for: 1m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: critical
+      team: operations
+    annotations:
+      summary: PostgreSQL nicht erreichbar
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: pg_up == bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: pg-deadlocks
+    title: PostgreSQL-Deadlocks
+    condition: C
+    for: 1m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: PostgreSQL-Deadlocks
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(increase(pg_stat_database_deadlocks[5m])) > bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: pg-connections
+    title: PostgreSQL-Verbindungen über 80 %
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: PostgreSQL-Verbindungen über 80 %
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(pg_stat_database_numbackends) / max(pg_settings_max_connections)
+          > bool 0.8
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: redis-down
+    title: Redis nicht erreichbar
+    condition: C
+    for: 1m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: critical
+      team: operations
+    annotations:
+      summary: Redis nicht erreichbar
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: redis_up == bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: redis-evictions
+    title: Redis verdrängt Cache-Einträge
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Redis verdrängt Cache-Einträge
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(rate(redis_evicted_keys_total[5m])) > bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: es-red
+    title: Elasticsearch-Cluster ist rot
+    condition: C
+    for: 2m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: critical
+      team: operations
+    annotations:
+      summary: Elasticsearch-Cluster ist rot
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: elasticsearch_cluster_health_status{color="red"} == bool 1
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: node-oom
+    title: Speicherabbrüche auf dem Host
+    condition: C
+    for: 0s
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: critical
+      team: operations
+    annotations:
+      summary: Speicherabbrüche auf dem Host
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: increase(node_vmstat_oom_kill[5m]) > bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: otel-dropped
+    title: Alloy hat Trace-Spans abgewiesen
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Alloy hat Trace-Spans abgewiesen
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(rate(otelcol_receiver_refused_spans_total[5m])) > bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: nginx-down
+    title: Nginx-Status nicht erreichbar
+    condition: C
+    for: 3m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Nginx-Status nicht erreichbar
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: nginx_up == bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: es-health-missing
+    title: Elasticsearch-Zustandsmetriken fehlen
+    condition: C
+    for: 3m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Elasticsearch-Zustandsmetriken fehlen
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: absent(elasticsearch_cluster_health_status)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: redis-scrape-error
+    title: Redis-Exporter kann Metriken nicht erfassen
+    condition: C
+    for: 3m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Redis-Exporter kann Metriken nicht erfassen
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: redis_exporter_last_scrape_error > bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: logs-dropped
+    title: Alloy hat Log-Einträge verworfen
+    condition: C
+    for: 3m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Alloy hat Log-Einträge verworfen
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(rate(loki_write_dropped_entries_total[5m])) > bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: loki-flush-failed
+    title: Loki kann Log-Blöcke nicht speichern
+    condition: C
+    for: 3m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Loki kann Log-Blöcke nicht speichern
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(rate(loki_ingester_chunks_flush_failures_total[5m])) > bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: grafana-backup-overdue
+    title: Grafana-Sicherung fehlt oder ist älter als 36 Stunden
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Grafana-Sicherung fehlt oder ist älter als 36 Stunden
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: (time() - grafana_backup_last_success_timestamp_seconds > bool 129600)
+          or absent(grafana_backup_last_success_timestamp_seconds)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: grafana-backup-failed
+    title: Grafana-Sicherung oder Rückleseprüfung fehlgeschlagen
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Grafana-Sicherung oder Rückleseprüfung fehlgeschlagen
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: grafana_backup_last_run_success == bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: thanos-compactor-halted
+    title: Verdichtung des Metrikarchivs angehalten
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Verdichtung des Metrikarchivs angehalten
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: thanos_compact_halted == bool 1
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: thanos-upload-failed
+    title: Upload des Metrikarchivs fehlgeschlagen
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Upload des Metrikarchivs fehlgeschlagen
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: sum(increase(thanos_shipper_upload_failures_total[15m])) > bool 0
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: thanos-upload-stale
+    title: Seit sechs Stunden kein Metrikblock hochgeladen
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Seit sechs Stunden kein Metrikblock hochgeladen
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: (sum(increase(thanos_shipper_uploads_total[6h])) == bool 0) and on()
+          (time() - max(process_start_time_seconds{job="thanos-sidecar"}) > 21600)
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: swap-busy
+    title: Anhaltende Swap-Aktivität
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Anhaltende Swap-Aktivität
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: rate(node_vmstat_pswpin[5m]) + rate(node_vmstat_pswpout[5m]) > bool
+          100
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: swap-low
+    title: Weniger als 15 % Swap frei
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    labels:
+      severity: warning
+      team: operations
+    annotations:
+      summary: Weniger als 15 % Swap frei
+      description: 'Betroffenen Dienst, Ressourcen und Verbindungen prüfen. Vorgehen:
+        production/observability/README.md.'
+    data:
+    - refId: A
+      datasourceUid: prometheus-live
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        refId: A
+        expr: node_memory_SwapFree_bytes / clamp_min(node_memory_SwapTotal_bytes,
+          1) < bool 0.15
+        instant: true
+        range: false
+        intervalMs: 15000
+        maxDataPoints: 43200
+    - refId: C
+      datasourceUid: __expr__
+      relativeTimeRange:
+        from: 0
+        to: 0
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+contactPoints:
+- orgId: 1
+  name: operations-email
+  receivers:
+  - uid: operations-email
+    type: email
+    settings:
+      addresses: $ALERT_EMAIL_TO
+      singleEmail: true
+    disableResolveMessage: false
+policies:
+- orgId: 1
+  receiver: operations-email
+  group_by:
+  - grafana_folder
+  - alertname
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h

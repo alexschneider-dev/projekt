@@ -1,7 +1,7 @@
 # Projekt
 
 Grundgerüst einer Webanwendung mit öffentlicher Startseite, E-Mail-/Passwort-Login
-und geschützten Bereichen für die Rollen `user`, `admin` und `super_admin`.
+und geschützten Bereichen für die Rollen `USER`, `ADMIN` und `SUPER_ADMIN`.
 
 - **Anwendung:** Next.js, React, TypeScript und Tailwind CSS.
 - **Authentifizierung und Datenbank:** NextAuth, Prisma und PostgreSQL.

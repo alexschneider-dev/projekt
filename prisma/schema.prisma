@@ -9,9 +9,9 @@ datasource db {
 
 
 enum InternalRole {
-  user
-  admin
-  super_admin
+  USER
+  ADMIN
+  SUPER_ADMIN
 }
 
 model User {
@@ -19,7 +19,7 @@ model User {
   email          String       @unique
   name           String?
   passwordHash   String
-  role           InternalRole @default(user)
+  role           InternalRole @default(USER)
   active         Boolean      @default(true)
   sessionVersion Int          @default(0)
   createdAt      DateTime     @default(now())

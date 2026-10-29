@@ -19,11 +19,7 @@ export function Navigation({
 }: NavigationProps) {
   return (
     <nav
-      className={cn(
-        "flex flex-wrap",
-        variants[variant],
-        className,
-      )}
+      className={cn("flex flex-wrap", variants[variant], className)}
       {...props}
     />
   );

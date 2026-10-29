@@ -7,6 +7,15 @@ services:
     environment:
       HOSTNAME: "0.0.0.0"
       PORT: "3000"
+      OBSERVABILITY_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://observability_alloy:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
     networks:
       - projekt_net
@@ -58,9 +67,16 @@ services:
     stop_signal: SIGQUIT
     stop_grace_period: 140s
 
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     networks:
       - projekt_net
       - frontend
+      - grafana_proxy
 
     volumes:
       - nginx_cache:/var/cache/nginx
@@ -115,6 +131,12 @@ services:
   postgres:
     image: ${POSTGRES_IMAGE}
 
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     networks:
       - projekt_net
 
@@ -168,6 +190,12 @@ services:
       - --maxmemory-policy
       - allkeys-lru
 
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     networks:
       - projekt_net
 
@@ -194,6 +222,10 @@ services:
           memory: 128M
 
 networks:
+  grafana_proxy:
+    external: true
+    name: projekt_grafana_proxy
+
   frontend:
     external: true
     name: projekt_frontend

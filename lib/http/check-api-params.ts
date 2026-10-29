@@ -9,18 +9,17 @@ import {
 
 export async function checkApiParams<TSchema extends z.ZodType>(
   params: unknown,
-  schema: TSchema,
+  schema: TSchema
 ): Promise<ParseResult<z.output<TSchema>>> {
   const parsed = await schema.safeParseAsync(params);
+
   if (!parsed.success) {
     return {
       ok: false,
-      response: errorResponse(createApiError(
-        ERROR_API.INVALID_PARAMS,
-        z.flattenError(parsed.error)
-      ))
+      response: errorResponse(createApiError(ERROR_API.INVALID_PARAMS, z.flattenError(parsed.error)))
     };
   }
+
   return {
     ok: true,
     data: parsed.data

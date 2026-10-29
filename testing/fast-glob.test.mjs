@@ -9,16 +9,21 @@ import glob, { globSync } from "../tools/fast-glob/index.cjs";
 
 
 const require = createRequire(import.meta.url);
+
 function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), "projekt-glob-"));
+
   t.after(() => rmSync(dir, { recursive: true, force: true }));
+
   for (const file of ["package.json", "next.config.ts", "tsconfig.json", "src/a.ts", "src/b.tsx",
     "src/c.js", "src/a.test.ts", "src/.hidden.ts", "src/deep/d.ts", "other/e.ts",
     "node_modules/ignored.ts", "packages/web/package.json", "packages/web/next.config.ts"]) {
     mkdirSync(join(dir, file, ".."), { recursive: true });
     writeFileSync(join(dir, file), file.endsWith(".json") ? "{}" : "");
   }
+
   symlinkSync(join(dir, "other"), join(dir, "linked"), "dir");
+
   return dir;
 }
 
@@ -36,9 +41,11 @@ const cases = [
   ["Nicht vorhandenes Verzeichnis", "missing/**/*.ts", {}, []],
   ["Leere Musterliste", [], {}, []],
 ];
+
 for (const [name, patterns, options, expected] of cases) {
   test(`${name}: synchrone und asynchrone Suche`, async t => {
     const cwd = fixture(t);
+
     assert.deepEqual((await glob(patterns, { cwd, ...options })).sort(), expected.toSorted());
     assert.deepEqual(globSync(patterns, { cwd, ...options }).sort(), expected.toSorted());
   });
@@ -46,15 +53,20 @@ for (const [name, patterns, options, expected] of cases) {
 
 test("Absolute Pfade und kompatible Funktionsnamen", async t => {
   const cwd = fixture(t);
+
   assert.equal(glob.glob, glob);
   assert.equal(glob.async, glob);
   assert.equal(glob.sync, globSync);
+
   const expected = [join(cwd, "src/a.ts")];
+
   assert.deepEqual(await glob("src/a.ts", { cwd, absolute: true }), expected);
   assert.deepEqual(globSync("src/a.ts", { cwd, absolute: true }), expected);
   assert.deepEqual(globSync(join(cwd, "src/a.ts"), { cwd }), expected);
+
   const mixed = ["src/a.ts", join(cwd, "src/b.tsx")];
   const mixedExpected = ["src/a.ts", join(cwd, "src/b.tsx")].sort();
+
   assert.deepEqual(globSync(mixed, { cwd }).sort(), mixedExpected);
   assert.deepEqual((await glob(mixed, { cwd })).sort(), mixedExpected);
 });
@@ -70,9 +82,11 @@ test("Zugriffsfehler nur mit suppressErrors unterdrücken", async t => {
   const error = Object.assign(new Error("Kein Zugriff"), { code: "EACCES" });
   const originalSync = fs.readdirSync;
   const originalAsync = fs.readdir;
+
   try {
     fs.readdirSync = () => { throw error; };
     fs.readdir = (...args) => queueMicrotask(() => args.at(-1)(error));
+
     assert.throws(() => globSync("**/*", { cwd }), /Kein Zugriff/);
     await assert.rejects(glob("**/*", { cwd }), /Kein Zugriff/);
     assert.deepEqual(globSync("**/*", { cwd, suppressErrors: true }), []);
@@ -86,6 +100,7 @@ test("Zugriffsfehler nur mit suppressErrors unterdrücken", async t => {
 test("Alle Verbraucher lösen fast-glob zum lokalen Adapter auf", () => {
   for (const name of ["@next/eslint-plugin-next"]) {
     const consumer = createRequire(require.resolve(name));
+
     assert.equal(consumer("fast-glob"), glob, name);
   }
 });
@@ -94,12 +109,16 @@ test("Next.js-Lint löst Verzeichnismuster auf", t => {
   const cwd = fixture(t);
   const pluginPath = require.resolve("@next/eslint-plugin-next");
   const { getRootDirs } = require(resolve(pluginPath, "../utils/get-root-dirs.js"));
-  assert.deepEqual(getRootDirs({ cwd, settings: { next: { rootDir: join(cwd, "packages/*") } } }),
-    [join(cwd, "packages/web")]);
+
+  assert.deepEqual(
+    getRootDirs({ cwd, settings: { next: { rootDir: join(cwd, "packages/*") } } }),
+    [join(cwd, "packages/web")]
+  );
 });
 
 test("Lockdatei enthält weder braces noch micromatch", () => {
   const lock = require("../package-lock.json");
+
   for (const name of Object.keys(lock.packages)) {
     assert.ok(!/node_modules\/(braces|micromatch)$/.test(name), name);
   }

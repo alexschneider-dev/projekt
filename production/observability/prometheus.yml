@@ -1,0 +1,126 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  external_labels:
+    environment: production
+scrape_configs:
+- job_name: nextjs
+  dns_sd_configs:
+  - names:
+    - tasks.projekt_nextjs
+    type: A
+    port: 9464
+    refresh_interval: 30s
+- job_name: node
+  dns_sd_configs:
+  - names:
+    - tasks.observability_node
+    type: A
+    port: 9100
+    refresh_interval: 30s
+- job_name: cadvisor
+  dns_sd_configs:
+  - names:
+    - tasks.observability_cadvisor
+    type: A
+    port: 8080
+    refresh_interval: 30s
+- job_name: postgres-exporter
+  dns_sd_configs:
+  - names:
+    - tasks.observability_postgres-exporter
+    type: A
+    port: 9187
+    refresh_interval: 30s
+- job_name: redis-exporter
+  dns_sd_configs:
+  - names:
+    - tasks.observability_redis-exporter
+    type: A
+    port: 9121
+    refresh_interval: 30s
+- job_name: elasticsearch-exporter
+  dns_sd_configs:
+  - names:
+    - tasks.observability_elasticsearch-exporter
+    type: A
+    port: 9114
+    refresh_interval: 30s
+- job_name: nginx-exporter
+  dns_sd_configs:
+  - names:
+    - tasks.observability_nginx-exporter
+    type: A
+    port: 9113
+    refresh_interval: 30s
+- job_name: swarm-exporter
+  dns_sd_configs:
+  - names:
+    - tasks.observability_swarm-exporter
+    type: A
+    port: 9510
+    refresh_interval: 30s
+- job_name: alloy
+  dns_sd_configs:
+  - names:
+    - tasks.observability_alloy
+    type: A
+    port: 12345
+    refresh_interval: 30s
+- job_name: prometheus
+  dns_sd_configs:
+  - names:
+    - tasks.observability_prometheus
+    type: A
+    port: 9090
+    refresh_interval: 30s
+- job_name: loki
+  dns_sd_configs:
+  - names:
+    - tasks.observability_loki
+    type: A
+    port: 3100
+    refresh_interval: 30s
+- job_name: tempo
+  dns_sd_configs:
+  - names:
+    - tasks.observability_tempo
+    type: A
+    port: 3200
+    refresh_interval: 30s
+- job_name: grafana
+  metrics_path: /grafana/metrics
+  dns_sd_configs:
+  - names:
+    - tasks.observability_grafana
+    type: A
+    port: 3000
+    refresh_interval: 30s
+- job_name: thanos-sidecar
+  dns_sd_configs:
+  - names:
+    - tasks.observability_thanos-sidecar
+    type: A
+    port: 10902
+    refresh_interval: 30s
+- job_name: thanos-store
+  dns_sd_configs:
+  - names:
+    - tasks.observability_thanos-store
+    type: A
+    port: 10902
+    refresh_interval: 30s
+- job_name: thanos-query
+  dns_sd_configs:
+  - names:
+    - tasks.observability_thanos-query
+    type: A
+    port: 10902
+    refresh_interval: 30s
+- job_name: thanos-compact
+  dns_sd_configs:
+  - names:
+    - tasks.observability_thanos-compact
+    type: A
+    port: 10902
+    refresh_interval: 30s

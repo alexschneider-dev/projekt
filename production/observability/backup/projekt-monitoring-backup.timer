@@ -1,0 +1,10 @@
+[Unit]
+Description=Tägliche Grafana-Sicherung (30 Tages- und 12 Monatskopien)
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 Europe/Berlin
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

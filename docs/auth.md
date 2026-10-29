@@ -25,12 +25,15 @@ bereitstellen oder eine lokale, ignorierte `.env` verwenden.
 ```sh
 npx prisma migrate deploy
 npx prisma generate
-npm run auth:create-user -- admin@example.com super_admin "Administration"
+npm run auth:create-user -- admin@example.com SUPER_ADMIN "Administration"
 ```
 
 Das Skript lädt `.env.local` und fragt das Passwort verdeckt mit Bestätigung ab.
-Weitere Konten genauso mit `admin` oder `user` anlegen; Standard ist `user`.
+Weitere Konten genauso mit `ADMIN` oder `USER` anlegen; Standard ist `USER`.
 Bestehende Konten werden nicht überschrieben.
+Die Migration zur Großschreibung benennt die vorhandenen Enum-Werte in der
+Datenbank um; Rollen und Konten bleiben dabei erhalten. Sie muss vor dem Start
+der Anwendung mit den neuen Rollenwerten ausgeführt werden.
 
 ## Zugriff
 
@@ -41,7 +44,7 @@ Bestehende Konten werden nicht überschrieben.
 - `/admin`: Admin und Super-Admin.
 - `/super-admin`: ausschließlich Super-Admin.
 
-`requireUser()` an jeder geschützten Seite und insbesondere direkt vor Datenzugriffen
+`requireRole()` mit dem Ergebnis `apiGate` an jeder geschützten Seite und insbesondere direkt vor Datenzugriffen
 und Server Actions aufrufen. Ein Layout oder ausgeblendete Navigation genügt nicht.
 Für künftige JSON-APIs 401/403 statt Seiten-Redirects zurückgeben.
 Die Session liest den aktuellen Benutzer aus der Datenbank. `active=false` sperrt

@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  Inter,
+} from "next/font/google";
 import BodyWrapper from "@/components/ui/page/body-wrapper";
 import { cn } from "@/lib/utils";
+import { BrowserTelemetry } from "@/components/observability/browser-telemetry";
 import "./globals.css";
 
 
@@ -33,6 +38,7 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body className={cn(geistSans.variable, geistMono.variable, inter.variable)}>
+        <BrowserTelemetry />
         <BodyWrapper variant="document">{children}</BodyWrapper>
       </body>
     </html>

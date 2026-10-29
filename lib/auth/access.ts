@@ -1,19 +1,10 @@
-import { ROUTES } from "@/lib/constants/routes";
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "./options";
-import {
-  hasRole,
-  type InternalRole
-} from "./roles";
+import { ROUTES } from "../constants/routes";
+import { HTTP_STATUS } from "../http/status";
 
 
-export async function requireUser(required: InternalRole = "user") {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect(ROUTES.login);
-  if (!hasRole(
-    session.user.role,
-    required
-  )) redirect(ROUTES.home);
-  return session.user;
+export function redirectAfterAccessDenied(response: Response): never {
+  const destination = response.status === HTTP_STATUS.UNAUTHORIZED ? ROUTES.login : ROUTES.home;
+
+  redirect(destination);
 }

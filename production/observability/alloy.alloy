@@ -1,0 +1,151 @@
+// Logs, Traces und Browser-Telemetrie mit zentraler Filterung.
+logging {
+  level = "info"
+  format = "json"
+}
+discovery.docker "local" {
+  host = "unix:///var/run/docker.sock"
+  refresh_interval = "15s"
+}
+discovery.relabel "logs" {
+  targets = discovery.docker.local.targets
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_stack_namespace"]
+    regex = "projekt|projekt-edge|observability"
+    action = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_swarm_service_name"]
+    regex = "(?:projekt|projekt-edge|observability)_(.*)"
+    replacement = "$1"
+    target_label = "service_name"
+  }
+  rule {
+    source_labels = ["service_name"]
+    regex = "nginx"
+    target_label = "log_type"
+    replacement = "security"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_id"]
+    target_label = "container_id"
+  }
+}
+loki.source.docker "local" {
+  host = "unix:///var/run/docker.sock"
+  targets = discovery.relabel.logs.output
+  labels = {
+    environment = "production",
+    node = sys.env("NODE_NAME"),
+  }
+  forward_to = [loki.process.classify.receiver]
+}
+loki.process "classify" {
+  // Eine getrennte Gegenstelle ist ein Diagnosehinweis, kein Nachweis eines harmlosen Abbruchs.
+  stage.match {
+    selector = `{service_name="grafana"} |~ "(^| )logger=context( |$)" |= "msg=\"Error writing to response\"" |~ " err=\"write tcp [^\"]+: write: (broken pipe|connection reset by peer)\"( |$)"`
+    stage.static_labels { values = { query_event = "response_peer_closed" } }
+  }
+  stage.match {
+    selector = `{service_name="loki"} |~ "(^| )caller=(scheduler_processor|parallel_chunk_fetch|spanlogger|errors)\\.go:[0-9]+( |$)" |~ "(^| )(err|error)=\"([^\"]*[:=,] )?context canceled\"( |$)"`
+    stage.static_labels { values = { query_event = "canceled" } }
+  }
+  stage.match {
+    selector = `{service_name="grafana"} |= "logger=plugin.loki " |= "msg=\"Partial data response error\"" |~ " error=\"([^\"\\\\]|\\\\.)*context canceled\"( |$)"`
+    stage.static_labels { values = { query_event = "canceled" } }
+  }
+  stage.match {
+    selector = `{service_name="loki"} |~ "(^| )caller=scheduler_processor\\.go:[0-9]+( |$)" |= "msg=\"error notifying scheduler about finished query\"" |~ "(^| )err=EOF( |$)"`
+    stage.static_labels { values = { query_event = "scheduler_stream_closed" } }
+  }
+  stage.match {
+    selector = "{service_name=\"nginx\"}"
+    stage.json { expressions = { log_type = "log_type" } }
+    stage.labels { values = { log_type = "" } }
+  }
+  forward_to = [loki.write.local.receiver]
+}
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+otelcol.receiver.otlp "apps" {
+  grpc { endpoint = "0.0.0.0:4317" }
+  http { endpoint = "0.0.0.0:4318" }
+  output {
+    traces = [otelcol.processor.memory_limiter.apps.input]
+  }
+}
+otelcol.processor.memory_limiter "apps" {
+  check_interval = "1s"
+  limit = "192MiB"
+  spike_limit = "48MiB"
+  output {
+    traces = [otelcol.processor.transform.privacy.input]
+  }
+}
+otelcol.processor.transform "privacy" {
+  error_mode = "propagate"
+  trace_statements {
+    context = "span"
+    statements = [
+      `keep_keys(attributes, ["http.route", "http.method", "http.status_code", "http.request.method", "http.response.status_code", "db.system", "db.operation", "db.operation.name", "next.span_type", "next.route", "server.address", "server.port"])`,
+      `set(name, attributes["http.route"]) where attributes["http.route"] != nil`,
+      `set(name, "operation") where attributes["http.route"] == nil`,
+      `set(status.message, "")`,
+    ]
+  }
+  trace_statements {
+    context = "spanevent"
+    statements = [`keep_keys(spanevent.attributes, ["exception.type"])`]
+  }
+  output { traces = [otelcol.processor.batch.apps.input] }
+}
+otelcol.processor.batch "apps" {
+  timeout = "5s"
+  send_batch_size = 512
+  send_batch_max_size = 1024
+  output { traces = [otelcol.exporter.otlp.tempo.input] }
+}
+otelcol.storage.file "traces" {
+  directory = "/var/lib/alloy/trace-queue"
+  fsync = true
+}
+otelcol.exporter.otlp "tempo" {
+  sending_queue {
+    storage = otelcol.storage.file.traces.handler
+    queue_size = 1000
+    num_consumers = 2
+  }
+  retry_on_failure {
+    max_elapsed_time = "0s"
+  }
+  client {
+    endpoint = "tempo:4317"
+    tls { insecure = true }
+  }
+}
+faro.receiver "browser" {
+  log_format = "json"
+  extra_log_labels = {
+    service_name = "browser",
+    environment = "production",
+  }
+  sourcemaps {
+    download = false
+  }
+  server {
+    listen_address = "0.0.0.0"
+    listen_port = 12347
+    cors_allowed_origins = ["https://alex-schneider-dev.de"]
+    rate_limiting {
+      rate = 50
+      burst_size = 100
+    }
+  }
+  output {
+    logs = [loki.write.local.receiver]
+    traces = [otelcol.processor.memory_limiter.apps.input]
+  }
+}

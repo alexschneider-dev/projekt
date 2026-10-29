@@ -1,0 +1,121 @@
+name: Monitoring prüfen und bereitstellen
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Nach abgeschlossener Server-Vorbereitung bereitstellen
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - production/observability/**
+      - lib/observability/**
+      - app/api/observability/**
+      - components/observability/**
+      - services/nginx/**
+      - services/loki/**
+      - instrumentation.ts
+      - .github/workflows/observability.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Prüfwerkzeuge installieren
+        run: pip install PyYAML==6.0.3
+      - uses: docker/setup-buildx-action@v3
+      - name: Loki-Patch bauen und Upstream-Regressionstests ausführen
+        uses: docker/build-push-action@v6
+        with:
+          context: services/loki
+          platforms: linux/amd64
+          load: true
+          tags: ghcr.io/alexschneider-dev/projekt-loki:3.6.18-projekt.1
+          cache-from: type=gha,scope=projekt-loki
+          cache-to: type=gha,mode=max,scope=projekt-loki
+      - name: Konfiguration und Sicherungslogik prüfen
+        run: |
+          bash production/observability/validate.sh
+          python -m unittest discover -s production/observability -p 'test_*.py'
+      - name: Anwendung prüfen
+        run: |
+          npm ci
+          npx prisma generate
+          npm run check
+          node --experimental-strip-types --test testing/observability.test.mjs
+      - name: Grafana-Provisionierung und Nginx-Zugriff prüfen
+        run: |
+          python production/observability/test-grafana-integration.py
+          docker build -t projekt-observability-nginx-check services/nginx
+          python production/observability/test-nginx-integration.py
+          python production/observability/test-grafana-cancellation-integration.py
+      - name: Logabfragen und Klassifikation prüfen
+        run: |
+          python production/observability/test-loki-query-integration.py
+          python production/observability/test-query-classification-integration.py
+      - name: Wiederherstellung aus S3 prüfen
+        run: python production/observability/test-storage-integration.py
+
+      - name: Bei der Image-Registry anmelden
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Geprüftes Loki-Image veröffentlichen
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        run: docker push ghcr.io/alexschneider-dev/projekt-loki:3.6.18-projekt.1
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.deploy
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: Production
+    concurrency:
+      group: projekt-production-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH konfigurieren
+        env:
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_KNOWN_HOSTS: ${{ secrets.PROD_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$PROD_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$PROD_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Geprüfte Monitoring-Version installieren
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+        run: |
+          set -Eeuo pipefail
+          target="${PROD_USER}@${PROD_HOST}"
+          ssh_opts=(-i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          remote_dir=$(ssh "${ssh_opts[@]}" "$target" 'mktemp -d /tmp/projekt-observability.XXXXXXXX')
+          [[ "$remote_dir" =~ ^/tmp/projekt-observability\.[a-zA-Z0-9]+$ ]]
+          trap 'ssh "${ssh_opts[@]}" "$target" "rm -rf -- ${remote_dir}"' EXIT
+          scp "${ssh_opts[@]}" -r production/observability/. "$target:$remote_dir/"
+          ssh "${ssh_opts[@]}" "$target" \
+            "sudo -n /usr/local/lib/projekt-deploy/install-observability-release.sh '$remote_dir'"

@@ -33,12 +33,16 @@ export const authOptions: NextAuthOptions = {
     },
     async authorize(credentials) {
       const parsed = loginSchema.safeParse(credentials);
+
       if (!parsed.success) return null;
+
       const {
         email,
         password
       } = parsed.data;
+
       const key = createHash("sha256").update(email).digest("hex");
+
       // Gemeinsames, atomares Limit über alle App-Instanzen: zehn Versuche pro Konto in 15 Minuten.
       const [limit] = await prisma.$queryRaw<{ attempts: number }[]>`
         INSERT INTO "LoginAttempt" ("key", "attempts", "expiresAt")
@@ -50,13 +54,14 @@ export const authOptions: NextAuthOptions = {
             THEN NOW() + INTERVAL '15 minutes' ELSE "LoginAttempt"."expiresAt" END
         RETURNING "attempts"
       `;
+
       if (!limit || limit.attempts > 10) return null;
+
       const user = await prisma.user.findUnique({ where: { email } });
-      const valid = await verifyPassword(
-        password,
-        user?.passwordHash ?? dummyHash
-      );
+      const valid = await verifyPassword(password, user?.passwordHash ?? dummyHash);
+
       if (!valid || !user || !user.active) return null;
+
       return {
         id: user.id,
         name: user.name,
@@ -75,6 +80,7 @@ export const authOptions: NextAuthOptions = {
         token.sub = user.id;
         token.sessionVersion = user.sessionVersion;
       }
+
       return token;
     },
     async session({
@@ -82,8 +88,11 @@ export const authOptions: NextAuthOptions = {
       token
     }) {
       session.user = undefined;
+
       if (!token.sub) return session;
+
       const user = await prisma.user.findUnique({ where: { id: token.sub } });
+
       if (user?.active && user.sessionVersion === token.sessionVersion) {
         session.user = {
           id: user.id,
@@ -92,6 +101,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role
         };
       }
+
       return session;
     },
   },

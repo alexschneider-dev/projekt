@@ -26,7 +26,7 @@ export function Button({
         "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-transparent px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         variants[variant],
         fullWidth && "w-full",
-        className,
+        className
       )}
       {...props}
     />

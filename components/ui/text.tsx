@@ -24,11 +24,7 @@ export function Text({
 }: TextProps) {
   return (
     <Tag
-      className={cn(
-        "wrap-anywhere",
-        variants[variant],
-        className,
-      )}
+      className={cn("wrap-anywhere", variants[variant], className)}
       {...props}
     />
   );

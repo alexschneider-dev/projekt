@@ -24,7 +24,7 @@ export function AppLink({
       className={cn(
         "focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-4",
         variants[variant],
-        className,
+        className
       )}
       {...props}
     />

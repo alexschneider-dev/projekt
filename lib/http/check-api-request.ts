@@ -19,9 +19,10 @@ export type ParseResult<T> =
 export async function checkApiRequest<TSchema extends z.ZodType>(
   req: Request,
   schema: TSchema,
-  isFormData = false,
+  isFormData = false
 ): Promise<ParseResult<z.output<TSchema>>> {
   const contentType = req.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+
   if (contentType !== (isFormData ? "multipart/form-data" : "application/json")) {
     return {
       ok: false,
@@ -30,6 +31,7 @@ export async function checkApiRequest<TSchema extends z.ZodType>(
   }
 
   let data: unknown;
+
   try {
     data = isFormData ? Object.fromEntries((await req.formData()).entries()) : await req.json();
   } catch {
@@ -40,15 +42,14 @@ export async function checkApiRequest<TSchema extends z.ZodType>(
   }
 
   const parsed = await schema.safeParseAsync(data);
+
   if (!parsed.success) {
     return {
       ok: false,
-      response: errorResponse(createApiError(
-        ERROR_API.INVALID_BODY,
-        z.flattenError(parsed.error)
-      ))
+      response: errorResponse(createApiError(ERROR_API.INVALID_BODY, z.flattenError(parsed.error)))
     };
   }
+
   return {
     ok: true,
     data: parsed.data

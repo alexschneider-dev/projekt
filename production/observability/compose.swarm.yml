@@ -1,0 +1,712 @@
+version: '3.9'
+services:
+  grafana:
+    image: grafana/grafana:13.2.4
+    networks:
+    - monitoring
+    - grafana_proxy
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    environment:
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}
+      GF_SERVER_SERVE_FROM_SUB_PATH: 'true'
+      GF_SERVER_ENABLE_GZIP: 'false'
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_SECURITY_COOKIE_SECURE: 'true'
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+      GF_AUTH_DISABLE_LOGIN_FORM: 'true'
+      GF_AUTH_BASIC_ENABLED: 'false'
+      GF_AUTH_PROXY_ENABLED: 'true'
+      GF_AUTH_PROXY_HEADER_NAME: X-Webauth-User
+      GF_AUTH_PROXY_HEADERS: Role:X-Webauth-Role
+      GF_AUTH_PROXY_SYNC_TTL: '0'
+      GF_AUTH_PROXY_AUTO_SIGN_UP: 'true'
+      GF_AUTH_PROXY_ENABLE_LOGIN_TOKEN: 'false'
+      GF_USERS_AUTO_ASSIGN_ORG_ROLE: Viewer
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_SMTP_ENABLED: 'true'
+      GF_SMTP_HOST: ${SMTP_HOST}
+      GF_SMTP_USER: ${SMTP_USER}
+      GF_SMTP_PASSWORD__FILE: /run/secrets/smtp_password
+      GF_SMTP_FROM_ADDRESS: ${SMTP_FROM}
+      GF_SMTP_STARTTLS_POLICY: MandatoryStartTLS
+      GF_SMTP_SKIP_VERIFY: 'false'
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO}
+      GF_AUTH_PROXY_WHITELIST: 10.254.0.0/24
+      GF_USERS_DEFAULT_LANGUAGE: de-DE
+    secrets:
+    - grafana_admin_password
+    - smtp_password
+    volumes:
+    - grafana:/var/lib/grafana
+    configs:
+    - source: grafana_error_html
+      target: /usr/share/grafana/public/views/error.html
+      mode: 292
+    - source: grafana_datasources_yml
+      target: /etc/grafana/provisioning/datasources/default.yml
+      mode: 292
+    - source: grafana_dashboards_yml
+      target: /etc/grafana/provisioning/dashboards/default.yml
+      mode: 292
+    - source: grafana_alerting_yml
+      target: /etc/grafana/provisioning/alerting/default.yml
+      mode: 292
+    - source: grafana_overview_json
+      target: /var/lib/grafana/dashboards/overview.json
+      mode: 292
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    networks:
+    - monitoring
+    - app
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    command:
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --storage.tsdb.path=/prometheus
+    - --storage.tsdb.retention.time=15d
+    - --storage.tsdb.retention.size=10GB
+    - --storage.tsdb.min-block-duration=2h
+    - --storage.tsdb.max-block-duration=2h
+    - --query.max-concurrency=2
+    - --query.max-samples=5000000
+    volumes:
+    - prometheus:/prometheus
+    configs:
+    - source: prometheus_yml
+      target: /etc/prometheus/prometheus.yml
+      mode: 292
+    environment:
+      GOMEMLIMIT: 400MiB
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  loki:
+    image: ghcr.io/alexschneider-dev/projekt-loki:3.6.18-projekt.1
+    networks:
+    - monitoring
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    user: 0:0
+    command:
+    - -config.file=/etc/loki/config.yml
+    - -config.expand-env=true
+    volumes:
+    - loki:/loki
+    configs:
+    - source: loki_yml
+      target: /etc/loki/config.yml
+      mode: 292
+    environment:
+      LOKI_S3_BUCKET: ${LOKI_S3_BUCKET}
+      LOKI_S3_ENDPOINT: ${LOKI_S3_ENDPOINT}
+      LOKI_S3_REGION: ${LOKI_S3_REGION}
+      AWS_SHARED_CREDENTIALS_FILE: /run/secrets/loki_s3_credentials
+      AWS_EC2_METADATA_DISABLED: 'true'
+      GOMEMLIMIT: 320MiB
+    secrets:
+    - loki_s3_credentials
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  tempo:
+    stop_grace_period: 60s
+    image: grafana/tempo:2.10.8
+    environment:
+      GOMEMLIMIT: 300MiB
+      TEMPO_S3_BUCKET: ${LOKI_S3_BUCKET}
+      TEMPO_S3_ENDPOINT: ${OBS_S3_HOST}
+      TEMPO_S3_REGION: ${LOKI_S3_REGION}
+      AWS_SHARED_CREDENTIALS_FILE: /run/secrets/loki_s3_credentials
+      AWS_EC2_METADATA_DISABLED: 'true'
+    networks:
+    - monitoring
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    user: 0:0
+    command:
+    - -config.file=/etc/tempo/config.yml
+    - -config.expand-env=true
+    secrets:
+    - loki_s3_credentials
+    volumes:
+    - tempo:/var/tempo
+    configs:
+    - source: tempo_yml
+      target: /etc/tempo/config.yml
+      mode: 292
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  alloy:
+    stop_grace_period: 60s
+    image: grafana/alloy:v1.21.1
+    networks:
+    - monitoring
+    - app
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+      mode: global
+    user: 0:0
+    command:
+    - run
+    - --server.http.listen-addr=0.0.0.0:12345
+    - --storage.path=/var/lib/alloy
+    - --stability.level=public-preview
+    - /etc/alloy/config.alloy
+    environment:
+      NODE_NAME: '{{.Node.Hostname}}'
+      GOMEMLIMIT: 192MiB
+    volumes:
+    - alloy:/var/lib/alloy
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    configs:
+    - source: alloy_alloy
+      target: /etc/alloy/config.alloy
+      mode: 292
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  node:
+    image: prom/node-exporter:v1.12.1
+    networks:
+    - monitoring
+    - app
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+      mode: global
+    command:
+    - --path.procfs=/host/proc
+    - --path.sysfs=/host/sys
+    - --path.rootfs=/host/root
+    - --collector.textfile.directory=/backup/observability
+    volumes:
+    - /proc:/host/proc:ro
+    - /sys:/host/sys:ro
+    - /:/host/root:ro,rslave
+    - backup:/backup:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  cadvisor:
+    image: ghcr.io/google/cadvisor:0.60.6
+    networks:
+    - monitoring
+    - app
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+      mode: global
+    command:
+    - --docker_only=true
+    - --housekeeping_interval=30s
+    - --store_container_labels=false
+    - --whitelisted_container_labels=com.docker.swarm.service.name
+    - --disable_metrics=percpu,sched,tcp,udp,hugetlb,referenced_memory,resctrl
+    volumes:
+    - /:/rootfs:ro
+    - /var/run:/var/run:ro
+    - /sys:/sys:ro
+    - /var/lib/docker:/var/lib/docker:ro
+    - /dev/disk:/dev/disk:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+    networks:
+    - monitoring
+    - app
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    environment:
+      DATA_SOURCE_URI: postgres:5432/postgres?sslmode=disable
+      DATA_SOURCE_USER: observability
+      DATA_SOURCE_PASS_FILE: /run/secrets/postgres_password
+    secrets:
+    - postgres_password
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.95.0
+    networks:
+    - monitoring
+    - app
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    command:
+    - --redis.addr=redis://redis:6379
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  elasticsearch-exporter:
+    image: quay.io/prometheuscommunity/elasticsearch-exporter:v1.11.0
+    networks:
+    - monitoring
+    - app
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    command:
+    - --es.uri=${ELASTICSEARCH_URL}
+    - --es.all
+    - --es.indices
+    - --es.timeout=10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.5.3
+    networks:
+    - monitoring
+    - app
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 32M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    command:
+    - --nginx.scrape-uri=http://nginx:8080/stub_status
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  swarm-exporter:
+    image: python:3.13.9-alpine3.22
+    networks:
+    - monitoring
+    - app
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.role == manager
+      resources:
+        limits:
+          memory: 32M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    command:
+    - python
+    - -B
+    - /exporter.py
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    configs:
+    - source: exporters_swarm_py
+      target: /exporter.py
+      mode: 292
+    - source: exporters_errors_py
+      target: /messages.py
+      mode: 292
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  thanos-sidecar:
+    image: quay.io/thanos/thanos:v0.40.1
+    user: 0:0
+    stop_grace_period: 60s
+    networks:
+    - monitoring
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    environment:
+      GOMEMLIMIT: 96MiB
+    command:
+    - sidecar
+    - --prometheus.url=http://prometheus:9090
+    - --tsdb.path=/prometheus
+    - --objstore.config-file=/run/secrets/thanos_s3
+    - --grpc-address=0.0.0.0:10901
+    - --http-address=0.0.0.0:10902
+    secrets:
+    - thanos_s3
+    volumes:
+    - prometheus:/prometheus
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  thanos-store:
+    image: quay.io/thanos/thanos:v0.40.1
+    user: 0:0
+    stop_grace_period: 60s
+    networks:
+    - monitoring
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    environment:
+      GOMEMLIMIT: 200MiB
+    command:
+    - store
+    - --objstore.config-file=/run/secrets/thanos_s3
+    - --data-dir=/data
+    - --grpc-address=0.0.0.0:10901
+    - --http-address=0.0.0.0:10902
+    - --index-cache-size=128MB
+    - --chunk-pool-size=64MB
+    - --store.grpc.series-max-concurrency=2
+    - --block-sync-concurrency=2
+    - --block-meta-fetch-concurrency=2
+    secrets:
+    - thanos_s3
+    volumes:
+    - thanos_store:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  thanos-query:
+    image: quay.io/thanos/thanos:v0.40.1
+    user: 0:0
+    stop_grace_period: 60s
+    networks:
+    - monitoring
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    environment:
+      GOMEMLIMIT: 96MiB
+    command:
+    - query
+    - --http-address=0.0.0.0:10902
+    - --endpoint=thanos-sidecar:10901
+    - --endpoint=thanos-store:10901
+    - --query.max-concurrent=2
+    - --no-query.partial-response
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  thanos-compact:
+    image: quay.io/thanos/thanos:v0.40.1
+    user: 0:0
+    stop_grace_period: 60s
+    networks:
+    - monitoring
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.observability == true
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 16M
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: stop-first
+        failure_action: rollback
+    environment:
+      GOMEMLIMIT: 300MiB
+    command:
+    - compact
+    - --objstore.config-file=/run/secrets/thanos_s3
+    - --data-dir=/data
+    - --http-address=0.0.0.0:10902
+    - --wait
+    - --compact.concurrency=1
+    - --debug.max-compaction-level=2
+    - --downsampling.disable
+    - --retention.resolution-raw=730d
+    - --retention.resolution-5m=730d
+    - --retention.resolution-1h=730d
+    secrets:
+    - thanos_s3
+    volumes:
+    - thanos_compact:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+networks:
+  monitoring:
+    driver: overlay
+  app:
+    external: true
+    name: projekt_net
+  grafana_proxy:
+    external: true
+    name: projekt_grafana_proxy
+volumes:
+  grafana: {}
+  prometheus: {}
+  loki: {}
+  tempo: {}
+  alloy: {}
+  thanos_store: {}
+  thanos_compact: {}
+  backup:
+    external: true
+    name: projekt_monitoring_backup
+configs:
+  grafana_error_html:
+    file: ./grafana/error.html
+    name: projekt_obs_grafana_error_html_${OBS_CONFIG_GRAFANA_ERROR_HTML}
+  grafana_datasources_yml:
+    file: ./grafana/datasources.yml
+    name: projekt_obs_grafana_datasources_yml_${OBS_CONFIG_GRAFANA_DATASOURCES_YML}
+  grafana_dashboards_yml:
+    file: ./grafana/dashboards.yml
+    name: projekt_obs_grafana_dashboards_yml_${OBS_CONFIG_GRAFANA_DASHBOARDS_YML}
+  grafana_alerting_yml:
+    file: ./grafana/alerting.yml
+    name: projekt_obs_grafana_alerting_yml_${OBS_CONFIG_GRAFANA_ALERTING_YML}
+  grafana_overview_json:
+    file: ./grafana/overview.json
+    name: projekt_obs_grafana_overview_json_${OBS_CONFIG_GRAFANA_OVERVIEW_JSON}
+  prometheus_yml:
+    file: ./prometheus.yml
+    name: projekt_obs_prometheus_yml_${OBS_CONFIG_PROMETHEUS_YML}
+  loki_yml:
+    file: ./loki.yml
+    name: projekt_obs_loki_yml_${OBS_CONFIG_LOKI_YML}
+  tempo_yml:
+    file: ./tempo.yml
+    name: projekt_obs_tempo_yml_${OBS_CONFIG_TEMPO_YML}
+  alloy_alloy:
+    file: ./alloy.alloy
+    name: projekt_obs_alloy_alloy_${OBS_CONFIG_ALLOY_ALLOY}
+  exporters_swarm_py:
+    file: ./exporters/swarm.py
+    name: projekt_obs_exporters_swarm_py_${OBS_CONFIG_EXPORTERS_SWARM_PY}
+  exporters_errors_py:
+    file: ./errors/messages.py
+    name: projekt_obs_errors_${OBS_CONFIG_EXPORTERS_ERRORS_PY}
+secrets:
+  grafana_admin_password:
+    external: true
+    name: projekt_obs_grafana_admin_password_${OBS_SECRET_REVISION}
+  smtp_password:
+    external: true
+    name: projekt_obs_smtp_password_${OBS_SECRET_REVISION}
+  postgres_password:
+    external: true
+    name: projekt_obs_postgres_password_${OBS_SECRET_REVISION}
+  loki_s3_credentials:
+    external: true
+    name: projekt_obs_loki_s3_credentials_${OBS_SECRET_REVISION}
+  thanos_s3:
+    external: true
+    name: projekt_obs_thanos_s3_${OBS_SECRET_REVISION}

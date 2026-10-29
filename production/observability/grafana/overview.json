@@ -1,0 +1,1424 @@
+{
+  "uid": "projekt-production",
+  "title": "Projekt – Betrieb und Diagnose",
+  "schemaVersion": 39,
+  "version": 3,
+  "refresh": "1m",
+  "timezone": "browser",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "tags": [
+    "production"
+  ],
+  "panels": [
+    {
+      "id": 101,
+      "title": "Letzte Logs — $service",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 11
+      },
+      "description": "Dienstauswahl oben; neueste 200 Einträge zuerst. Aktualisierung jede Minute.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{environment=\"production\",service_name=~\"${service:regex}\"}",
+          "queryType": "range",
+          "direction": "backward",
+          "maxLines": 200,
+          "legendFormat": "{{path}}"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 102,
+      "title": "Fehler / Exceptions — $service",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 11
+      },
+      "description": "Fehler nach explizitem Log-Level, Browser-Exception oder Fehlerpräfix. Keine Volltextsuche nach dem Wort error; unstrukturierte Meldungen ohne diese Merkmale können fehlen. Klassifizierte Abbrüche und Scheduler-EOF stehen separat unter „Abfrageabbrüche / Scheduler-Diagnose“; Originalmeldungen bleiben erhalten.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{environment=\"production\",service_name=~\"${service:regex}\",query_event!~\"canceled|scheduler_stream_closed|response_peer_closed\"} |~ \"(?i)(^|[ ,])level=(error|fatal|panic)([ ,]|$)|\\\"level\\\"\\\\s*:\\\\s*\\\"(error|fatal|panic)\\\"|\\\"kind\\\"\\\\s*:\\\\s*\\\"exception\\\"|\\\\[(error|crit|alert|emerg)\\\\]|^(Error:|TypeError:|ReferenceError:|SyntaxError:|Unhandled|Traceback|panic:|FATAL|ERROR)\"",
+          "queryType": "range",
+          "direction": "backward",
+          "maxLines": 200,
+          "legendFormat": "{{path}}"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 107,
+      "title": "Browserfehler — JavaScript / Promise / Error Boundary",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 24,
+        "h": 10
+      },
+      "description": "Browserfehler und unbehandelte Promise-Ablehnungen. URLs werden vor dem Versand entfernt; Web Vitals stehen separat. Keine automatische Auflösung minifizierter Frames.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{environment=\"production\",service_name=\"browser\"} | json | __error__=\"\" | kind=\"exception\"",
+          "queryType": "range",
+          "direction": "backward",
+          "maxLines": 200
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 103,
+      "title": "HTTP 5xx — URL-Filter",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 9
+      },
+      "description": "Serverfehler aus Nginx. Unabhängig von der Dienstauswahl; berücksichtigt das URL-Präfix.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json | __error__=\"\" | path=~\"${url:regex}.*\" | status >= 500",
+          "queryType": "range",
+          "direction": "backward",
+          "maxLines": 200,
+          "legendFormat": "{{path}}"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 104,
+      "title": "Requests je URL — Top 20 im Zeitraum",
+      "type": "table",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 12,
+        "h": 10
+      },
+      "description": "Anzahl im gewählten Zeitraum. Nginx inklusive Cache-Hits und statischer Dateien, keine eindeutigen Besucher. URL-Präfix filtert; Dienstauswahl gilt hier nicht.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(20, sum by (path) (count_over_time({environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json path=\"path\" | __error__=\"\" | path=~\"${url:regex}.*\" | keep path [$__range])))",
+          "queryType": "instant",
+          "direction": "backward",
+          "maxLines": 200,
+          "legendFormat": "{{path}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Anzahl",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "path": "URL-Pfad",
+              "Value": "Anzahl"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "title": "Requests pro Minute — URL-Filter",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 30,
+        "w": 12,
+        "h": 10
+      },
+      "description": "Rollierende Anzahl der Nginx-Requests in einer Minute für alle zum URL-Präfix passenden Pfade.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json path=\"path\" | __error__=\"\" | path=~\"${url:regex}.*\" | keep service_name [1m]))",
+          "queryType": "range",
+          "direction": "backward",
+          "maxLines": 200,
+          "legendFormat": "Requests / Minute"
+        }
+      ],
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 106,
+      "title": "Letzte HTTP-Anfragen — URL-Filter",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 24,
+        "h": 9
+      },
+      "description": "Alle Statuscodes, neueste 200 Requests zuerst. Pfad, Methode, Status und request_time durch Aufklappen sichtbar.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json | __error__=\"\" | path=~\"${url:regex}.*\"",
+          "queryType": "range",
+          "direction": "backward",
+          "maxLines": 200,
+          "legendFormat": "{{path}}"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 1,
+      "title": "Anfragen pro Sekunde",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(route)(rate(app_http_request_duration_seconds_count[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Anteil HTTP 5xx",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 49,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(rate(app_http_request_duration_seconds_count{status_code=~\"5..\"}[5m])) or (0 * sum(rate(app_http_request_duration_seconds_count[5m])))) / (sum(rate(app_http_request_duration_seconds_count[5m])) > 0)",
+          "legendFormat": "{{route}}{{service}}{{job}}{{instance}}{{quantile}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "description": "Next.js-App-Metriken. 0 bei Requests ohne 5xx; keine Daten ohne Traffic/Metriken. Nginx-/Grafana-502 stehen separat im HTTP-5xx-Logpanel."
+    },
+    {
+      "id": 3,
+      "title": "Latenz p50 nach Route",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 57,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum by(le, route)(rate(app_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "description": "Histogramm-Schätzung über 5 Minuten; bei wenigen Requests und breiten Buckets ungenau."
+    },
+    {
+      "id": 4,
+      "title": "Latenz p95 nach Route",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 57,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by(le, route)(rate(app_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "description": "Histogramm-Schätzung über 5 Minuten; bei wenigen Requests und breiten Buckets ungenau."
+    },
+    {
+      "id": 5,
+      "title": "Latenz p99 nach Route",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 65,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.99, sum by(le, route)(rate(app_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "description": "Histogramm-Schätzung über 5 Minuten; bei wenigen Requests und breiten Buckets ungenau."
+    },
+    {
+      "id": 6,
+      "title": "Anfragen im Zeitraum",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 65,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(route)(increase(app_http_request_duration_seconds_count[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "CPU-Auslastung",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 73,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "1 - avg by(instance)(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Verfügbarer RAM",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 73,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_memory_MemAvailable_bytes",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Freier Speicherplatz",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 81,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay|squashfs\"}",
+          "legendFormat": "{{mountpoint}} · {{device}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Container-Arbeitsspeicher",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 81,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "container_memory_working_set_bytes{container_label_com_docker_swarm_service_name!=\"\"}",
+          "legendFormat": "{{container_label_com_docker_swarm_service_name}} · {{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Node.js Event Loop p99",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 89,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nodejs_eventloop_lag_p99_seconds",
+          "legendFormat": "{{job}} · {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Node.js Heap",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 89,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nodejs_heap_size_used_bytes",
+          "legendFormat": "{{job}} · {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "PostgreSQL-Verbindungen",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 97,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "pg_stat_database_numbackends",
+          "legendFormat": "{{datname}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "PostgreSQL-Deadlocks",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 97,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(pg_stat_database_deadlocks[5m])",
+          "legendFormat": "{{datname}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "Redis-Cache-Trefferquote",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 105,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(redis_keyspace_hits_total[5m]) / clamp_min(rate(redis_keyspace_hits_total[5m])+rate(redis_keyspace_misses_total[5m]), 0.001)",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "title": "Redis-Verdrängungen",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 105,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(redis_evicted_keys_total[5m])",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 17,
+      "title": "Elasticsearch-Zustand",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 113,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "elasticsearch_cluster_health_status",
+          "legendFormat": "{{color}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "title": "Elasticsearch-Heap",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 113,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "elasticsearch_jvm_memory_used_bytes",
+          "legendFormat": "{{area}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 23,
+      "title": "Telemetrie-Ziele",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 137,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up",
+          "legendFormat": "{{job}} · {{instance}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "description": "Aktueller Scrape-Status je Target. Historische Instanzen werden nicht als aktuelle Targets angezeigt."
+    },
+    {
+      "id": 24,
+      "title": "Fehlende Repliken",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 137,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "swarm_service_desired_replicas - swarm_service_running_replicas",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 25,
+      "title": "Nginx-Anfragen pro Sekunde",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 145,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(nginx_http_requests_total[5m])",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 27,
+      "title": "Browser-Telemetrie",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 153,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=\"browser\"}",
+          "legendFormat": "{{route}}{{service}}{{job}}{{instance}}{{quantile}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 28,
+      "title": "Nginx p95 nach Anfragekategorie",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 153,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json request_time=\"request_time\", request_path=\"path\", response_status=\"status\" | response_status != 101 | request_path !~ \"^/(socket[.]io|grafana)(/.*)?$\" | request_path != \"/collect\" | request_path != \"/observability-health\" | unwrap request_time | __error__=\"\" [5m]) by (service_name)",
+          "legendFormat": "Shop"
+        },
+        {
+          "refId": "B",
+          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json request_time=\"request_time\", request_path=\"path\", response_status=\"status\" | response_status != 101 | request_path =~ \"^/socket[.]io(/.*)?$\" | unwrap request_time | __error__=\"\" [5m]) by (service_name)",
+          "legendFormat": "Sockets"
+        },
+        {
+          "refId": "C",
+          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json request_time=\"request_time\", request_path=\"path\", response_status=\"status\" | response_status != 101 | request_path =~ \"^/(grafana(/.*)?|collect|observability-health)$\" | unwrap request_time | __error__=\"\" [5m]) by (service_name)",
+          "legendFormat": "Monitoring"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "description": "5-Minuten-p95 der HTTP-Laufzeit (einschließlich Upload/Download). Status 101 ausgeschlossen: WebSocket-Verbindungsdauer ist keine Antwortlatenz. Monitoring wird getrennt angezeigt."
+    },
+    {
+      "id": 108,
+      "title": "Langsame Nginx-Anfragen (≥5s)",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 161,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json | status != 101 | request_time >= 5 | __error__=\"\"",
+          "queryType": "range",
+          "maxLines": 200
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "description": "HTTP-Requests ab 5 Sekunden, ohne WebSocket-Upgrades (101). Aufklappen: path, status, request_time, upstream_time. Socket-Polling kann absichtlich lange offen bleiben; upstream_time enthält bei Retries mehrere Werte."
+    },
+    {
+      "id": 109,
+      "title": "Langsame Next.js-Anfragen (≥5s)",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 169,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{environment=\"production\",service_name=\"nextjs\"} | json | event=\"http_request\" | duration_seconds >= 5 | __error__=\"\"",
+          "queryType": "range",
+          "maxLines": 200
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "description": "Exakte Dauer einzelner Requests statt Histogramm-Schätzung; trace_id zum zugehörigen Tempo-Trace verwenden."
+    },
+    {
+      "id": 111,
+      "title": "Nginx-Upstream-Antwort p95 (ein Versuch)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 185,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json upstream_time=\"upstream_time\", response_status=\"status\", request_path=\"path\" | response_status != 101 | request_path !~ \"^/(socket[.]io|grafana)(/.*)?$\" | request_path != \"/collect\" | request_path != \"/observability-health\" | upstream_time =~ \"^[0-9]+([.][0-9]+)?$\" | unwrap upstream_time | __error__=\"\" [5m]) by (service_name)",
+          "legendFormat": "Shop upstream p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "description": "Upstream-Antwortdauer für HTTP-Anfragen mit genau einem Upstream-Versuch. Cache-Treffer, leere Zeiten, Retries/mehrere Upstreams, WebSockets und Monitoring ausgeschlossen. Nicht reine CPU-Zeit; langsame Clients können bei großen Antworten auch den Upstream bremsen."
+    },
+    {
+      "id": 112,
+      "title": "Abfrageabbrüche / Scheduler-Diagnose — $service",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 193,
+        "w": 24,
+        "h": 11
+      },
+      "description": "response_peer_closed: Grafana konnte nach Trennung der Gegenstelle keine Antwort mehr schreiben; Ursache mit Nginx prüfen, nicht automatisch harmlos. canceled: explizit abgebrochene Abfrage. scheduler_stream_closed: EOF beim Abschluss einer Scheduler-Abfrage; ohne weiteren Kontext nicht als harmlos bestätigt. Häufige Einträge zusammen mit Nginx 499, Timeouts und Loki-Verfügbarkeit prüfen. Unveränderte Originalmeldungen, keine Löschung.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{environment=\"production\",service_name=~\"${service:regex}\",query_event=~\"canceled|scheduler_stream_closed|response_peer_closed\"}",
+          "queryType": "range",
+          "direction": "backward",
+          "maxLines": 200,
+          "legendFormat": "{{path}}"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 120,
+      "title": "Belegter Swap",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 200
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 121,
+      "title": "Swap-Aktivität pro Sekunde",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 200
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(node_vmstat_pswpin[5m]) + rate(node_vmstat_pswpout[5m])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 122,
+      "title": "OOM-Abbrüche in einer Stunde",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 208
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(node_vmstat_oom_kill[1h])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 123,
+      "title": "Alter der Grafana-Sicherung",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 208
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - grafana_backup_last_success_timestamp_seconds"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "name": "Deployments",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "enable": true,
+        "expr": "{service_name=\"nextjs\"} | json | event=\"telemetry_initialized\"",
+        "iconColor": "purple"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Dienst (Logs)",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "query": "label_values({environment=\"production\"}, service_name)",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": {
+          "text": [
+            "nextjs"
+          ],
+          "value": [
+            "nextjs"
+          ]
+        }
+      },
+      {
+        "name": "url",
+        "label": "URL-Präfix (leer = alle)",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0
+      }
+    ]
+  }
+}

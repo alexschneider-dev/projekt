@@ -4,6 +4,11 @@ version: "3.9"
 services:
   edge:
     image: ${EDGE_IMAGE:-haproxy:3.2-alpine@sha256:5893840576071e6217cd52ebdcc14f454c6f7a631056fa6f4e0f40d3cac4215b}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - frontend
     ports:

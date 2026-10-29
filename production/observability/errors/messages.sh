@@ -1,0 +1,10 @@
+OBS_SETTINGS_ERROR='Die private Monitoring-Konfiguration fehlt oder ist ungültig.'
+OBS_NODE_ERROR='Genau den lokalen Swarm-Manager mit observability=true markieren.'
+OBS_NETWORK_ERROR='Das Grafana-Proxy-Netz muss ein Overlay mit Subnetz 10.254.0.0/24 sein.'
+OBS_DEPLOY_ERROR='Die Monitoring-Bereitstellung ist fehlgeschlagen. Service-Zustand prüfen.'
+OBS_HEALTH_ERROR='Die Monitoring-Prüfung ist fehlgeschlagen. Es erfolgt kein automatischer Stack-Rollback.'
+OBS_USAGE_ERROR='Aufruf: storage-admin.sh prepare|backup'
+
+OBS_REPORT_USAGE_ERROR='Aufruf: stability-report.sh STUNDEN (1..72)'
+OBS_REPORT_CONTAINER_ERROR='Genau ein lokaler Swarm-Exporter wird benötigt.'
+OBS_REPORT_LOG_ERROR='Logabfrage fehlgeschlagen oder Zeitlimit erreicht; Container ungeprüft.'

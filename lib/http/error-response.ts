@@ -16,18 +16,16 @@ export function errorResponse(error: unknown): Response {
   if (!(error instanceof ApiError)) {
     console.error(
       ERROR_API.INTERNAL_SERVER_ERROR,
-      error
+      { error_type: error instanceof Error ? error.name : "UnbekannterFehler" }
     );
     error = createApiError(ERROR_API.INTERNAL_SERVER_ERROR);
   }
 
   const apiError = error as ApiError;
-  return Response.json(
-    {
-      error: apiError.message,
-      code: apiError.code,
-      ...(apiError.details === undefined ? {} : { details: apiError.details }),
-    },
-    { status: apiError.status }
-  );
+
+  return Response.json({
+    error: apiError.message,
+    code: apiError.code,
+    ...(apiError.details === undefined ? {} : { details: apiError.details }),
+  }, { status: apiError.status });
 }

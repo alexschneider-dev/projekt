@@ -8,6 +8,7 @@ declare module "next-auth" {
   }
   interface User { role: InternalRole; sessionVersion: number; }
 }
+
 declare module "next-auth/jwt" {
   interface JWT { sessionVersion?: number; }
 }
