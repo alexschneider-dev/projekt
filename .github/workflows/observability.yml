@@ -1,6 +1,18 @@
 name: Monitoring prüfen und bereitstellen
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - production/observability/**
+      - lib/observability/**
+      - app/api/observability/**
+      - components/observability/**
+      - services/nginx/**
+      - services/loki/**
+      - instrumentation.ts
+      - .github/workflows/observability.yml
   workflow_dispatch:
     inputs:
       deploy:
@@ -75,18 +87,18 @@ jobs:
         run: python production/observability/test-storage-integration.py
 
       - name: Bei der Image-Registry anmelden
-        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Geprüftes Loki-Image veröffentlichen
-        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         run: docker push ghcr.io/alexschneider-dev/projekt-loki:3.6.18-projekt.1
 
   deploy:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.deploy
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.deploy)
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 30

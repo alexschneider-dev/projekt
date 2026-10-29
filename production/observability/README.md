@@ -208,8 +208,14 @@ alex ALL=(root) NOPASSWD: /usr/local/lib/projekt-deploy/install-observability-re
 
 Mit `sudo visudo -c` prüfen. Der Benutzer ist damit wie beim App-Deployment ein
 vertrauenswürdiger Produktionsadministrator. Der Workflow **Monitoring prüfen und
-bereitstellen** validiert zuerst isoliert und deployt nur bei manuell gesetztem
-`deploy=true`. Er nutzt die vorhandenen `PROD_*`-Secrets und die gemeinsame
+bereitstellen** prüft relevante Änderungen in Pull Requests. Bei einem Push auf
+`main` mit Änderungen an Monitoring, Instrumentierung, Nginx, Loki oder dem Workflow
+validiert er zuerst isoliert, veröffentlicht das geprüfte Loki-Image und deployt
+anschließend automatisch. Die genauen Pfadfilter stehen im Workflow.
+Manuelle Starts bleiben möglich: `deploy=false` prüft und veröffentlicht nur das
+Image, `deploy=true` stellt anschließend bereit. Die Server-Vorbereitung und der
+aktuelle CI-Installer müssen vor dem ersten automatischen Deployment vorhanden sein.
+Der Workflow nutzt die vorhandenen `PROD_*`-Secrets und die gemeinsame
 Produktions-Concurrency-Gruppe. Erfolgreiche Installation aktiviert den Backup-Timer.
 Der oben gezeigte manuelle Installer aktiviert denselben Timer. Ein direkter Aufruf
 von `deploy.sh` aktualisiert ausschließlich den Stack und ersetzt nicht den
