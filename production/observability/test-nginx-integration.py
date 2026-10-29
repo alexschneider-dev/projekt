@@ -96,6 +96,8 @@ def main():
                 network,
                 "-p",
                 "127.0.0.1::443",
+                "-p",
+                "127.0.0.1::8443",
                 "-v",
                 f"{root}:/etc/letsencrypt/live/alex-schneider-dev.de:ro",
                 IMAGE,
@@ -151,6 +153,58 @@ def main():
                 )[1]
                 == "302"
             )
+            edge_port = command(
+                "docker",
+                "port",
+                nginx,
+                "8443/tcp",
+            ).rsplit(
+                ":",
+                1,
+            )[-1]
+            # Den Produktionsweg mit PROXY-Protokoll und internem TLS-Port prüfen.
+            for path, target in [
+                (
+                    "/grafana/",
+                    "/login",
+                ),
+                (
+                    "/grafana/d/projekt-production",
+                    "/login",
+                ),
+                (
+                    "/grafana",
+                    "/grafana/",
+                ),
+            ]:
+                response = command(
+                    "curl",
+                    "--silent",
+                    "--show-error",
+                    "--insecure",
+                    "--noproxy",
+                    "*",
+                    "--haproxy-protocol",
+                    "--resolve",
+                    f"alex-schneider-dev.de:{edge_port}:127.0.0.1",
+                    "-H",
+                    "Host: alex-schneider-dev.de",
+                    "--dump-header",
+                    "-",
+                    "--output",
+                    "/dev/null",
+                    f"https://alex-schneider-dev.de:{edge_port}{path}",
+                )
+                assert " 302 " in response, response
+                location = next(
+                    line.split(
+                        ":",
+                        1,
+                    )[1].strip()
+                    for line in response.splitlines()
+                    if line.lower().startswith("location:")
+                )
+                assert location == f"https://alex-schneider-dev.de{target}", location
             body, status = request(
                 "Cookie: role=USER",
                 "X-Webauth-User: admin",
