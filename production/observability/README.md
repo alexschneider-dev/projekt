@@ -150,6 +150,23 @@ Die Terminalmeldung nennt einen erkannten S3-Fehlercode und den Dateipfad.
 Die private Diagnose lokal prüfen und nach Behebung löschen; Rohlogs nicht
 ungeprüft weitergeben. Für einen erneuten Speichertest keine Secrets neu erzeugen.
 
+## S3-Zugangsdaten vor der ersten Bereitstellung korrigieren
+
+Wenn noch kein Service die S3-Secrets verwendet, die Schlüssel in der privaten
+JSON-Datei und Endpunkt, Bucket sowie Region in `observability.env` korrigieren.
+Dann ausschließlich die beiden S3-Secrets ersetzen:
+
+```sh
+sudo bash -c 'set -a; source /etc/projekt/observability.env; set +a; node production/observability/replace-s3-secrets.mjs /etc/projekt/monitoring-input.json'
+sudo bash production/observability/storage-admin.sh prepare
+```
+
+Das Werkzeug prüft Service-Referenzen vor Änderungen und verweigert den Austausch
+verwendeter Secrets. Es ersetzt ungenutzte S3-Secrets unter den bisherigen Namen;
+PostgreSQL, Grafana und SMTP bleiben unverändert. Der Austausch beider Secrets ist
+nicht atomar. Nach einem Teilerfolg kann derselbe Befehl erneut ausgeführt werden.
+Für eine bereits laufende Installation ist eine versionierte Rotation erforderlich.
+
 ## Bereitstellung
 
 1. Das Proxy-Netz muss vor dem nächsten Nginx-/Stack-Deploy existieren.

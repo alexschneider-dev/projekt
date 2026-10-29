@@ -3,7 +3,7 @@ set -Eeuo pipefail
 cd "$(dirname "$0")"
 python="${PYTHON:-python3}"
 for file in *.sh; do bash -n "$file"; done
-node --test config-revisions.test.mjs settings.test.mjs
+node --test config-revisions.test.mjs settings.test.mjs replace-s3-secrets.test.mjs
 "$python" - <<'PY'
 import json
 from pathlib import Path
