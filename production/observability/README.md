@@ -50,6 +50,13 @@ Datenvolumen, Abfragen, S3-Störungen, Verdichtung und Deployments deutlich stei
 Bei dauerhaftem Ein-/Auslagern oder OOM-Abbrüchen RAM erhöhen oder Dienste auslagern.
 Builds und umfangreiche Integrationstests auf CI beziehungsweise dem Entwicklungsrechner ausführen.
 
+Das cAdvisor-Limit beträgt 256 MiB. Mit 128 MiB wurden auf dem Zielhost wiederholte
+`memory.events:max`-Ereignisse, Swap-Nutzung und Speicherwartezeiten gemessen.
+Das höhere Limit schafft Spielraum für diesen Container, reserviert jedoch keinen
+zusätzlichen RAM und garantiert keine Entlastung des Hosts. Nach der Änderung
+cAdvisor-Verbrauch, `memory.pressure` und `vmstat` erneut prüfen. Sammelintervall
+(30 Sekunden) und erfasste Metriken bleiben unverändert.
+
 Nach Installation mindestens 24 Stunden einschließlich Dashboard-Abfragen,
 Logsuche, Thanos-Verdichtung, Grafana-Sicherung und Anwendungs-Update beobachten:
 
