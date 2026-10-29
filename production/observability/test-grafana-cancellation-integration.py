@@ -22,6 +22,7 @@ sys.path.insert(
     str(pathlib.Path(__file__).resolve().parent / "errors"),
 )
 from messages import ERRORS
+from nginx_test_network import backend_address
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -215,13 +216,18 @@ try:
             "-subj",
             "/CN=alex-schneider-dev.de",
         )
-        backend = f"host.docker.internal:{server.server_port}"
+        backend, resolve = backend_address(
+            platform.system(),
+            network,
+            server.server_port,
+            cmd,
+        )
         config = (
             (ROOT / "services/nginx/default.conf")
             .read_text()
             .replace(
                 "tasks.nextjs:3000 resolve",
-                backend + " resolve",
+                backend + resolve,
             )
             .replace(
                 "observability_grafana:3000",
@@ -241,14 +247,6 @@ try:
             "--rm",
             "--network",
             network,
-            *(
-                [
-                    "--add-host",
-                    "host.docker.internal:host-gateway",
-                ]
-                if platform.system() == "Linux"
-                else []
-            ),
             "-p",
             "127.0.0.1::443",
             "-v",
