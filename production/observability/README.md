@@ -7,6 +7,14 @@ Thanos Sidecar, Store, Query und Compact. Die Anwendung bleibt im Stack `projekt
 
 Die Dateien bereiten die Installation vor. Es wird kein Server automatisch umgestellt.
 S3 und SMTP müssen vor der Installation eingerichtet sein.
+
+Alle Monitoring-Container verwenden Docker-Logrotation mit `json-file`,
+`max-size: "20m"` und `max-file: "5"` (ca. 100 MB pro Container).
+Ein Deployment übernimmt diese Einstellungen durch Ersetzen der Container.
+Die Grenze gilt für Docker-stdout/stderr-Logs; Datenvolumes und S3-Aufbewahrung
+bleiben davon unabhängig. Details und Kontrolle:
+[Lokale Docker-Logs](../README.md#lokale-docker-logs).
+
 Elasticsearch und dessen Exporter sind nicht enthalten; `ELASTICSEARCH_URL` wird nicht benötigt. Nicht vorhandene Chat-, Cron- und
 Datenbank-Backup-Dienste werden nicht als scheinbar funktionierende Datenquellen angezeigt.
 

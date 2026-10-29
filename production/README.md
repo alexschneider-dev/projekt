@@ -1,5 +1,35 @@
 # Produktion: CI/CD und Swarm Secrets
 
+## Lokale Docker-Logs
+
+Die Produktionskonfigurationen begrenzen `json-file`-Logs pro Container auf fünf
+Dateien: Nginx jeweils `100m` (ca. 500 MB insgesamt), Next.js jeweils `50m`
+(ca. 250 MB), alle übrigen Dienste einschließlich Edge und Monitoring jeweils
+`20m` (ca. 100 MB). Alte Dateien werden bei der Rotation entfernt. Die Grenze
+gilt pro Container, nicht für den gesamten Server; zurückbehaltene alte Container
+besitzen eigene Logdateien.
+
+Die Rotation begrenzt die Größe, garantiert aber keine Aufbewahrungsdauer.
+Bei längeren Ausfällen der Logübertragung können noch nicht übertragene Logs
+verloren gehen. Datenvolumes von Loki, Tempo und Prometheus sowie die Aufbewahrung
+in S3 werden dadurch nicht begrenzt.
+
+Nach Commit und Push übernimmt der Workflow **Stack-Konfiguration für Produktion
+bereitstellen** die Einstellungen für die Anwendung ohne Image-Neubau.
+Edge separat aus dem aktualisierten Checkout im Ordner `production` mit
+`sudo docker stack deploy -c compose.edge.yml projekt-edge` bereitstellen.
+Monitoring wird separat über **Monitoring prüfen und bereitstellen** aktualisiert.
+Betroffene Container werden dabei ersetzt; Dienste mit einer Replik können kurz
+unterbrochen werden. `runtime.json` kann diese Logging-Einstellungen nicht
+überschreiben. Die Änderung im Repository allein stellt keinen Server um.
+
+Nach dem Deployment die laufenden Container prüfen:
+
+```sh
+sudo docker ps -q | xargs -r sudo docker inspect --format \
+  '{{.Name}} | {{json .HostConfig.LogConfig}}'
+```
+
 ## Nginx hinter HAProxy
 
 Der separate Stack `projekt-edge` übernimmt die öffentlichen Ports 80 und 443.

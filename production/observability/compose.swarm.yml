@@ -74,8 +74,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   prometheus:
     image: prom/prometheus:v3.15.1
     networks:
@@ -117,8 +117,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   loki:
     image: ghcr.io/alexschneider-dev/projekt-loki:3.6.18-projekt.1
     networks:
@@ -161,8 +161,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   tempo:
     stop_grace_period: 60s
     image: grafana/tempo:2.10.8
@@ -206,8 +206,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   alloy:
     stop_grace_period: 60s
     image: grafana/alloy:v1.21.1
@@ -247,8 +247,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   node:
     image: prom/node-exporter:v1.12.1
     networks:
@@ -280,8 +280,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   cadvisor:
     image: ghcr.io/google/cadvisor:0.60.6
     networks:
@@ -315,8 +315,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   postgres-exporter:
     image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
     networks:
@@ -347,8 +347,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   redis-exporter:
     image: oliver006/redis_exporter:v1.95.0
     networks:
@@ -375,8 +375,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:1.5.3
     networks:
@@ -403,8 +403,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   swarm-exporter:
     image: python:3.13.9-alpine3.22
     networks:
@@ -442,8 +442,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   thanos-sidecar:
     image: quay.io/thanos/thanos:v0.40.1
     user: 0:0
@@ -482,8 +482,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   thanos-store:
     image: quay.io/thanos/thanos:v0.40.1
     user: 0:0
@@ -526,8 +526,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   thanos-query:
     image: quay.io/thanos/thanos:v0.40.1
     user: 0:0
@@ -562,8 +562,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
   thanos-compact:
     image: quay.io/thanos/thanos:v0.40.1
     user: 0:0
@@ -607,8 +607,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: 10m
-        max-file: '3'
+        max-size: 20m
+        max-file: '5'
 networks:
   monitoring:
     driver: overlay
