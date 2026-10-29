@@ -7,6 +7,12 @@ flock -w 900 9
 RUNTIME=/etc/projekt/runtime.json
 [[ -s "$RUNTIME" ]] || { echo "Zuerst $RUNTIME vorbereiten." >&2; exit 1; }
 
+# Die Laufzeitdatei darf keine Betriebsparameter aus Compose überschreiben.
+umask 077
+work_dir=$(mktemp -d)
+trap 'rm -rf -- "$work_dir"' EXIT
+node runtime-overlay.mjs "$RUNTIME" "$work_dir/runtime.json"
+
 # Die Image-Versionen aus Swarm sind maßgeblich. Eine Konfigurationsänderung
 # darf eine vorherige unabhängige Service-Bereitstellung nicht zurücksetzen.
 for service in nextjs nginx postgres redis; do
@@ -17,9 +23,9 @@ for service in nextjs nginx postgres redis; do
   export "$key=$image"
 done
 
-docker stack config -c compose.swarm.yml -c "$RUNTIME" >/dev/null
+docker stack config -c compose.swarm.yml -c "$work_dir/runtime.json" >/dev/null
 docker stack deploy --detach=false --resolve-image never --with-registry-auth \
-  -c compose.swarm.yml -c "$RUNTIME" projekt
+  -c compose.swarm.yml -c "$work_dir/runtime.json" projekt
 
 # Konvergierte Tasks bedeuten noch nicht, dass die Überwachungsphase beendet ist.
 # Für den gesamten Stack höchstens fünf Minuten auf den Abschluss warten.

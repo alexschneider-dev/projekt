@@ -23,7 +23,7 @@ runs:
         trap 'ssh "${ssh_opts[@]}" "$target" "rm -rf -- ${remote_dir}"' EXIT
         scp "${ssh_opts[@]}" \
           production/deploy.sh production/deploy-stack.sh production/migrate.sh \
-          production/compose.swarm.yml \
+          production/compose.swarm.yml production/runtime-overlay.mjs \
           "$target:$remote_dir/"
         ssh "${ssh_opts[@]}" "$target" \
           "sudo -n /usr/local/lib/projekt-deploy/install-release.sh '$remote_dir'"

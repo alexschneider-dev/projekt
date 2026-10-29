@@ -133,7 +133,9 @@ sudo install -o root -g root -m 0755 \
   production/install-release.sh production/deploy.sh \
   production/deploy-stack.sh production/migrate.sh \
   /usr/local/lib/projekt-deploy/
-sudo install -o root -g root -m 0644 production/compose.swarm.yml /usr/local/lib/projekt-deploy/
+sudo install -o root -g root -m 0644 \
+  production/compose.swarm.yml production/runtime-overlay.mjs \
+  /usr/local/lib/projekt-deploy/
 sudo visudo -f /etc/sudoers.d/projekt-deploy
 ```
 
@@ -252,3 +254,26 @@ führt noch keine Installation auf dem Server aus.
 Vollständige Sicherungen laufen alle sechs Stunden über den Monitoring-Installer
 und verwenden denselben privaten S3-Bucket wie die Logs. Einrichtung, Aufbewahrung
 und Wiederherstellung sind unter [PostgreSQL-Sicherungen](observability/README.md#postgresql-sicherungen) beschrieben.
+
+### Vorrang der Compose-Datei
+
+`production/compose.swarm.yml` bestimmt Ressourcen, Replikate, Update- und
+Rollback-Strategie, Healthchecks, Netzwerke, Volumes und Startbefehle.
+Next.js verwendet `start-first`, reserviert 256 MiB und hat ein Limit von 1 GiB.
+Die Reservierung ist eine Planungsgröße und senkt nicht den tatsächlichen Verbrauch.
+
+Beide Deployment-Skripte ergänzen aus `/etc/projekt/runtime.json` ausschließlich
+`environment`, `secrets` und `configs` sowie die globalen Secret-/Config-Referenzen.
+Alte Einträge wie `services.nextjs.deploy` werden ignoriert; die Originaldatei wird
+nicht verändert. Die Startbefehle zum Laden der Secrets stehen in Compose.
+
+Image-Versionen bleiben bewusst separat: Ein Service-Release verwendet seinen
+angeforderten Tag, ein Stack-Deployment erhält die aktuell laufenden Images.
+
+Bei einer bestehenden Installation zuerst den aktualisierten Installer und alle
+Deployment-Dateien nach Abschnitt 2 installieren. Der bisherige Installer kopiert
+`runtime-overlay.mjs` noch nicht. Anschließend wie gewohnt ausführen:
+
+```sh
+sudo /usr/local/lib/projekt-deploy/deploy-stack.sh
+```

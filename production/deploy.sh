@@ -44,15 +44,20 @@ docker service inspect "$SWARM_SERVICE" >/dev/null
 umask 077
 work_dir=$(mktemp -d)
 trap 'rm -rf -- "$work_dir"' EXIT
+node runtime-overlay.mjs "$RUNTIME" "$work_dir/runtime.json" "$SERVICE"
 
 # Hier nur die Basis-YAML normalisieren. Docker lehnt leere JSON-Secret-Listen
 # mit --skip-interpolation ab; die Laufzeitkonfiguration erst danach ergänzen.
 # Für andere Services werden bei der Auswahl keine Image-Variablen benötigt.
 docker stack config --skip-interpolation \
   -c compose.swarm.yml > "$work_dir/all.yml"
-node - "$SERVICE" "$work_dir" "${IMAGE}:${VERSION}" "$RUNTIME" <<'NODE'
+node - "$SERVICE" "$work_dir" "${IMAGE}:${VERSION}" <<'NODE'
 const fs = require("node:fs");
-const [service, directory, image, runtimePath] = process.argv.slice(2);
+const [
+  service,
+  directory,
+  image
+] = process.argv.slice(2);
 const lines = fs.readFileSync(`${directory}/all.yml`, "utf8").split("\n");
 let inServices = false, keep = false, found = 0, sections = 0;
 const selected = [];
@@ -80,11 +85,6 @@ for (const line of lines) {
 }
 if (sections !== 1 || found !== 1) throw new Error("Ausgewählter Service fehlt oder ist nicht eindeutig");
 fs.writeFileSync(`${directory}/service.yml`, selected.join("\n"));
-// Laufzeitkonfiguration vor dem Zusammenführen auswählen, auch ohne Secrets.
-const runtime = JSON.parse(fs.readFileSync(runtimePath, "utf8"));
-fs.writeFileSync(`${directory}/runtime.json`, JSON.stringify({
-  ...runtime, services: { [service]: runtime.services?.[service] || {} },
-}));
 // Das angegebene Release-Image hat Vorrang vor Basis- und Laufzeitkonfiguration.
 fs.writeFileSync(`${directory}/image.json`, JSON.stringify({
   version: "3.9", services: { [service]: { image } },

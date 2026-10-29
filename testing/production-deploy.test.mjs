@@ -51,6 +51,10 @@ function fixture(t) {
   t.after(() => rmSync(dir, { recursive: true, force: true }));
 
   mkdirSync(join(dir, "bin"));
+  writeFileSync(
+    join(dir, "runtime-overlay.mjs"),
+    readFileSync(join(root, "production/runtime-overlay.mjs"))
+  );
 
   return dir;
 }
@@ -98,7 +102,8 @@ test("Umstellung hält Zugangsdaten aus dem Manifest heraus; erzeugter Stack ent
 
   assert.equal(spec.services.nextjs.environment.NEXTAUTH_URL, "https://example.test/$$literal");
   assert.ok(spec.services.nextjs.secrets.some(s => s.target === "runtime_DATABASE_URL"));
-  assert.deepEqual(spec.services.postgres.command, ["postgres"]);
+  assert.equal(spec.services.postgres.command, undefined);
+  assert.equal(spec.services.nextjs.entrypoint, undefined);
 
   const imageEnv = Object.fromEntries(["NEXTJS", "NGINX", "POSTGRES", "REDIS"]
     .map(name => [`${name}_IMAGE`, "example/test:1.0"]));
@@ -200,6 +205,15 @@ for (const service of ["nextjs", "nginx"]) {
         version: "3.9",
         services: Object.fromEntries(Object.keys(base.services).map(name => [name, {
           environment: { TEST_LITERAL: "keep-$$literal" },
+          deploy: {
+            replicas: 9,
+            update_config: { order: "stop-first" },
+            resources: { limits: { memory: "8G" } },
+          },
+          image: "example/wrong:9.0",
+          command: ["false"],
+          entrypoint: ["false"],
+          networks: ["unexpected"],
           secrets: ["nginx", "redis"].includes(name)
             ? [] : [{ source: "test_token", target: "runtime_NEW_API_TOKEN" }],
           configs: [{ source: "entrypoint", target: "/production-entrypoint.sh" }],
@@ -258,6 +272,10 @@ if (args[0] === 'service' && args[1] === 'inspect') {
 
       assert.equal(spec.image, `ghcr.io/alexschneider-dev/${repository}:2.0`);
       assert.equal(spec.deploy.replicas, 4);
+      assert.equal(spec.deploy.update_config.order, "start-first");
+      assert.deepEqual(spec.command, base.services[service].command);
+      assert.deepEqual(spec.entrypoint, base.services[service].entrypoint);
+      assert.ok(!Object.hasOwn(spec.networks, "unexpected"));
       assert.equal(Number(spec.deploy.resources.limits.memory), 384 * 1024 * 1024);
 
       if (service === "nginx") {
@@ -315,4 +333,99 @@ esac
   for (const service of ["nextjs", "nginx", "postgres", "redis"]) {
     assert.ok(calls.includes(`${service.toUpperCase()}_IMAGE=example/projekt_${service}:2.0@sha256:live`));
   }
+});
+
+test("Stack verwendet Compose trotz widersprüchlicher Laufzeit-Betriebsparameter", t => {
+  const dir = fixture(t);
+  const captured = join(dir, "applied.yml");
+  const runtimePath = join(dir, "runtime.json");
+  const dockerPath = run("sh", [
+    "-c",
+    "command -v docker"
+  ]).stdout.trim();
+  const runtime = {
+    services: {
+      nextjs: {
+        deploy: {
+          replicas: 9,
+          update_config: { order: "stop-first" },
+          rollback_config: { order: "stop-first" },
+          resources: {
+            reservations: { memory: "128M" },
+            limits: { memory: "8G" }
+          }
+        },
+        image: "example/wrong:9.0",
+        command: ["false"],
+        environment: { NEXTAUTH_URL: "https://example.test" },
+        secrets: [{
+          source: "auth",
+          target: "runtime_NEXTAUTH_SECRET"
+        }],
+        configs: [{
+          source: "entrypoint",
+          target: "/production-entrypoint.sh"
+        }]
+      },
+      unexpected: { image: "example/unexpected:1.0" }
+    },
+    secrets: { auth: {
+      external: true,
+      name: "existing_auth"
+    } },
+    configs: { entrypoint: {
+      external: true,
+      name: "existing_entrypoint"
+    } }
+  };
+
+  writeFileSync(runtimePath, JSON.stringify(runtime));
+  writeFileSync(join(dir, "compose.swarm.yml"), readFileSync(join(root, "production/compose.swarm.yml")));
+  writeFileSync(join(dir, "bin/flock"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  writeFileSync(join(dir, "bin/docker"), `#!/usr/bin/env node
+const fs = require("node:fs");
+const { spawnSync } = require("node:child_process");
+const args = process.argv.slice(2);
+if (args[0] === "service" && args[1] === "inspect") {
+  console.log(args.join(" ").includes("UpdateStatus") ? "completed" : "example/image:1.0");
+} else if (args[0] === "stack") {
+  const files = [];
+  args.forEach((arg, i) => { if (arg === "-c") files.push("-c", args[i + 1]); });
+  const result = spawnSync(process.env.REAL_DOCKER, ["stack", "config", ...files], { encoding: "utf8" });
+  if (args[1] === "deploy") fs.writeFileSync(process.env.CAPTURED, result.stdout || "");
+  process.stderr.write(result.stderr || "");
+  process.exit(result.status ?? 1);
+}
+`, { mode: 0o755 });
+  writeFileSync(join(dir, "deploy-stack.sh"), readFileSync(join(root, "production/deploy-stack.sh"), "utf8")
+    .replace("/var/lock/projekt-deploy.lock", join(dir, "lock"))
+    .replace("/etc/projekt/runtime.json", runtimePath));
+
+  const result = run("bash", [join(dir, "deploy-stack.sh")], {
+    PATH: `${dir}/bin:${process.env.PATH}`,
+    REAL_DOCKER: dockerPath,
+    CAPTURED: captured
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+
+  const applied = yaml.load(readFileSync(captured, "utf8"));
+  const app = applied.services.nextjs;
+
+  assert.equal(app.deploy.replicas, 1);
+  assert.equal(app.deploy.update_config.order, "start-first");
+  assert.equal(app.deploy.rollback_config.order, "start-first");
+  assert.equal(Number(app.deploy.resources.reservations.memory), 256 * 1024 * 1024);
+  assert.equal(Number(app.deploy.resources.limits.memory), 1024 * 1024 * 1024);
+  assert.equal(app.image, "example/image:1.0");
+  assert.deepEqual(app.command, [
+    "node",
+    "server.js"
+  ]);
+  assert.equal(app.environment.NEXTAUTH_URL, "https://example.test");
+  assert.equal(app.secrets[0].target, "runtime_NEXTAUTH_SECRET");
+  assert.equal(app.configs[0].target, "/production-entrypoint.sh");
+  assert.equal(applied.secrets.auth.name, "existing_auth");
+  assert.equal(applied.services.unexpected, undefined);
+  assert.deepEqual(JSON.parse(readFileSync(runtimePath, "utf8")), runtime);
 });

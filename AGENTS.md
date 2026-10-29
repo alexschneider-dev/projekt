@@ -185,3 +185,13 @@ Anweisungen des Nutzers haben Vorrang.
   `apiHandler` und `errorResponse` übernehmen die einheitliche Fehlerantwort
   einschließlich allgemeiner Prisma-Fehler. Interne Fehlerdetails nicht an
   den Client weitergeben.
+
+## Produktionsbereitstellung
+
+- `production/compose.swarm.yml` ist die maßgebliche Quelle für Betriebsparameter,
+  insbesondere Ressourcen, Replikate und Update-Strategien.
+- `runtime.json` ergänzt nur Umgebungsvariablen und Secret-/Config-Einbindungen;
+  keine Deployment-Einstellungen darin pflegen. Beide Deployment-Wege müssen
+  diese Trennung durchsetzen.
+- Für Next.js `start-first` beibehalten; keine Umstellung auf `stop-first` ohne
+  ausdrücklichen Auftrag des Nutzers.

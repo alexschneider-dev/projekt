@@ -26,18 +26,6 @@ const filenames = {
   nextjs: "nextjs",
   postgres: "postgres"
 };
-const entrypoints = {
-  nextjs: ["docker-entrypoint.sh"],
-  postgres: ["docker-entrypoint.sh"],
-};
-const commands = {
-  nextjs: [
-    "node",
-    "server.js"
-  ],
-  postgres: ["postgres"]
-};
-
 const manifest = {
   version: "3.9",
   services: {},
@@ -56,17 +44,11 @@ for (const [service, filename] of Object.entries(filenames)) {
   const spec = {
     environment: {},
     secrets: [],
-    command: commands[service],
     configs: [{
       source: "production_entrypoint",
       target: "/production-entrypoint.sh",
       mode: 292
     }],
-    entrypoint: [
-      "/bin/sh",
-      "/production-entrypoint.sh",
-      ...entrypoints[service]
-    ],
   };
 
   for (const [key, value] of Object.entries(values)) {
