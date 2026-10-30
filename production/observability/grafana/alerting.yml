@@ -1805,3 +1805,19 @@ policies:
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
+  routes:
+  - receiver: operations-email
+    object_matchers:
+    - - alertname
+      - =~
+      - 'Anhaltende Swap-Aktivität|Weniger als 15 % Swap frei'
+    mute_time_intervals:
+    - swap-dauerhaft-stumm
+    continue: false
+muteTimes:
+- orgId: 1
+  name: swap-dauerhaft-stumm
+  time_intervals:
+  - times:
+    - start_time: '00:00'
+      end_time: '24:00'

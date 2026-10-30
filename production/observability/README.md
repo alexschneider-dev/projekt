@@ -478,3 +478,11 @@ fünf Minuten anhält. `FIRING` bedeutet, dass die Regel ausgelöst hat; es ist 
 Entwarnung und kein bloßer Versandtest. Einlagerungen nach Start oder Sicherung
 können die Regel auslösen. Mit `vmstat 1 60`, verfügbarem RAM, Antwortzeiten und
 I/O-Wartezeit bewerten; die erste vmstat-Zeile ist der Mittelwert seit Systemstart.
+
+Die E-Mail-Benachrichtigungen für **Anhaltende Swap-Aktivität** und
+**Weniger als 15 % Swap frei** sind über die Benachrichtigungsrichtlinie und das
+ganztägige Zeitintervall `swap-dauerhaft-stumm` dauerhaft stummgeschaltet.
+Beide Regeln werden weiterhin ausgewertet und bleiben in Grafana sichtbar.
+Andere Alarme senden weiterhin E-Mails. Die Änderung wird mit dem nächsten
+Monitoring-Deployment wirksam. Zum erneuten Aktivieren der Swap-E-Mails die
+zugehörige Unterroute unter `policies` in `grafana/alerting.yml` entfernen.
