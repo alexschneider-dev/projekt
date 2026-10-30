@@ -21,10 +21,7 @@ export function DashboardNavigation({ role }: { role: InternalRole }) {
       >
         Übersicht
       </AppLink>
-      {hasRole(
-        role,
-        ADMIN
-      ) && (
+      {hasRole(role, ADMIN) && (
         <AppLink
           href={ROUTES.admin}
           variant="navigation"
@@ -32,21 +29,16 @@ export function DashboardNavigation({ role }: { role: InternalRole }) {
           Administration
         </AppLink>
       )}
-      {hasRole(
-        role,
-        SUPER_ADMIN
-      ) && (
+      {hasRole(role, SUPER_ADMIN) && (
         <AppLink
           href={ROUTES.grafana}
+          navigationMode="document"
           variant="navigation"
         >
           Monitoring
         </AppLink>
       )}
-      {hasRole(
-        role,
-        SUPER_ADMIN
-      ) && (
+      {hasRole(role, SUPER_ADMIN) && (
         <AppLink
           href={ROUTES.superAdmin}
           variant="navigation"

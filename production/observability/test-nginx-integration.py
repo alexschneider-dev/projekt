@@ -14,6 +14,19 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         cookie = self.headers.get('Cookie', '')
         if self.path == '/api/observability/auth':
+            router_headers = [
+                'RSC',
+                'Next-Router-State-Tree',
+                'Next-Router-Prefetch',
+                'Next-Router-Segment-Prefetch',
+                'Next-Url',
+                'Next-Action',
+            ]
+            if any(self.headers.get(name) for name in router_headers):
+                self.send_response(307)
+                self.send_header('Location', '/api/observability/auth?_rsc=test')
+                self.end_headers()
+                return
             role = cookie.removeprefix('role=')
             self.send_response(204 if role == 'SUPER_ADMIN' else 403 if role in ['USER', 'ADMIN'] else 401)
             if role == 'SUPER_ADMIN':
@@ -153,6 +166,38 @@ def main():
                 )[1]
                 == "302"
             )
+            # Router-Header dürfen weder die Auth-Prüfung umleiten noch Rollenprüfungen umgehen.
+            for role, expected in [
+                (
+                    "",
+                    "302",
+                ),
+                (
+                    "USER",
+                    "403",
+                ),
+                (
+                    "ADMIN",
+                    "403",
+                ),
+                (
+                    "SUPER_ADMIN",
+                    "200",
+                ),
+            ]:
+                body, status = request(
+                    f"Cookie: role={role}",
+                    "RSC: 1",
+                    "Next-Router-State-Tree: %5B%22%22%5D",
+                    "Next-Router-Prefetch: 1",
+                    "Next-Router-Segment-Prefetch: /_tree",
+                    "Next-Url: /super-admin",
+                    "Next-Action: test",
+                )
+                assert status == expected, (
+                    status,
+                    body,
+                )
             edge_port = command(
                 "docker",
                 "port",

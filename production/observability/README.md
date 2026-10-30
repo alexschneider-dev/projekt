@@ -31,6 +31,9 @@ Datenbank-Backup-Dienste werden nicht als scheinbar funktionierende Datenquellen
   Zugriff wird serverseitig gegen den aktuellen Benutzer geprüft. Nur `SUPER_ADMIN` erhält
   Zugriff mit der Grafana-Organisationsrolle `Admin`; `ADMIN` und `USER` werden abgewiesen.
   Das ist keine globale Grafana-Serveradministratorrolle.
+  Der Monitoring-Link lädt ein vollständiges Dokument ohne Next.js-Prefetch.
+  Die interne Nginx-Auth-Anfrage verwendet GET und ausschließlich explizit gesetzte
+  Header, damit RSC- und Router-Header keine 307-Weiterleitung auslösen.
 - Die Homepage bleibt nach der Anmeldung das Ziel. Monitoring ist über die Navigation
   im internen Bereich erreichbar. Nicht angemeldete Grafana-Aufrufe führen zum Login.
 - Nur Nginx und Grafana gehören in `projekt_grafana_proxy` mit Subnetz

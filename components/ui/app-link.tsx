@@ -10,23 +10,49 @@ const variants = {
   authBrand: "mb-8 inline-block text-sm font-semibold tracking-wide text-primary",
 };
 
-type AppLinkProps = ComponentProps<typeof Link> & {
+type AppLinkProps = {
   variant?: keyof typeof variants;
-};
+} & (
+  | (ComponentProps<typeof Link> & { navigationMode?: "client" })
+  | (ComponentProps<"a"> & { navigationMode: "document" })
+);
 
 export function AppLink({
   className,
   variant = "text",
   ...props
 }: AppLinkProps) {
+  const linkClassName = cn(
+    "focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-4",
+    variants[variant],
+    className
+  );
+
+  if (props.navigationMode === "document") {
+    const {
+      navigationMode,
+      ...anchorProps
+    } = props;
+
+    return (
+      <a
+        data-navigation-mode={navigationMode}
+        className={linkClassName}
+        {...anchorProps}
+      />
+    );
+  }
+
+  const {
+    navigationMode,
+    ...linkProps
+  } = props;
+
   return (
     <Link
-      className={cn(
-        "focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-4",
-        variants[variant],
-        className
-      )}
-      {...props}
+      data-navigation-mode={navigationMode}
+      className={linkClassName}
+      {...linkProps}
     />
   );
 }
