@@ -150,7 +150,7 @@ def task_failure(
 class S3:
     def __init__(self):
         self.cfg = settings()
-        revision = os.environ["OBS_SECRET_REVISION"]
+        revision = os.environ.get("OBS_S3_SECRET_REVISION") or os.environ["OBS_SECRET_REVISION"]
         if not re.fullmatch(
             r"[a-z0-9-]{1,24}",
             revision,
@@ -466,7 +466,7 @@ def backup():
 
 def prepare():
     cfg = settings()
-    revision = os.environ["OBS_SECRET_REVISION"]
+    revision = os.environ.get("OBS_S3_SECRET_REVISION") or os.environ["OBS_SECRET_REVISION"]
     if not re.fullmatch(
         r"[a-z0-9-]{1,24}",
         revision,

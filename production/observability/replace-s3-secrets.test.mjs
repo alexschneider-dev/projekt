@@ -134,3 +134,29 @@ test(
     );
   }
 );
+
+
+test("Separate S3-Revision bewahrt die Secrets der laufenden Installation", () => {
+  const {
+    calls,
+    execute,
+  } = fixture(true);
+  replaceS3Secrets(credentials, {
+    ...env,
+    OBS_S3_SECRET_REVISION: "r2-20261030",
+    LOKI_S3_ENDPOINT: "https://account.eu.r2.cloudflarestorage.com",
+    LOKI_S3_REGION: "auto",
+  }, execute);
+  const mutations = calls.filter(call => [
+    "rm",
+    "create",
+  ].includes(call.args[1]));
+  assert.equal(mutations.length, 2);
+  for (const call of mutations) {
+    assert.equal(call.args[1], "create");
+    assert.match(call.args[2], /^projekt_obs_(loki_s3_credentials|thanos_s3)_r2-20261030$/);
+  }
+  const thanos = JSON.parse(mutations[1].input);
+  assert.equal(thanos.config.region, "auto");
+  assert.equal(thanos.config.endpoint, "account.eu.r2.cloudflarestorage.com");
+});

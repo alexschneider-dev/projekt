@@ -182,6 +182,53 @@ PostgreSQL, Grafana und SMTP bleiben unverändert. Der Austausch beider Secrets 
 nicht atomar. Nach einem Teilerfolg kann derselbe Befehl erneut ausgeführt werden.
 Für eine bereits laufende Installation ist eine versionierte Rotation erforderlich.
 
+## S3-Anbieter einer laufenden Installation wechseln
+
+Zuerst die aktualisierten Skripte über den regulären Monitoring-Release bereitstellen,
+damit auch die installierten Sicherungsjobs die separate S3-Revision unterstützen.
+Die bisherige Konfiguration dabei noch beibehalten.
+
+Für einen neuen Bucket ohne Übernahme der bisherigen Remote-Daten eine Kopie
+von `/etc/projekt/observability.env` als `/etc/projekt/observability-r2.env`
+anlegen (root:root, Modus `0600`). Darin `LOKI_S3_ENDPOINT`, `LOKI_S3_BUCKET`
+und `LOKI_S3_REGION` ändern sowie eine neue `OBS_S3_SECRET_REVISION` setzen.
+`OBS_SECRET_REVISION` unverändert lassen: Grafana, SMTP und PostgreSQL verwenden
+weiterhin diese Revision. Ohne separate S3-Revision bleibt das bisherige Verhalten.
+Für Cloudflare R2 gilt Region `auto`; der HTTPS-Endpunkt enthält keinen Bucketpfad.
+Bei EU-Buckets den EU-Endpunkt aus dem Dashboard verwenden.
+
+Die neuen Schlüssel in `/etc/projekt/r2-input.json` als `s3AccessKey` und
+`s3SecretKey` speichern (root:root, Modus `0600`). Danach im aktualisierten
+Repository auf dem Swarm-Manager ausführen:
+
+```sh
+sudo bash -c 'set -a; source /etc/projekt/observability-r2.env; set +a; node production/observability/replace-s3-secrets.mjs /etc/projekt/r2-input.json'
+sudo bash production/observability/storage-admin.sh prepare /etc/projekt/observability-r2.env
+```
+
+Die neue Revision muss unbenutzt sein. Verwendete Secrets werden abgewiesen;
+die bisherigen S3-Secrets bleiben für einen Rückweg bestehen. Der Speichertest
+prüft neue Testobjekte, nicht die vollständige Kompatibilität aller Dienste.
+Bei Fehlern nicht bereitstellen.
+
+Nach erfolgreichem Speichertest bereitstellen und die gemeinsame Konfiguration
+für Sicherungsjobs erst nach erfolgreichem Deployment aktualisieren:
+
+```sh
+sudo bash production/observability/deploy.sh /etc/projekt/observability-r2.env
+sudo cp -p /etc/projekt/observability.env /etc/projekt/observability-before-r2.env
+sudo install -o root -g root -m 600 /etc/projekt/observability-r2.env /etc/projekt/observability.env
+```
+
+Befehle einzeln ausführen und bei Fehlern stoppen. Danach neue Logs, Traces,
+Metrikabfragen und Sicherungen prüfen. Es werden keine alten Bucketobjekte
+kopiert und keine lokalen Volumes gelöscht. Lokal vorhandene Daten können
+weiterhin sichtbar sein oder später hochgeladen werden; insbesondere ersetzt
+der Bucketwechsel keine Bereinigung lokaler WALs, Caches oder Upload-Metadaten.
+Auf fehlende historische Objekte und ausbleibende neue Uploads achten.
+Die alten Remote-Daten sind über die neue Konfiguration nicht erreichbar.
+Ein Rückwechsel kann wiederum Daten ausblenden, die ausschließlich in R2 liegen.
+
 ## Bereitstellung
 
 1. Das Proxy-Netz muss vor dem nächsten Nginx-/Stack-Deploy existieren.

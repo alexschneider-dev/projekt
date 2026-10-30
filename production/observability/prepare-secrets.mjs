@@ -80,10 +80,16 @@ for (const [
   name,
   value
 ] of Object.entries(secrets)) {
+  const revision = [
+    "loki_s3_credentials",
+    "thanos_s3",
+  ].includes(name)
+    ? process.env.OBS_S3_SECRET_REVISION || process.env.OBS_SECRET_REVISION
+    : process.env.OBS_SECRET_REVISION;
   const result = spawnSync("docker", [
     "secret",
     "create",
-    `projekt_obs_${name}_${process.env.OBS_SECRET_REVISION}`,
+    `projekt_obs_${name}_${revision}`,
     "-",
   ], {
     input: value,

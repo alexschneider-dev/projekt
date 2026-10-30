@@ -57,7 +57,8 @@ export function replaceS3Secrets(
       },
     }),
   };
-  const names = Object.keys(values).map(name => `projekt_obs_${name}_${env.OBS_SECRET_REVISION}`);
+  const revision = env.OBS_S3_SECRET_REVISION || env.OBS_SECRET_REVISION;
+  const names = Object.keys(values).map(name => `projekt_obs_${name}_${revision}`);
   // Vor jeder Änderung prüfen; auch gestoppte Services halten Secret-Referenzen.
   const ids = execute([
     "service",
@@ -86,7 +87,7 @@ export function replaceS3Secrets(
     key,
     value,
   ] of Object.entries(values)) {
-    const name = `projekt_obs_${key}_${env.OBS_SECRET_REVISION}`;
+    const name = `projekt_obs_${key}_${revision}`;
     if (existing.has(name)) execute([
       "secret",
       "rm",

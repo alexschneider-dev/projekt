@@ -7,6 +7,7 @@ settings="${1:-/etc/projekt/observability.env}"
 set -a
 source "$settings"
 set +a
+export OBS_S3_SECRET_REVISION="${OBS_S3_SECRET_REVISION:-$OBS_SECRET_REVISION}"
 node --input-type=module -e 'import {validateSettings} from "./settings.mjs"; validateSettings(process.env);'
 export OBS_S3_HOST="${LOKI_S3_ENDPOINT#https://}"
 OBS_S3_HOST="${OBS_S3_HOST%/}"
@@ -14,8 +15,11 @@ exec 9>/var/lock/projekt-deploy.lock
 flock -w 900 9
 revisions=$(node config-revisions.mjs)
 while read -r key value; do export "$key=$value"; done <<< "$revisions"
-for name in grafana_admin_password smtp_password postgres_password loki_s3_credentials thanos_s3; do
+for name in grafana_admin_password smtp_password postgres_password; do
   docker secret inspect "projekt_obs_${name}_${OBS_SECRET_REVISION}" >/dev/null
+done
+for name in loki_s3_credentials thanos_s3; do
+  docker secret inspect "projekt_obs_${name}_${OBS_S3_SECRET_REVISION:-$OBS_SECRET_REVISION}" >/dev/null
 done
 docker network inspect projekt_net >/dev/null
 docker volume inspect projekt_monitoring_backup >/dev/null

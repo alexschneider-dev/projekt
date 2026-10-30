@@ -675,7 +675,7 @@ secrets:
     name: projekt_obs_postgres_password_${OBS_SECRET_REVISION}
   loki_s3_credentials:
     external: true
-    name: projekt_obs_loki_s3_credentials_${OBS_SECRET_REVISION}
+    name: projekt_obs_loki_s3_credentials_${OBS_S3_SECRET_REVISION}
   thanos_s3:
     external: true
-    name: projekt_obs_thanos_s3_${OBS_SECRET_REVISION}
+    name: projekt_obs_thanos_s3_${OBS_S3_SECRET_REVISION}

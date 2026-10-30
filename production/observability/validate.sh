@@ -16,6 +16,7 @@ set -a
 source settings.env.example
 export OBS_S3_HOST=s3.example.com
 set +a
+export OBS_S3_SECRET_REVISION="${OBS_S3_SECRET_REVISION:-$OBS_SECRET_REVISION}"
 revisions=$(node config-revisions.mjs)
 while read -r key value; do export "$key=$value"; done <<< "$revisions"
 docker stack config -c compose.swarm.yml >/dev/null

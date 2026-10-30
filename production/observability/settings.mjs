@@ -25,6 +25,10 @@ export function validateSettings(env) {
     throw new Error(ERRORS.SETTINGS);
   }
 
+  if (env.OBS_S3_SECRET_REVISION && !/^[a-z0-9-]{1,24}$/.test(env.OBS_S3_SECRET_REVISION)) {
+    throw new Error(ERRORS.SETTINGS);
+  }
+
   for (const key of [
     "GRAFANA_ROOT_URL",
     "LOKI_S3_ENDPOINT",

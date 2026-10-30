@@ -31,6 +31,7 @@ test(
       { LOKI_S3_ENDPOINT: "http://s3.test" },
       { LOKI_S3_ENDPOINT: "https://user:secret@s3.test" },
       { OBS_SECRET_REVISION: "../../secret" },
+      { OBS_S3_SECRET_REVISION: "../../secret" },
       { GRAFANA_ROOT_URL: "https://monitor.test/" },
     ]) {
       assert.throws(() => validateSettings({
