@@ -220,6 +220,18 @@ sudo cp -p /etc/projekt/observability.env /etc/projekt/observability-before-r2.e
 sudo install -o root -g root -m 600 /etc/projekt/observability-r2.env /etc/projekt/observability.env
 ```
 
+PostgreSQL-Backups verwenden ebenfalls diese gemeinsame Konfiguration. Nach der
+Umstellung einen Lauf über den installierten Service prüfen:
+
+```sh
+sudo systemctl start projekt-postgres-backup.service
+sudo journalctl -u projekt-postgres-backup.service -n 40 --no-pager
+```
+
+Der Lauf muss Upload, Rücklesen und Prüfsummenvergleich bestätigen. Neue Archive
+liegen im neuen Bucket unter `projekt/production/postgres/`; bisherige Backups
+bleiben im alten Bucket und werden nicht automatisch übertragen.
+
 Befehle einzeln ausführen und bei Fehlern stoppen. Danach neue Logs, Traces,
 Metrikabfragen und Sicherungen prüfen. Es werden keine alten Bucketobjekte
 kopiert und keine lokalen Volumes gelöscht. Lokal vorhandene Daten können
@@ -424,7 +436,8 @@ Jede Datenbank wird konsistent gesichert; es gibt keinen gemeinsamen Snapshot ü
 mehrere Datenbanken und keine Wiederherstellung auf beliebige Zeitpunkte (WAL).
 
 Bucket, Endpunkt, Region und versioniertes S3-Secret entsprechen exakt der
-Log-Konfiguration (`LOKI_S3_*`, `OBS_SECRET_REVISION`). Es werden keine neuen
+Log-Konfiguration (`LOKI_S3_*`, `OBS_S3_SECRET_REVISION` mit Rückfall auf
+`OBS_SECRET_REVISION`). Es werden keine neuen
 Zugangsdaten angelegt. Der Schlüssel benötigt Schreib- und Leserechte für
 `projekt/production/postgres/`. Bucket-Lifecycle-Regeln prüfen: Das Werkzeug
 löscht keine PostgreSQL-Objekte aus S3.

@@ -79,6 +79,35 @@ class PostgresTests(unittest.TestCase):
             self.assertTrue(recent.exists())
             self.assertTrue(foreign.exists())
 
+    def test_backup_uses_new_s3_bucket_and_secret_revision(self):
+        env = {
+            "LOKI_S3_ENDPOINT": "https://account.eu.r2.cloudflarestorage.com",
+            "LOKI_S3_BUCKET": "neuer-log-bucket",
+            "LOKI_S3_REGION": "auto",
+            "OBS_SECRET_REVISION": "r1",
+            "OBS_S3_SECRET_REVISION": "r2-20261030",
+            "AWS_CLI_IMAGE": "amazon/aws-cli:2.31.18",
+        }
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, env, clear=True):
+            root = Path(tmp)
+            with (
+                patch.object(postgres, "ROOT", root / "backups"),
+                patch.object(postgres.storage, "ROOT", root / "storage"),
+                patch.object(postgres.storage, "docker", return_value="test-node"),
+                patch.object(postgres.storage, "container", return_value="test-postgres"),
+                patch.object(postgres, "snapshot"),
+                patch.object(postgres.storage.S3, "upload_verified", autospec=True) as upload,
+            ):
+                postgres.backup()
+                client, archive, key = upload.call_args.args
+                self.assertEqual(client.cfg, {
+                    "endpoint": env["LOKI_S3_ENDPOINT"],
+                    "bucket": env["LOKI_S3_BUCKET"],
+                    "region": "auto",
+                })
+                self.assertEqual(client.secret, "projekt_obs_loki_s3_credentials_r2-20261030")
+                self.assertEqual(key, postgres.PREFIX + archive.name)
+
     def test_failure_sets_failed_metric(self):
         with patch.object(postgres, "backup", side_effect=RuntimeError(postgres.ERRORS["POSTGRES_DUMP"])):
             with patch.object(postgres.storage, "backup_metric") as metric:
