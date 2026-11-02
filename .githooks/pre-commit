@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+# Schnelle Rückmeldung; verbindliche vollständige Prüfungen laufen in CI.
+npm run check
+npm run test:unit

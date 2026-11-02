@@ -1,0 +1,122 @@
+name: Anwendung testen
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+  schedule:
+    - cron: "41 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  pruefungen:
+    name: Anwendung prüfen
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten und Prisma vorbereiten
+        run: |
+          npm ci
+          npx prisma generate
+
+      - name: Statische Prüfungen
+        run: npm run check
+
+      - name: Bestehende Regressionstests
+        run: npm run test:legacy
+
+      - name: Komponenten, Logik und Testabdeckung
+        run: npm run test:coverage
+
+      - name: Browser installieren
+        run: npx playwright install --with-deps chromium
+
+      - name: API und zentrale Browserabläufe mit Produktionsbuild
+        run: npm run test:e2e
+
+      - name: Berichte bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testergebnisse
+          path: |
+            playwright-report/
+            test-results/
+            coverage/
+          retention-days: 7
+
+      - name: Testdatenbank entfernen
+        if: always()
+        run: npm run test:db:down
+
+  browsermatrix:
+    name: Erweiterte Browserprüfung
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run test:browsers
+
+      - name: Browserberichte bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browsermatrix
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+      - name: Testdatenbank entfernen
+        if: always()
+        run: npm run test:db:down
+
+  visuell:
+    name: Ansichten vergleichen
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Ansichten in identischer Linux-Umgebung vergleichen
+        run: npm run test:visual
+
+      - name: Vergleichsbilder bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ansichten
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

@@ -1,0 +1,21 @@
+name: projekt-tests
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: projekt_test
+      POSTGRES_PASSWORD: projekt_test
+      POSTGRES_DB: projekt_test
+    ports:
+      - "127.0.0.1:55432:5432"
+    # Testdaten verschwinden beim Entfernen des Containers.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -U projekt_test -d projekt_test"
+      interval: 2s
+      timeout: 5s
+      retries: 30

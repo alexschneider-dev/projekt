@@ -102,3 +102,16 @@ jobs:
             >/dev/null
 
           echo "✅ Produktion ist erreichbar"
+
+      - name: Node.js für Smoke-Tests einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Öffentliche Seiten nach der Bereitstellung prüfen
+        env:
+          SMOKE_BASE_URL: https://alex-schneider-dev.de
+        run: |
+          npm ci
+          npm run test:smoke

@@ -36,3 +36,9 @@ devnotes.md
 /production/env/
 /production/runtime*.json
 /production/versions.env
+
+# Testergebnisse
+.next-test/
+coverage/
+playwright-report/
+test-results/

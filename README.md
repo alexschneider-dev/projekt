@@ -31,3 +31,19 @@ Installation, Prüfungen und Betrieb: [Observability-Dokumentation](production/o
 PostgreSQL-Backups werden alle sechs Stunden automatisch im bestehenden S3-Log-Bucket
 gespeichert und per Prüfsumme überprüft. Details zur Aufbewahrung und Wiederherstellung:
 [Backup-Dokumentation](production/observability/README.md#postgresql-sicherungen).
+
+## Tests
+
+- **Vitest:** Unit- und Komponententests für Geschäftslogik und Formulare.
+- **Playwright:** API- und Browsertests sowie Barrierefreiheitsprüfungen und Screenshotvergleiche.
+- **Testdaten:** Separate PostgreSQL-Datenbank in Docker mit automatischen Migrationen und Testkonten.
+- **Automatisierung:** Schnelle Prüfungen über einen lokalen Commit-Hook, Tests in GitHub Actions
+  und Smoke-Tests nach der Bereitstellung.
+
+Die lokale Anwendungstestsuite starten:
+
+```sh
+npm run test:all
+```
+
+Voraussetzungen, weitere Befehle und Testkonten: [Testanleitung](testing/README.md).
