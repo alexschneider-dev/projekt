@@ -14,6 +14,7 @@
     "check": "npm run lint && npm run typecheck",
     "analyze": "ANALYZE=true next build",
     "test:glob": "node --test testing/fast-glob.test.mjs",
+    "test:minimatch": "node --test testing/minimatch.test.mjs",
     "audit:dependencies": "npm audit --package-lock-only --include=dev --audit-level=low",
     "prebuild": "npm run audit:dependencies",
     "preanalyze": "npm run audit:dependencies",
@@ -63,11 +64,13 @@
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.4.3",
+    "minimatch": "file:./tools/minimatch-compat",
     "prisma": "6.12.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3"
   },
   "overrides": {
+    "minimatch": "$minimatch",
     "fast-glob": "$fast-glob",
     "prisma": "$prisma",
     "@prisma/client": "$@prisma/client",

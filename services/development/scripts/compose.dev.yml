@@ -79,6 +79,7 @@ services:
             - services/
             - production/
             - tools/fast-glob/
+            - tools/minimatch-compat/
             - prisma/
             - prisma.config.ts
             - .env
@@ -93,6 +94,8 @@ services:
           path: ../../migration/package.json
         - action: rebuild
           path: ../../../tools/fast-glob
+        - action: rebuild
+          path: ../../../tools/minimatch-compat
         - action: rebuild
           path: ../Dockerfile-dev
         - action: rebuild

@@ -1,0 +1,10 @@
+{
+  "name": "minimatch-compat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kompatible Funktionsschnittstelle für ältere ESLint-Verbraucher von minimatch",
+  "main": "index.cjs",
+  "dependencies": {
+    "minimatch-modern": "npm:minimatch@11.0.4"
+  }
+}

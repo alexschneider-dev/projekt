@@ -9,6 +9,7 @@ FROM base AS deps
 WORKDIR /app
 
 COPY tools/fast-glob ./tools/fast-glob
+COPY tools/minimatch-compat ./tools/minimatch-compat
 COPY package.json package-lock.json ./
 COPY services/migration/package.json ./services/migration/package.json
 
@@ -20,6 +21,7 @@ WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/tools/fast-glob ./tools/fast-glob
+COPY --from=deps /app/tools/minimatch-compat ./tools/minimatch-compat
 COPY . .
 
 RUN npm run build

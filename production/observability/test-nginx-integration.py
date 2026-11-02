@@ -11,6 +11,12 @@ IMAGE = "projekt-observability-nginx-check"
 SERVER = """from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 class Handler(BaseHTTPRequestHandler):
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+    def do_POST(self):
+        self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        self.do_GET()
     def do_GET(self):
         cookie = self.headers.get('Cookie', '')
         if self.path == '/api/observability/auth':
@@ -125,7 +131,7 @@ def main():
                 ":"
             )[-1]
 
-            def request(*headers):
+            def request(*headers, path="/grafana/", method="GET", body=None):
                 args = [
                     "curl",
                     "--silent",
@@ -137,8 +143,20 @@ def main():
                     f"alex-schneider-dev.de:{port}:127.0.0.1",
                     "-w",
                     "\n%{http_code}",
-                    f"https://alex-schneider-dev.de:{port}/grafana/",
+                    f"https://alex-schneider-dev.de:{port}{path}",
                 ]
+                if method == "HEAD":
+                    args.append("--head")
+                else:
+                    args.extend([
+                        "--request",
+                        method,
+                    ])
+                if body is not None:
+                    args.extend([
+                        "--data-raw",
+                        body,
+                    ])
                 for header in headers:
                     args.extend(
                         [
@@ -166,6 +184,36 @@ def main():
                 )[1]
                 == "302"
             )
+            # Seiten nehmen keine Server Actions an, auch nicht als Formular im Body.
+            for path in [
+                "/",
+                "/login",
+                "/dashboard",
+            ]:
+                for method in [
+                    "GET",
+                    "HEAD",
+                ]:
+                    assert request(path=path, method=method)[1] == "200"
+                for headers, body in [
+                    (
+                        ["Next-Action: x"],
+                        "[]",
+                    ),
+                    (
+                        ["Content-Type: multipart/form-data; boundary=test"],
+                        '--test\r\nContent-Disposition: form-data; name="$ACTION_ID_x"\r\n\r\n\r\n--test--\r\n',
+                    ),
+                ]:
+                    assert request(*headers, path=path, method="POST", body=body)[1] == "405"
+            # NextAuth- und Grafana-POSTs bleiben erreichbar (Backend im Test simuliert).
+            assert request(path="/api/auth/callback/credentials", method="POST", body="test=1")[1] == "200"
+            assert request(
+                "Cookie: role=SUPER_ADMIN",
+                path="/grafana/api/ds/query",
+                method="POST",
+                body="{}",
+            )[1] == "200"
             # Router-Header dürfen weder die Auth-Prüfung umleiten noch Rollenprüfungen umgehen.
             for role, expected in [
                 (

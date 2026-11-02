@@ -293,6 +293,7 @@ try:
         for path in [
             "/grafana/d/test/test",
             "/grafana/api/ds/query",
+            "/grafana/apis/dashboard.grafana.app/v0alpha1/namespaces/default/search?type=folder&limit=100000",
         ]:
             with connect() as s:
                 s.sendall(
@@ -316,7 +317,9 @@ try:
         for path in [
             "/grafana/d/test/test",
             "/grafana/api/ds/query",
+            "/grafana/apis/dashboard.grafana.app/v0alpha1/namespaces/default/search?type=folder&limit=100000",
             "/grafana/api/other",
+            "/grafana/apis/dashboard.grafana.app/v0alpha1/namespaces/default/search/other",
         ]:
             started.clear()
             finished.clear()
@@ -342,7 +345,7 @@ try:
                 "fixture-editor",
             ), results[-1]
         print(
-            "OK: Frühe Dashboard-Abbrüche abgefangen; andere APIs brechen ab; Identität weitergereicht.",
+            "OK: Frühe Dashboard- und Suchabbrüche abgefangen; andere APIs brechen ab; Identität weitergereicht.",
             flush=True,
         )
         # Grenze reproduzieren: Bei Schreibfehlern kann Nginx große Antworten abbrechen.

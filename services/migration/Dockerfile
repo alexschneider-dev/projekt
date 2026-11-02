@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY tools/fast-glob ./tools/fast-glob
+COPY tools/minimatch-compat ./tools/minimatch-compat
 COPY services/migration/package.json ./services/migration/package.json
 
 RUN npm ci --workspace services/migration --include-workspace-root=false --omit=dev

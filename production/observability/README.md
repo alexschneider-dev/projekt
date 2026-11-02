@@ -400,13 +400,21 @@ Lesezugriff auf dieses Paket. Der bestehende Docker-Login unter root muss bei ei
 privaten Paket berechtigt sein; das Deployment reicht Registry-Zugangsdaten an
 Swarm weiter. Das Image wird außerhalb des kleinen Produktionsservers gebaut.
 
-Nginx gibt frühe Browser-Abbrüche bei Dashboard-Seiten und `/grafana/api/ds/query`
+Nginx gibt frühe Browser-Abbrüche bei Dashboard-Seiten, `/grafana/api/ds/query`
+und der Ordner-/Dashboardsuche unter
+`/grafana/apis/dashboard.grafana.app/v0alpha1/namespaces/default/search`
 nicht sofort an Grafana weiter. Die Anmeldung und Rollenprüfung bleiben erhalten.
 Andere APIs und Live-WebSockets behalten ihr bisheriges Abbruchverhalten. Bereits
 angenommene Abfragen können dadurch länger Ressourcen belegen. Große Antworten
 können beim Schreiben an den getrennten Client weiterhin abbrechen; der Test
 `test-grafana-cancellation-integration.py` reproduziert auch diese Grenze.
 Für diese Änderung das Nginx-Image neu bauen und bereitstellen.
+
+Next.js-Seiten akzeptieren am Produktionsproxy ausschließlich GET und HEAD.
+Das Projekt verwendet keine Server Actions; Formulare verwenden `/api/`, dessen
+Methoden davon unberührt bleiben. Unerwartete Methoden an Seitenrouten erhalten
+HTTP 405 mit `Allow: GET, HEAD`, bevor Next.js Aktionsreferenzen verarbeitet.
+Vor Einführung von Server Actions muss diese Einschränkung angepasst werden.
 
 Alloy markiert ausschließlich Grafanas `logger=context` / `Error writing to response`
 mit TCP-Schreibfehler `broken pipe` oder `connection reset by peer` als
