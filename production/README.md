@@ -1,5 +1,8 @@
 # Produktion: CI/CD und Swarm Secrets
 
+Für einen leeren Server zuerst die [Schritt-für-Schritt-Erstinstallation](../docs/produktion-neuer-server.md)
+verwenden. Die folgenden Umstellungsschritte setzen bereits vorhandene Services voraus.
+
 ## Lokale Docker-Logs
 
 Die Produktionskonfigurationen begrenzen `json-file`-Logs pro Container auf fünf
@@ -288,10 +291,10 @@ Docker CLI ohne Daemon. Ein tatsächlicher Swarm-Rollout wird damit nicht durchg
 
 ## Vollständiges Monitoring
 
-Der separate Observability-Stack mit 16 Diensten ist unter
+Der separate Observability-Stack mit 15 Diensten ist unter
 [observability/README.md](observability/README.md) beschrieben. Vor dem nächsten
 Nginx-/Stack-Deployment das dort beschriebene externe Netzwerk
-`projekt_grafana_proxy` erstellen. S3, SMTP und Elasticsearch-Endpunkt müssen vor
+`projekt_grafana_proxy` erstellen. S3 und SMTP müssen vor
 Inbetriebnahme des Monitorings konfiguriert werden. Das Vorbereiten dieser Dateien
 führt noch keine Installation auf dem Server aus.
 

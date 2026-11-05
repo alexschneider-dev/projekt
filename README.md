@@ -10,6 +10,17 @@ und geschützten Bereichen mit rollenbasierten Zugriffsrechten.
 Das Repository enthält Anwendung, wiederverwendbare UI-Komponenten, Tests und
 Deployment-Konfiguration. Details zum Betrieb stehen in [production/README.md](production/README.md).
 
+## Einrichtung nach dem Klonen
+
+- [Development auf dem Mac](docs/development-mac.md): Werkzeuge, lokale Env-Dateien,
+  HTTPS-Zertifikate, Docker-Dienste, Migrationen und erstes Benutzerkonto.
+- [Produktion auf einem neuen Server](docs/produktion-neuer-server.md): Voraussetzungen
+  und Tokens, Servereinrichtung, alle Services, TLS, Monitoring, Backups und CI/CD.
+
+Die Produktionsanleitung beschreibt eine Erstinstallation auf einem einzelnen
+Ubuntu-Server. Für bestehende Installationen gelten die Betriebs- und
+Umstellungshinweise in der Produktionsdokumentation.
+
 ## Observability
 
 Ein separater Docker-Swarm-Stack mit 15 Diensten erfasst Metriken, Logs und Traces:
