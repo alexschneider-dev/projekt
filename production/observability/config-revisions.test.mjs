@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import {
   mkdtempSync,
   mkdirSync,
+  copyFileSync,
+  readFileSync,
   writeFileSync,
   rmSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import {
   dirname,
   join
@@ -44,6 +47,29 @@ test('Eine Dashboard-Änderung versioniert nur ihre eigene Swarm Config', () => 
     assert.deepEqual(configRevisions(root), before);
   } finally {
     rmSync(root, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
+test('Das Installationspaket enthält alle versionierten Swarm-Konfigurationen', () => {
+  const source = fileURLToPath(new URL('.', import.meta.url));
+  const installer = readFileSync(join(source, 'install-release.sh'), 'utf8');
+  const manifest = installer.match(/^files=\(\n([\s\S]*?)\n\)/m);
+  assert.ok(manifest);
+  const files = manifest[1].trim().split(/\s+/);
+  const release = mkdtempSync(join(tmpdir(), 'obs-release-'));
+
+  try {
+    for (const path of files) {
+      mkdirSync(dirname(join(release, path)), { recursive: true });
+      copyFileSync(join(source, path), join(release, path));
+    }
+
+    assert.deepEqual(configRevisions(release), configRevisions(source));
+  } finally {
+    rmSync(release, {
       recursive: true,
       force: true
     });

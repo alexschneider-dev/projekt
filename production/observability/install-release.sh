@@ -13,6 +13,7 @@ files=(
   compose.swarm.yml
   prometheus.yml
   loki.yml
+  loki-rules.yml
   tempo.yml
   alloy.alloy
   exporters/swarm.py

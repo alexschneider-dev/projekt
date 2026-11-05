@@ -367,10 +367,19 @@ Metrik-Jobs, Datenbank-/Redis-/Nginx-Verbindungen und Thanos-Abfragen
 erfolgreich sein. Ein Fehler beendet das Deployment mit Fehlerstatus; es erfolgt
 kein unkontrollierter Rollback des gesamten Stacks.
 
-Für CI einmalig den Installer installieren:
+Für CI den Installer zunächst installieren und nach Änderungen an
+`production/observability/install-release.sh` erneut aktualisieren. Der Workflow
+verwendet die separat installierte Kopie auf dem Server, nicht das mit dem
+Release hochgeladene Skript. Insbesondere muss die Dateiliste `loki-rules.yml`
+enthalten, bevor die Aufzeichnungsregeln bereitgestellt werden.
 
 ```sh
 sudo install -o root -g root -m 0755 production/observability/install-release.sh /usr/local/lib/projekt-deploy/install-observability-release.sh
+```
+
+Die Sudoers-Regel ist nur bei der ersten Einrichtung nötig:
+
+```sh
 sudo visudo -f /etc/sudoers.d/projekt-observability
 ```
 
