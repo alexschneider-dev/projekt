@@ -14,6 +14,7 @@ import {
 import { ERROR_OBSERVABILITY } from "@/lib/http/errors/observability";
 import { HTTP_STATUS } from "@/lib/http/status";
 import { log } from "./logger";
+import { registerSharpMetrics } from "./sharp-metrics";
 
 
 const state = globalThis as typeof globalThis & {
@@ -29,6 +30,7 @@ export function initializeTelemetry() {
 
   registry.setDefaultLabels({ service: "nextjs" });
   collectDefaultMetrics({ register: registry });
+  registerSharpMetrics(registry);
 
   const requests = new Histogram({
     name: "app_http_request_duration_seconds",

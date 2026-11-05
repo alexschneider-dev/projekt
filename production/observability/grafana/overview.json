@@ -1377,6 +1377,126 @@
         "overrides": []
       },
       "description": "Verbindungsdauer abgeschlossener WebSockets, etwa Grafana Live; keine HTTP-Latenz. Ohne abgeschlossene WebSocket-Verbindungen bleiben die Daten leer. Vorberechnete 5-Minuten-Werte ab Bereitstellung; frühere Rohlogs werden nicht automatisch nachberechnet."
+    },
+    {
+      "id": 113,
+      "title": "Next.js-Prozessspeicher",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 232,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "process_resident_memory_bytes{job=\"nextjs\",service=\"nextjs\"}",
+          "legendFormat": "RSS · {{instance}}"
+        },
+        {
+          "refId": "B",
+          "expr": "nodejs_heap_size_total_bytes{job=\"nextjs\",service=\"nextjs\"}",
+          "legendFormat": "Heap gesamt · {{instance}}"
+        },
+        {
+          "refId": "C",
+          "expr": "nodejs_heap_size_used_bytes{job=\"nextjs\",service=\"nextjs\"}",
+          "legendFormat": "Heap belegt · {{instance}}"
+        },
+        {
+          "refId": "D",
+          "expr": "nodejs_external_memory_bytes{job=\"nextjs\",service=\"nextjs\"}",
+          "legendFormat": "Externer Speicher · {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "description": "RSS ist der gesamte residente Prozessspeicher; Heap und External sind keine vollständige Aufteilung. Die Differenz ist nicht automatisch Sharp-Speicher."
+    },
+    {
+      "id": 114,
+      "title": "Sharp / libvips – Speicher",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 232,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "app_sharp_memory_bytes{job=\"nextjs\",service=\"nextjs\"}",
+          "legendFormat": "{{kind}} · {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "description": "current: aktuell von libvips erfasster Speicher. high: Höchstwert seit Prozessstart; bleibt nach Freigabe hoch. max: Cachelimit, kein Limit für gesamten Sharp-/Prozessspeicher. Werte auf MiB gerundet; nicht alle nativen Allokationen werden erfasst."
+    },
+    {
+      "id": 115,
+      "title": "Sharp – Bildverarbeitung",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 240,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "app_sharp_tasks{job=\"nextjs\",service=\"nextjs\"}",
+          "legendFormat": "{{state}} · {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "description": "queue: wartet auf Worker. process: aktive Bildverarbeitung. Momentaufnahme beim Scrape; kurze Aufgaben zwischen Scrapes können unsichtbar bleiben."
     }
   ],
   "annotations": {

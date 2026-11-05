@@ -494,6 +494,31 @@ und [Thanos Sidecar](https://thanos.io/tip/components/sidecar.md/).
 
 ## Übernommene Korrekturen für Abfrageabbrüche
 
+### Next.js- und Sharp-Speicher messen
+
+Der bestehende Metrik-Endpunkt auf Port 9464 liest Sharp im laufenden
+Next.js-Prozess aus. `app_sharp_memory_bytes{kind="current|high|max"}` zeigt
+aktuell von libvips erfassten Speicher, den Höchstwert seit Prozessstart und
+das Cachelimit. Die gerundeten MiB werden in Bytes umgerechnet. Der Höchstwert
+bleibt nach einer Freigabe hoch; das Cachelimit ist kein Limit für den gesamten
+Prozessspeicher. Nicht alle nativen Allokationen werden von libvips erfasst.
+
+`app_sharp_tasks{state="queue|process"}` zeigt wartende und aktive Aufgaben,
+`app_sharp_cache_items{kind="current|max"}` die gecachten Operationen und ihr Limit.
+Die Erfassung verändert weder Cachelimits noch Parallelität. Kurze Aufgaben
+zwischen zwei Prometheus-Abfragen können unbemerkt bleiben.
+
+Die Panels **Next.js-Prozessspeicher**, **Sharp / libvips – Speicher** und
+**Sharp – Bildverarbeitung** zeigen Prozessspeicher, JavaScript-Heap und
+Sharp-Werte getrennt. Sie beziehen sich immer auf Next.js; der Dienstfilter
+für Logs gilt hier nicht. Die Differenz zwischen RSS und Heap ist nicht
+automatisch Sharp-Speicher und kein Nachweis eines Speicherlecks.
+
+Zur Auslieferung Next.js neu bauen und bereitstellen sowie das Monitoring-
+Dashboard aktualisieren. Ein Neustart setzt den Sharp-Höchstwert zurück.
+Ein separater Node-Prozess misst nicht den Zustand des laufenden Servers.
+Prüfung: `node --experimental-strip-types --test testing/sharp-metrics.test.mjs`.
+
 ### Abgestimmte Zeitlimits für Loki-Abfragen
 
 Kalte Archivabfragen können zunächst S3-Daten laden, bevor eine Antwort beginnt.
