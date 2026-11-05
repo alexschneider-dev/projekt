@@ -1,6 +1,7 @@
 auth_enabled: false
 server:
   http_listen_port: 3100
+  http_server_write_timeout: 100s
 common:
   path_prefix: /loki
   replication_factor: 1
@@ -33,6 +34,7 @@ compactor:
   retention_enabled: true
   delete_request_store: s3
 limits_config:
+  query_timeout: 90s
   split_queries_by_interval: 0s
   max_query_series: 10000
   retention_period: 0s

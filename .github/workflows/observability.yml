@@ -77,6 +77,7 @@ jobs:
           docker build -t projekt-observability-nginx-check services/nginx
           python production/observability/test-nginx-integration.py
           python production/observability/test-grafana-cancellation-integration.py
+          python -u production/observability/test-grafana-query-timeout-integration.py
       - name: Logabfragen und Klassifikation prüfen
         run: |
           python production/observability/test-loki-query-integration.py

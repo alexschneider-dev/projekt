@@ -24,6 +24,8 @@ datasources:
     access: proxy
     url: http://loki:3100
     jsonData:
+      # Mehr Zeit als Loki für Abfrage und HTTP-Antwort, auch bei kalten S3-Daten.
+      timeout: 105
       manageAlerts: false
       derivedFields:
         - name: TraceID

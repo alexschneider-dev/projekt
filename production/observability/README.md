@@ -494,6 +494,34 @@ und [Thanos Sidecar](https://thanos.io/tip/components/sidecar.md/).
 
 ## Übernommene Korrekturen für Abfrageabbrüche
 
+### Abgestimmte Zeitlimits für Loki-Abfragen
+
+Kalte Archivabfragen können zunächst S3-Daten laden, bevor eine Antwort beginnt.
+Die Zeitlimits sind deshalb aufeinander abgestimmt: Loki `query_timeout: 90s`,
+Loki-HTTP-Antwort `http_server_write_timeout: 100s`, Grafanas Loki-Datenquelle
+`timeout: 105` und Nginx `proxy_read_timeout 120s` für die geschützten Dashboard-,
+Such- und Datenabfragepfade. Der Nginx-Wert gilt pro Lesepause.
+
+Damit bricht Grafana eine noch laufende Abfrage nicht schon nach seinem bisherigen
+30-Sekunden-Limit ab. Die Änderung beschleunigt weder S3 noch beseitigt sie
+Speicherknappheit. Interne `ratestore`-Zeitlimits bleiben davon unabhängig.
+Bei Zeitraumwechseln können bereits angenommene Abfragen weiterhin bis zum
+Zeitlimit arbeiten. Echte Upstream-Fehler bleiben sichtbar.
+
+Für die Bereitstellung das neue Nginx-Image über **Nginx bauen und bereitstellen**
+ausliefern und den Workflow **Monitoring prüfen und bereitstellen** für Grafana
+und Loki erfolgreich abschließen. Die einzelne Grafana-/Loki-Instanz kann beim
+Austausch laufende Monitoring-Abfragen unterbrechen.
+
+Der Test `python production/observability/test-grafana-query-timeout-integration.py`
+prüft eine um 65 Sekunden verzögerte Loki-Testantwort über echtes Grafana und
+Nginx sowie die Weitergabe eines HTTP-Fehlers. Er benötigt PyYAML, Docker und das
+Image `projekt-observability-nginx-check`. `--baseline` entfernt nur das
+Datenquellen-Zeitlimit und muss nach etwa 30 Sekunden fehlschlagen.
+Der Workflow führt den Erfolgsfall aus. Dies ersetzt keinen Lasttest auf dem Server.
+
+### Behandlung abgebrochener Verbindungen
+
 Loki verwendet das projektspezifische Image und den eng begrenzten Patch aus
 [`services/loki`](../../services/loki/README.md). Nur bestätigte Kontext-Abbrüche
 beim Laden von Chunks werden auf Debug protokolliert. Speicherfehler,

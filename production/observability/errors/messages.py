@@ -1,4 +1,5 @@
 ERRORS = {
+    "GRAFANA_TEST_START": "Die lokale Grafana-Testinstanz wurde nicht rechtzeitig bereit.",
     "POSTGRES_DUMP": "Der vollständige PostgreSQL-Dump ist fehlgeschlagen; es wurde nichts hochgeladen.",
     "POSTGRES_EMPTY": "Der PostgreSQL-Dump ist leer; es wurde nichts hochgeladen.",
     "S3_LOGS": "Task-Logs konnten nicht abgerufen werden.",
