@@ -244,6 +244,69 @@ Auf fehlende historische Objekte und ausbleibende neue Uploads achten.
 Die alten Remote-Daten sind über die neue Konfiguration nicht erreichbar.
 Ein Rückwechsel kann wiederum Daten ausblenden, die ausschließlich in R2 liegen.
 
+## Fehlende Objekte in Cloudflare R2 untersuchen
+
+In Cloudflare unter R2 den betroffenen Bucket und den UTC-Zeitraum aus dem Diagramm
+wählen. Die HTTP-404-Kurve fasst alle Objekte und Operationen zusammen. Für die
+50 häufigsten Kombinationen aus Operation und Objektname die lesende Abfrage
+`r2-404.graphql` im GraphQL-Client ausführen. Endpunkt ist
+`https://api.cloudflare.com/client/v4/graphql`, Header ist `Authorization: Bearer <Token>`
+mit einem Cloudflare-Token mit Leserecht für Account Analytics. Zugangsdaten nur
+lokal im Client hinterlegen. Beispielvariablen für eine Stunde des Vorfalls:
+
+```json
+{
+  "konto": "<Cloudflare-Account-ID>",
+  "bucket": "<Bucketname, bei EU-Jurisdiktion mit eu_ davor>",
+  "von": "2026-11-04T03:00:00Z",
+  "bis": "2026-11-04T04:00:00Z"
+}
+```
+
+Unter `projekt/production/` gehört `metrics/` zu Thanos, `loki/` zu Loki,
+`tempo/` zu Tempo und `grafana-backups/` bzw. `postgres/` zu den Sicherungen.
+Das Präfix bezeichnet den Datenbestand. Für die Ursache die Operation und den
+konkreten Schlüssel mit den Dienstlogs im selben Zeitraum vergleichen. Eine
+Existenzprüfung auf eine optionale Datei kann 404 liefern. Ein fehlendes Objekt,
+das zum Lesen eines vorhandenen Blocks oder zur Wiederherstellung einer Sicherung
+benötigt wird, erfordert eine Prüfung von Uploads, Löschungen und Bucketwechsel.
+
+[Cloudflare-Dokumentation zu R2 Analytics](https://developers.cloudflare.com/r2/platform/metrics-analytics/)
+
+## Temporäre Nginx-Diagnose für HTTP 400 und 501
+
+Nach Bereitstellung des neuen Images über **Nginx bauen und bereitstellen** auf
+dem Swarm-Knoten mit dem laufenden Nginx-Task in derselben Shell ausführen:
+
+```sh
+nginx_task=$(sudo docker ps -q --filter label=com.docker.swarm.service.name=projekt_nginx)
+sudo docker exec "$nginx_task" sh -ec 'ln -sf /etc/nginx/security-diagnose.inc /etc/nginx/security-aktiv.inc && nginx -t && nginx -s reload'
+```
+
+Während des kurzen Diagnosefensters schreibt Nginx HTTP-Fehlermeldungen ab
+`info` und ergänzt bei 400/501 den Security-Eintrag um Proxy-Adresse, übermittelte
+Client-Adresse, Port, Prozess- und Verbindungsnummer. Ein leeres
+`proxy_client_ip` bedeutet, dass keine PROXY-Quelladresse vorlag. Routineanfragen
+behalten das übliche Format. Freitextmeldungen können Anfragedetails enthalten.
+Für den Export nur betroffene Verbindungen auswählen.
+
+In Grafana unter **Entdecken → Loki** nach Diagnosezeilen suchen:
+
+```logql
+{environment="production", service_name="nginx", log_type="security"} | json | __error__="" | status=~"400|501" | connection!=""
+```
+
+Im selben Container und Zeitfenster nach `*<connection> ` in den Textmeldungen
+suchen und die Prozessnummer vergleichen. Danach die Standardprotokollierung
+sofort wieder aktivieren:
+
+```sh
+sudo docker exec "$nginx_task" sh -ec 'ln -sf /etc/nginx/security-standard.inc /etc/nginx/security-aktiv.inc && nginx -t && nginx -s reload'
+```
+
+Die Umschaltung gilt nur für den aktuellen Task. Ein neu erstellter Container
+startet im Standardmodus.
+
 ## Bereitstellung
 
 1. Das Proxy-Netz muss vor dem nächsten Nginx-/Stack-Deploy existieren.

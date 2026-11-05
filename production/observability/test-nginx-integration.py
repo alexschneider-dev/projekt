@@ -331,6 +331,78 @@ def main():
                 assert headers["X-Webauth-User"] == "projekt-test"
                 assert headers["X-Webauth-Role"] == expected
                 assert "Cookie" not in headers and "Authorization" not in headers
+            # Ein ungültiger HTTP/1.1-Aufruf hinter dem Edge-Proxy erzeugt einen echten 400er.
+            for profil in [
+                "diagnose",
+                "standard",
+            ]:
+                command(
+                    "docker",
+                    "exec",
+                    nginx,
+                    "ln",
+                    "-sf",
+                    f"/etc/nginx/security-{profil}.inc",
+                    "/etc/nginx/security-aktiv.inc",
+                )
+                command("docker", "exec", nginx, "nginx", "-t")
+                command("docker", "exec", nginx, "nginx", "-s", "reload")
+
+                for versuch in range(30):
+                    pfad = f"/test-{profil}-{versuch}"
+                    status = command(
+                        "curl",
+                        "--silent",
+                        "--insecure",
+                        "--http1.1",
+                        "--haproxy-protocol",
+                        "--noproxy",
+                        "*",
+                        "--resolve",
+                        f"alex-schneider-dev.de:{edge_port}:127.0.0.1",
+                        "-H",
+                        "Host:",
+                        "-o",
+                        "/dev/null",
+                        "-w",
+                        "%{http_code}",
+                        f"https://alex-schneider-dev.de:{edge_port}{pfad}",
+                    )
+                    assert status == "400", status
+                    logs = subprocess.run(
+                        [
+                            "docker",
+                            "logs",
+                            nginx,
+                        ],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                    eintraege = [
+                        json.loads(zeile)
+                        for zeile in logs.stderr.splitlines()
+                        if zeile.startswith("{") and pfad in zeile
+                    ]
+                    if eintraege and ("connection" in eintraege[0]) == (profil == "diagnose"):
+                        break
+                    time.sleep(0.1)
+                assert len(eintraege) == 1, eintraege
+                eintrag = eintraege[0]
+                assert ("connection" in eintrag) == (profil == "diagnose")
+                if profil == "diagnose":
+                    assert eintrag["server_port"] == "8443"
+                    assert eintrag["proxy_client_ip"] == "127.0.0.1"
+                    assert eintrag["peer_ip"]
+                    assert f'*{eintrag["connection"]} ' in logs.stderr
+                betriebslogs = [
+                    json.loads(zeile)
+                    for zeile in logs.stdout.splitlines()
+                    if zeile.startswith("{") and pfad in zeile
+                ]
+                assert len(betriebslogs) == 1, betriebslogs
+                assert "proxy_client_ip" not in betriebslogs[0]
+
             output = command(
                 "docker",
                 "exec",

@@ -9,6 +9,8 @@ RUN apk add --no-cache nginx nginx-mod-http-brotli \
   && ln -sf /dev/stderr /var/log/nginx/error.log
 
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY security-standard.inc security-diagnose.inc /etc/nginx/
+RUN ln -s /etc/nginx/security-standard.inc /etc/nginx/security-aktiv.inc
 COPY default.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80 443

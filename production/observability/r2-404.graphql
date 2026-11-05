@@ -1,0 +1,24 @@
+query FehlendeObjekte($konto: string!, $bucket: string!, $von: Time!, $bis: Time!) {
+  viewer {
+    accounts(filter: {accountTag: $konto}) {
+      r2OperationsAdaptiveGroups(
+        filter: {
+          bucketName: $bucket
+          datetime_geq: $von
+          datetime_lt: $bis
+          responseStatusCode: 404
+        }
+        limit: 50
+        orderBy: [sum_requests_DESC]
+      ) {
+        dimensions {
+          actionType
+          objectName
+        }
+        sum {
+          requests
+        }
+      }
+    }
+  }
+}
