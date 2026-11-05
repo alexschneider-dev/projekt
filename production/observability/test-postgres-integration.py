@@ -15,6 +15,13 @@ import postgres
 class PostgresIntegrationTests(unittest.TestCase):
     def test_dump_restores_roles_schema_and_data(self):
         names = []
+        init_dir = Path(self.enterContext(tempfile.TemporaryDirectory(
+            dir=Path(__file__).resolve().parents[2],
+            prefix=".postgres-init-",
+        )))
+        init_script = init_dir / "startphase.sql"
+        # Die temporäre Socket-Instanz muss lange genug für die Gegenprobe erreichbar sein.
+        init_script.write_text("SELECT pg_sleep(3);\n")
 
         def cleanup():
             for name in names:
@@ -46,6 +53,8 @@ class PostgresIntegrationTests(unittest.TestCase):
                     "POSTGRES_HOST_AUTH_METHOD=trust",
                     "-e",
                     f"POSTGRES_USER={user}",
+                    "-v",
+                    f"{init_script}:/docker-entrypoint-initdb.d/startphase.sql:ro",
                     "postgres:17",
                 ],
                 check=True,
@@ -58,18 +67,32 @@ class PostgresIntegrationTests(unittest.TestCase):
                         "exec",
                         name,
                         "pg_isready",
+                        "-h",
+                        "127.0.0.1",
                         "-U",
                         user,
                     ],
                     capture_output=True,
                 )
                 if result.returncode == 0:
+                    process = subprocess.run(
+                        [
+                            "docker",
+                            "exec",
+                            name,
+                            "cat",
+                            "/proc/1/comm",
+                        ],
+                        capture_output=True,
+                        check=True,
+                    )
+                    self.assertEqual(process.stdout.strip(), b"postgres")
                     return name
                 time.sleep(1)
             self.fail(postgres.ERRORS["POSTGRES_DUMP"])
 
         def sql(name, user, content):
-            return subprocess.run(
+            result = subprocess.run(
                 [
                     "docker",
                     "exec",
@@ -87,8 +110,10 @@ class PostgresIntegrationTests(unittest.TestCase):
                 ],
                 input=content,
                 capture_output=True,
-                check=True,
-            ).stdout
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            return result.stdout
 
         source = start("postgres")
         sql(source, "postgres", b"CREATE ROLE beispiel; CREATE TABLE probe (wert text); INSERT INTO probe VALUES ('gesichert');")
