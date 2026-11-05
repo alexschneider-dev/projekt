@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import time
@@ -54,6 +55,7 @@ def main():
     assert panel["datasource"]["uid"] == "prometheus"
     containers = []
     network = ""
+    test_user = f"{os.getuid()}:{os.getgid()}"
     with tempfile.TemporaryDirectory(dir=ROOT, prefix=".yearly-dashboard-") as tmp:
         directory = Path(tmp)
         now = int(time.time())
@@ -77,7 +79,7 @@ def main():
             "run",
             "--rm",
             "--user",
-            "0:0",
+            test_user,
             "--entrypoint",
             "/bin/promtool",
             "-v",
@@ -97,7 +99,7 @@ def main():
                 "-d",
                 "--rm",
                 "--user",
-                "0:0",
+                test_user,
                 "--network",
                 network,
                 "--network-alias",
@@ -158,7 +160,7 @@ def main():
                 "-p",
                 "127.0.0.1::3100",
                 "-v",
-                f"{directory}:/test",
+                f"{directory}:/test:ro",
                 stack["services"]["loki"]["image"],
                 "-config.file=/test/loki.yml",
             )
