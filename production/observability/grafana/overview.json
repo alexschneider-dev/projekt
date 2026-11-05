@@ -180,11 +180,11 @@
     },
     {
       "id": 104,
-      "title": "Requests je URL — Top 20 im Zeitraum",
+      "title": "Anfragen je URL — Top 20 im Zeitraum",
       "type": "table",
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
@@ -192,16 +192,15 @@
         "w": 12,
         "h": 10
       },
-      "description": "Anzahl im gewählten Zeitraum. Nginx inklusive Cache-Hits und statischer Dateien, keine eindeutigen Besucher. URL-Präfix filtert; Dienstauswahl gilt hier nicht.",
+      "description": "Summe der gespeicherten 5-Minuten-Abschnitte im gewählten Zeitraum, auch bei Jahresansichten. Erfassung ab Bereitstellung; Zeiträume davor und ausgefallene Auswertungen fehlen. Die Randabschnitte haben 5-Minuten-Auflösung, neueste Werte erscheinen verzögert. Nginx inklusive Cache-Hits und statischer Dateien; URL-Präfix filtert.",
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(20, sum by (path) (count_over_time({environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json path=\"path\" | __error__=\"\" | path=~\"${url:regex}.*\" | keep path [$__range])))",
-          "queryType": "instant",
-          "direction": "backward",
-          "maxLines": 200,
+          "expr": "topk(20, sum by (path) (sum_over_time(projekt_nginx_requests_5m{environment=\"production\",path=~\"${url:regex}.*\"}[$__range])))",
           "legendFormat": "{{path}}",
-          "instant": true
+          "instant": true,
+          "range": false,
+          "format": "table"
         }
       ],
       "options": {
@@ -221,12 +220,6 @@
       },
       "transformations": [
         {
-          "id": "labelsToFields",
-          "options": {
-            "mode": "columns"
-          }
-        },
-        {
           "id": "organize",
           "options": {
             "excludeByName": {
@@ -242,11 +235,11 @@
     },
     {
       "id": 105,
-      "title": "Requests pro Minute — URL-Filter",
+      "title": "Anfragen pro Minute — 5-Minuten-Mittel",
       "type": "timeseries",
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 12,
@@ -254,15 +247,13 @@
         "w": 12,
         "h": 10
       },
-      "description": "Rollierende Anzahl der Nginx-Requests in einer Minute für alle zum URL-Präfix passenden Pfade.",
+      "description": "Gespeicherte Nginx-Anfragen pro 5-Minuten-Abschnitt, geteilt durch fünf. URL-Präfix filtert. Erfassung ab Bereitstellung; Lücken sind keine Nullwerte.",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(count_over_time({environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json path=\"path\" | __error__=\"\" | path=~\"${url:regex}.*\" | keep service_name [1m]))",
-          "queryType": "range",
-          "direction": "backward",
-          "maxLines": 200,
-          "legendFormat": "Requests / Minute"
+          "expr": "sum(projekt_nginx_requests_5m{environment=\"production\",path=~\"${url:regex}.*\"}) / 5",
+          "legendFormat": "Anfragen / Minute",
+          "range": true
         }
       ],
       "options": {},
@@ -1023,8 +1014,8 @@
       "title": "Nginx p95 nach Anfragekategorie",
       "type": "timeseries",
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 12,
@@ -1035,12 +1026,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json request_time=\"request_time\", request_path=\"path\", response_status=\"status\" | response_status != 101 | request_path !~ \"^/grafana(/.*)?$\" | request_path != \"/collect\" | request_path != \"/observability-health\" | unwrap request_time | __error__=\"\" [5m]) by (service_name)",
+          "expr": "projekt_nginx_duration_p95_seconds_5m{environment=\"production\",category=\"application\"}",
           "legendFormat": "Anwendung"
         },
         {
           "refId": "C",
-          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json request_time=\"request_time\", request_path=\"path\", response_status=\"status\" | response_status != 101 | request_path =~ \"^/(grafana(/.*)?|collect|observability-health)$\" | unwrap request_time | __error__=\"\" [5m]) by (service_name)",
+          "expr": "projekt_nginx_duration_p95_seconds_5m{environment=\"production\",category=\"monitoring\"}",
           "legendFormat": "Monitoring"
         }
       ],
@@ -1056,7 +1047,7 @@
           "placement": "bottom"
         }
       },
-      "description": "5-Minuten-p95 der HTTP-Laufzeit (einschließlich Upload/Download). Status 101 ausgeschlossen: WebSocket-Verbindungsdauer ist keine Antwortlatenz. Monitoring wird getrennt angezeigt."
+      "description": "5-Minuten-p95 der HTTP-Laufzeit (einschließlich Upload/Download). Status 101 ausgeschlossen: WebSocket-Verbindungsdauer ist keine Antwortlatenz. Monitoring wird getrennt angezeigt. Vorberechnete 5-Minuten-Werte ab Bereitstellung; frühere Rohlogs werden nicht automatisch nachberechnet."
     },
     {
       "id": 108,
@@ -1123,8 +1114,8 @@
       "title": "Nginx-Upstream-Antwort p95 (ein Versuch)",
       "type": "timeseries",
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
@@ -1135,7 +1126,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json upstream_time=\"upstream_time\", response_status=\"status\", request_path=\"path\" | response_status != 101 | request_path !~ \"^/grafana(/.*)?$\" | request_path != \"/collect\" | request_path != \"/observability-health\" | upstream_time =~ \"^[0-9]+([.][0-9]+)?$\" | unwrap upstream_time | __error__=\"\" [5m]) by (service_name)",
+          "expr": "projekt_nginx_duration_p95_seconds_5m{environment=\"production\",category=\"upstream\"}",
           "legendFormat": "Anwendung upstream p95"
         }
       ],
@@ -1145,7 +1136,7 @@
         },
         "overrides": []
       },
-      "description": "Upstream-Antwortdauer für HTTP-Anfragen mit genau einem Upstream-Versuch. Cache-Treffer, leere Zeiten, Retries/mehrere Upstreams, WebSockets und Monitoring ausgeschlossen. Nicht reine CPU-Zeit; langsame Clients können bei großen Antworten auch den Upstream bremsen."
+      "description": "Upstream-Antwortdauer für HTTP-Anfragen mit genau einem Upstream-Versuch. Cache-Treffer, leere Zeiten, Retries/mehrere Upstreams, WebSockets und Monitoring ausgeschlossen. Nicht reine CPU-Zeit; langsame Clients können bei großen Antworten auch den Upstream bremsen. Vorberechnete 5-Minuten-Werte ab Bereitstellung; frühere Rohlogs werden nicht automatisch nachberechnet."
     },
     {
       "id": 112,
@@ -1363,8 +1354,8 @@
       "title": "WebSocket-Verbindungsdauer p95",
       "type": "timeseries",
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
@@ -1375,7 +1366,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "quantile_over_time(0.95, {environment=\"production\",service_name=\"nginx\",log_type=\"access\"} | json request_time=\"request_time\", response_status=\"status\" | response_status = 101 | unwrap request_time | __error__=\"\" [5m]) by (service_name)",
+          "expr": "projekt_nginx_duration_p95_seconds_5m{environment=\"production\",category=\"websocket\"}",
           "legendFormat": "WebSocket-Verbindungsdauer"
         }
       ],
@@ -1385,7 +1376,7 @@
         },
         "overrides": []
       },
-      "description": "Verbindungsdauer abgeschlossener WebSockets, etwa Grafana Live; keine HTTP-Latenz. Ohne abgeschlossene WebSocket-Verbindungen bleiben die Daten leer."
+      "description": "Verbindungsdauer abgeschlossener WebSockets, etwa Grafana Live; keine HTTP-Latenz. Ohne abgeschlossene WebSocket-Verbindungen bleiben die Daten leer. Vorberechnete 5-Minuten-Werte ab Bereitstellung; frühere Rohlogs werden nicht automatisch nachberechnet."
     }
   ],
   "annotations": {

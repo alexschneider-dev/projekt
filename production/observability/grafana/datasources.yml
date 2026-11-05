@@ -9,6 +9,7 @@ datasources:
     jsonData:
       httpMethod: POST
       timeInterval: 30s
+      customQueryParameters: max_source_resolution=0
   - name: Prometheus Live (Alarme)
     uid: prometheus-live
     type: prometheus

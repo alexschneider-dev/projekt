@@ -1,0 +1,28 @@
+groups:
+- name: nginx_zeitabschnitte
+  interval: 5m
+  rules:
+  - record: projekt_nginx_requests_5m
+    expr: sum by (path) (count_over_time({environment="production",service_name="nginx",log_type="access"} | json path="path" | __error__="" | keep path [5m] offset 1m))
+    labels:
+      environment: production
+  - record: projekt_nginx_duration_p95_seconds_5m
+    expr: quantile_over_time(0.95, {environment="production",service_name="nginx",log_type="access"} | json request_time="request_time", request_path="path", response_status="status" | response_status != 101 | request_path !~ "^/grafana(/.*)?$" | request_path != "/collect" | request_path != "/observability-health" | unwrap request_time | __error__="" [5m] offset 1m) by (service_name)
+    labels:
+      environment: production
+      category: application
+  - record: projekt_nginx_duration_p95_seconds_5m
+    expr: quantile_over_time(0.95, {environment="production",service_name="nginx",log_type="access"} | json request_time="request_time", request_path="path", response_status="status" | response_status != 101 | request_path =~ "^/(grafana(/.*)?|collect|observability-health)$" | unwrap request_time | __error__="" [5m] offset 1m) by (service_name)
+    labels:
+      environment: production
+      category: monitoring
+  - record: projekt_nginx_duration_p95_seconds_5m
+    expr: quantile_over_time(0.95, {environment="production",service_name="nginx",log_type="access"} | json upstream_time="upstream_time", response_status="status", request_path="path" | response_status != 101 | request_path !~ "^/grafana(/.*)?$" | request_path != "/collect" | request_path != "/observability-health" | upstream_time =~ "^[0-9]+([.][0-9]+)?$" | unwrap upstream_time | __error__="" [5m] offset 1m) by (service_name)
+    labels:
+      environment: production
+      category: upstream
+  - record: projekt_nginx_duration_p95_seconds_5m
+    expr: quantile_over_time(0.95, {environment="production",service_name="nginx",log_type="access"} | json request_time="request_time", response_status="status" | response_status = 101 | unwrap request_time | __error__="" [5m] offset 1m) by (service_name)
+    labels:
+      environment: production
+      category: websocket

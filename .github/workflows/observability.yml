@@ -80,6 +80,7 @@ jobs:
       - name: Logabfragen und Klassifikation prüfen
         run: |
           python production/observability/test-loki-query-integration.py
+          python production/observability/test-yearly-dashboard-integration.py
           python production/observability/test-query-classification-integration.py
       - name: PostgreSQL-Wiederherstellung prüfen
         run: python production/observability/test-postgres-integration.py

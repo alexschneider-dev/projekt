@@ -85,6 +85,7 @@ def local_config():
         },
     }
     config["compactor"]["delete_request_store"] = "filesystem"
+    config.pop("ruler", None)
     return config
 
 
@@ -214,7 +215,7 @@ def main():
                 ]:
                     params = {
                         "query": query,
-                        "start": str(now - 25 * 3600 * 10**9),
+                        "start": str(now - 365 * 86400 * 10**9),
                         "end": str(now),
                         "limit": limit,
                         "direction": direction,
@@ -286,7 +287,7 @@ def main():
             ]
             assert not errors, "\n".join(errors)
             print(
-                "Erfolgreich: 24-Stunden-Logsuche, Zeilenlimits, beide Richtungen und Metrikzählung ohne Loki-Fehler."
+                "Erfolgreich: Jahres-Logsuche mit 24 Stunden vorhandenen Daten, Zeilenlimits, beide Richtungen und Metrikzählung ohne Loki-Fehler."
             )
         finally:
             command(

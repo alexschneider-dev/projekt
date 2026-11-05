@@ -20,6 +20,28 @@ Datenbank-Backup-Dienste werden nicht als scheinbar funktionierende Datenquellen
 
 ## Datenfluss und Zugriff
 
+Die Dashboard-Tabelle „Anfragen je URL — Top 20 im Zeitraum“ summiert gespeicherte
+5-Minuten-Abschnitte über den gesamten gewählten Zeitraum. Auch ein Jahr mit erst
+sechs Monaten vorhandenen Daten ist zulässig. Fehlende ältere Daten erzeugen
+keinen Abfragefehler. Es gibt keine künstliche Begrenzung auf eine Stunde oder
+31 Tage. Loki-Logabfragen behalten ihren gewählten Zeitraum und ihr Zeilenlimit.
+
+Loki wertet `loki-rules.yml` alle fünf Minuten aus, mit einer Minute Verzögerung
+für eintreffende Logs, und sendet die Ergebnisse an den internen Remote-Write-
+Empfänger von Prometheus. Thanos archiviert diese Metriken wie die übrigen
+Metriken für 730 Tage. Anzahl und p95 werden beim Öffnen langer Dashboard-Zeiträume
+nicht erneut aus sämtlichen Rohlogs berechnet. Die Prometheus-Datenquelle fordert
+Originalauflösung an, damit `sum_over_time` die gespeicherten Zählabschnitte und
+keine heruntergerechneten Mittelwerte addiert.
+
+Die neuen Metriken beginnen mit der Bereitstellung; frühere Rohlogs werden nicht
+automatisch nachberechnet. Die ersten Werte erscheinen nach einer Auswertung.
+Die Zählung hat fünf Minuten Zeitauflösung; angefangene Randabschnitte werden
+nicht sekundengenau zugeschnitten. Verspätete Logs außerhalb der Verzögerung und
+verpasste Regelauswertungen können Lücken verursachen. Die Dashboard-Beschreibungen
+weisen auf diesen Unterschied zu einer vollständigen Rohlog-Auswertung hin.
+Keine der Änderungen löscht vorhandene Logs oder verkürzt die Aufbewahrung.
+
 - Next.js veröffentlicht Prozessmetriken und Request-Histogramme auf dem internen
   Port 9464. OpenTelemetry sendet Next.js-/Fetch-/Prisma-Traces an Alloy.
 - Alloy liest Docker-Logs pro Node und empfängt OTLP sowie Browser-Telemetrie.
@@ -279,9 +301,21 @@ Nach Bereitstellung des neuen Images über **Nginx bauen und bereitstellen** auf
 dem Swarm-Knoten mit dem laufenden Nginx-Task in derselben Shell ausführen:
 
 ```sh
-nginx_task=$(sudo docker ps -q --filter label=com.docker.swarm.service.name=projekt_nginx)
-sudo docker exec "$nginx_task" sh -ec 'ln -sf /etc/nginx/security-diagnose.inc /etc/nginx/security-aktiv.inc && nginx -t && nginx -s reload'
+nginx_task=$(sudo docker ps -q --filter label=com.docker.swarm.service.name=projekt_nginx --filter health=healthy)
+case "$nginx_task" in
+  ""|*[!0-9a-f]*)
+    printf '%s\n' 'Kein eindeutiger gesunder Nginx-Container gefunden. Deployment und Task-Status prüfen.'
+    unset nginx_task
+    ;;
+  *)
+    sudo docker exec "$nginx_task" sh -ec 'ln -sf /etc/nginx/security-diagnose.inc /etc/nginx/security-aktiv.inc && nginx -t && nginx -s reload'
+    ;;
+esac
 ```
+
+Bei laufenden Updates können mehrere Container desselben Dienstes existieren.
+Die Auswahl verlangt genau einen gesunden Container. Nach erfolgreicher Aktivierung
+die ausgewählte ID in derselben Shell für die Rückschaltung verwenden.
 
 Während des kurzen Diagnosefensters schreibt Nginx HTTP-Fehlermeldungen ab
 `info` und ergänzt bei 400/501 den Security-Eintrag um Proxy-Adresse, übermittelte
@@ -431,6 +465,7 @@ npm run audit:dependencies
 bash production/observability/validate.sh
 python3 -m unittest discover -s production/observability -p 'test_*.py'
 python3 production/observability/test-loki-query-integration.py
+python3 production/observability/test-yearly-dashboard-integration.py
 python3 production/observability/test-query-classification-integration.py
 python3 production/observability/test-storage-integration.py
 python3 production/observability/test-grafana-integration.py
