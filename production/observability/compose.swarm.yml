@@ -106,7 +106,6 @@ services:
     - --storage.tsdb.max-block-duration=2h
     - --query.max-concurrency=2
     - --query.max-samples=5000000
-    - --web.enable-remote-write-receiver
     volumes:
     - prometheus:/prometheus
     configs:
@@ -149,9 +148,6 @@ services:
     configs:
     - source: loki_yml
       target: /etc/loki/config.yml
-      mode: 292
-    - source: loki_rules_yml
-      target: /etc/loki/rules/fake/nginx.yml
       mode: 292
     environment:
       LOKI_S3_BUCKET: ${LOKI_S3_BUCKET}
@@ -662,9 +658,6 @@ configs:
   loki_yml:
     file: ./loki.yml
     name: projekt_obs_loki_yml_${OBS_CONFIG_LOKI_YML}
-  loki_rules_yml:
-    file: ./loki-rules.yml
-    name: projekt_obs_loki_rules_yml_${OBS_CONFIG_LOKI_RULES_YML}
   tempo_yml:
     file: ./tempo.yml
     name: projekt_obs_tempo_yml_${OBS_CONFIG_TEMPO_YML}

@@ -26,5 +26,4 @@ loki_image=$("$python" -c 'import yaml; print(yaml.safe_load(open("compose.swarm
 docker run --rm --entrypoint /bin/promtool -v "$PWD:/config:ro" "$prom_image" check config /config/prometheus.yml
 docker run --rm -v "$PWD:/config:ro" "$alloy_image" validate --stability.level=public-preview /config/alloy.alloy
 docker run --rm -e LOKI_S3_ENDPOINT=https://s3.example.com -e LOKI_S3_BUCKET=test -e LOKI_S3_REGION=test \
-  -v "$PWD:/config:ro" -v "$PWD/loki-rules.yml:/etc/loki/rules/fake/nginx.yml:ro" \
-  "$loki_image" -config.file=/config/loki.yml -config.expand-env=true -verify-config=true
+  -v "$PWD:/config:ro" "$loki_image" -config.file=/config/loki.yml -config.expand-env=true -verify-config=true

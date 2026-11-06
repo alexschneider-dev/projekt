@@ -12,7 +12,6 @@ export const configFiles = {
   grafana_overview_json: 'grafana/overview.json',
   prometheus_yml: 'prometheus.yml',
   loki_yml: 'loki.yml',
-  loki_rules_yml: 'loki-rules.yml',
   tempo_yml: 'tempo.yml',
   alloy_alloy: 'alloy.alloy',
   exporters_errors_py: 'errors/messages.py',

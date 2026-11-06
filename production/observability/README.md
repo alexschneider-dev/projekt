@@ -20,27 +20,11 @@ Datenbank-Backup-Dienste werden nicht als scheinbar funktionierende Datenquellen
 
 ## Datenfluss und Zugriff
 
-Die Dashboard-Tabelle „Anfragen je URL — Top 20 im Zeitraum“ summiert gespeicherte
-5-Minuten-Abschnitte über den gesamten gewählten Zeitraum. Auch ein Jahr mit erst
-sechs Monaten vorhandenen Daten ist zulässig. Fehlende ältere Daten erzeugen
-keinen Abfragefehler. Es gibt keine künstliche Begrenzung auf eine Stunde oder
-31 Tage. Loki-Logabfragen behalten ihren gewählten Zeitraum und ihr Zeilenlimit.
-
-Loki wertet `loki-rules.yml` alle fünf Minuten aus, mit einer Minute Verzögerung
-für eintreffende Logs, und sendet die Ergebnisse an den internen Remote-Write-
-Empfänger von Prometheus. Thanos archiviert diese Metriken wie die übrigen
-Metriken für 730 Tage. Anzahl und p95 werden beim Öffnen langer Dashboard-Zeiträume
-nicht erneut aus sämtlichen Rohlogs berechnet. Die Prometheus-Datenquelle fordert
-Originalauflösung an, damit `sum_over_time` die gespeicherten Zählabschnitte und
-keine heruntergerechneten Mittelwerte addiert.
-
-Die neuen Metriken beginnen mit der Bereitstellung; frühere Rohlogs werden nicht
-automatisch nachberechnet. Die ersten Werte erscheinen nach einer Auswertung.
-Die Zählung hat fünf Minuten Zeitauflösung; angefangene Randabschnitte werden
-nicht sekundengenau zugeschnitten. Verspätete Logs außerhalb der Verzögerung und
-verpasste Regelauswertungen können Lücken verursachen. Die Dashboard-Beschreibungen
-weisen auf diesen Unterschied zu einer vollständigen Rohlog-Auswertung hin.
-Keine der Änderungen löscht vorhandene Logs oder verkürzt die Aufbewahrung.
+Die Nginx-Dashboard-Panels berechnen Anfragen und Laufzeiten wieder direkt aus
+Loki-Rohlogs. Die am 5. November eingeführten automatischen Fünf-Minuten-
+Auswertungen und der dafür aktivierte Prometheus-Remote-Write-Empfänger sind
+zurückgenommen. Loki begrenzt Abfragen wieder auf 744 Stunden. Bereits archivierte
+Metriken bleiben erhalten, werden in diesen Panels jedoch nicht mehr verwendet.
 
 - Next.js veröffentlicht Prozessmetriken und Request-Histogramme auf dem internen
   Port 9464. OpenTelemetry sendet Next.js-/Fetch-/Prisma-Traces an Alloy.
@@ -237,9 +221,8 @@ Thanos-Sidecar erreichbar. Tempo hält abgeschlossene Blöcke eine Stunde lokal
 vor, fragt Ingester für die letzten zwei Stunden mit ab und behält kompaktierte
 Blöcke zwei Stunden. Damit überlappen lokale Suche und verzögerte S3-Erkennung.
 Der lokale Plattenbedarf kann steigen; RAM und Swap nach Bereitstellung prüfen.
-Loki-Aufzeichnungsregeln bleiben bei fünf Minuten mit Fünf-Minuten-Fenstern,
-damit Jahresauswertungen keine Abschnitte verlieren. Aufbewahrungsfristen bleiben
-unverändert; automatische Löschungen können später ausgeführt werden.
+Automatische Loki-Aufzeichnungsregeln sind deaktiviert. Aufbewahrungsfristen
+bleiben unverändert; automatische Löschungen können später ausgeführt werden.
 
 Über den regulären Monitoring-Workflow bereitstellen; kein Datenreset erforderlich.
 Nach Bereitstellung neue Logs, aktuelle und archivierte Metriken sowie neue und
@@ -421,8 +404,9 @@ kein unkontrollierter Rollback des gesamten Stacks.
 Für CI den Installer zunächst installieren und nach Änderungen an
 `production/observability/install-release.sh` erneut aktualisieren. Der Workflow
 verwendet die separat installierte Kopie auf dem Server, nicht das mit dem
-Release hochgeladene Skript. Insbesondere muss die Dateiliste `loki-rules.yml`
-enthalten, bevor die Aufzeichnungsregeln bereitgestellt werden.
+Release hochgeladene Skript. Die leere Datei `loki-rules.yml` bleibt im Paket,
+damit bereits installierte Installer mit dieser Dateiliste weiterhin funktionieren.
+Sie wird nicht als Swarm Config eingebunden und enthält keine Regeln.
 
 ```sh
 sudo install -o root -g root -m 0755 production/observability/install-release.sh /usr/local/lib/projekt-deploy/install-observability-release.sh
@@ -525,7 +509,6 @@ npm run audit:dependencies
 bash production/observability/validate.sh
 python3 -m unittest discover -s production/observability -p 'test_*.py'
 python3 production/observability/test-loki-query-integration.py
-python3 production/observability/test-yearly-dashboard-integration.py
 python3 production/observability/test-query-classification-integration.py
 python3 production/observability/test-storage-integration.py
 python3 production/observability/test-grafana-integration.py

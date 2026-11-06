@@ -45,27 +45,13 @@ limits_config:
     priority: 1
     period: 720h
   max_query_lookback: 0s
-  max_query_length: 0s
-  max_query_range: 0s
+  max_query_length: 744h
   ingestion_rate_mb: 4
   ingestion_burst_size_mb: 8
   max_query_parallelism: 2
   tsdb_max_query_parallelism: 2
 analytics:
   reporting_enabled: false
-ruler:
-  storage:
-    type: local
-    local:
-      directory: /etc/loki/rules
-  rule_path: /loki/rules-work
-  evaluation_interval: 5m
-  wal:
-    dir: /loki/ruler-wal
-  remote_write:
-    enabled: true
-    client:
-      url: http://prometheus:9090/api/v1/write
 querier:
   max_concurrent: 2
 ingester:
