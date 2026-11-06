@@ -25,8 +25,9 @@ Umstellungshinweise in der Produktionsdokumentation.
 
 Die Anwendung kann über HTTPS als App installiert werden. Unterstützende Browser
 zeigen „App installieren“ an; alternativ erfolgt die Installation über das
-Browsermenü. Auf iPhone und iPad in Safari „Teilen“ und anschließend „Zum
-Home-Bildschirm“ wählen. Die App startet auf der öffentlichen Homepage; auch nach
+Browsermenü. Auf iPhone und iPad zeigt „App installieren“ eine Anleitung direkt
+auf der Website: „Teilen“, „Zum Home-Bildschirm“ und „Hinzufügen“. In der bereits
+als App geöffneten Ansicht wird dieser Button ausgeblendet. Die App startet auf der öffentlichen Homepage; auch nach
 dem Login bleibt die Homepage das Ziel.
 
 Anmeldung und Datenzugriffe benötigen weiterhin eine Internetverbindung. Nach

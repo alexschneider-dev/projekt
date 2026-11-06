@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { ROUTES } from "@/lib/constants/routes";
 import { ERROR_PWA } from "@/lib/http/errors/pwa";
+import { IosInstallInstructions } from "./ios-install-instructions";
 
 
 type InstallPrompt = Event & {
@@ -20,6 +21,8 @@ export function PwaSupport() {
   const [offline, setOffline] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [iosInstallAvailable, setIosInstallAvailable] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   useEffect(() => {
     const updateConnection = () => setOffline(!navigator.onLine);
@@ -27,8 +30,26 @@ export function PwaSupport() {
       event.preventDefault();
       setInstallPrompt(event as InstallPrompt);
     };
-    const installed = () => setInstallPrompt(null);
+    const displayMode = window.matchMedia("(display-mode: standalone)");
+    const updateInstallation = () => {
+      const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const standalone = displayMode.matches ||
+        (navigator as Navigator & { standalone?: boolean }).standalone === true;
+      setIosInstallAvailable(ios && !standalone);
+      if (standalone) {
+        setInstallPrompt(null);
+        setShowInstructions(false);
+      }
+    };
+    const installed = () => {
+      setInstallPrompt(null);
+      setIosInstallAvailable(false);
+      setShowInstructions(false);
+    };
     updateConnection();
+    updateInstallation();
+    displayMode.addEventListener("change", updateInstallation);
     window.addEventListener("online", updateConnection);
     window.addEventListener("offline", updateConnection);
     window.addEventListener("beforeinstallprompt", capturePrompt);
@@ -44,6 +65,7 @@ export function PwaSupport() {
     }
 
     return () => {
+      displayMode.removeEventListener("change", updateInstallation);
       window.removeEventListener("online", updateConnection);
       window.removeEventListener("offline", updateConnection);
       window.removeEventListener("beforeinstallprompt", capturePrompt);
@@ -67,7 +89,7 @@ export function PwaSupport() {
     }
   }
 
-  if (!offline && !installPrompt && !error) return null;
+  if (!offline && !installPrompt && !iosInstallAvailable && !error) return null;
 
   return (
     <aside
@@ -93,7 +115,16 @@ export function PwaSupport() {
         >
           App installieren
         </Button>
+      ) : iosInstallAvailable ? (
+        <Button
+          onClick={() => setShowInstructions(!showInstructions)}
+          aria-expanded={showInstructions}
+          aria-controls="ios-install-instructions"
+        >
+          App installieren
+        </Button>
       ) : null}
+      {iosInstallAvailable && showInstructions && <IosInstallInstructions />}
       {error && (
         <Text
           variant="error"
