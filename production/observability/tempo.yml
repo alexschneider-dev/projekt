@@ -9,11 +9,16 @@ distributor:
         http:
           endpoint: 0.0.0.0:4318
 ingester:
-  max_block_duration: 5m
+  # Weniger kleine S3-Blöcke; abgeschlossene Blöcke lokal länger abfragbar halten.
+  max_block_duration: 30m
+  complete_block_timeout: 1h
 query_frontend:
   max_batch_size: 1
   search:
     concurrent_jobs: 2
+    # Überlappung während Upload und verzögerter Blocklistenerkennung.
+    query_backend_after: 30m
+    query_ingesters_until: 2h
   trace_by_id:
     concurrent_shards: 2
 querier:
@@ -23,9 +28,12 @@ querier:
 compactor:
   compaction:
     block_retention: 2160h
+    compacted_block_retention: 2h
 storage:
   trace:
     backend: s3
+    blocklist_poll: 15m
+    blocklist_poll_stale_tenant_index: 1h
     wal:
       path: /var/tempo/wal
     s3:
@@ -35,5 +43,7 @@ storage:
       prefix: projekt/production/tempo
       insecure: false
       forcepathstyle: true
+      # Ein Listenbereich genügt für diesen kleinen Einzelserver.
+      list_blocks_concurrency: 1
 usage_report:
   reporting_enabled: false

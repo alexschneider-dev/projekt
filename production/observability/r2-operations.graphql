@@ -1,0 +1,22 @@
+query Speichervorgaenge($konto: string!, $bucket: string!, $von: Time!, $bis: Time!) {
+  viewer {
+    accounts(filter: {accountTag: $konto}) {
+      r2OperationsAdaptiveGroups(
+        filter: {
+          bucketName: $bucket
+          datetime_geq: $von
+          datetime_lt: $bis
+        }
+        limit: 100
+        orderBy: [sum_requests_DESC]
+      ) {
+        dimensions {
+          actionType
+        }
+        sum {
+          requests
+        }
+      }
+    }
+  }
+}

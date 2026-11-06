@@ -521,6 +521,8 @@ services:
     - --index-cache-size=128MB
     - --chunk-pool-size=64MB
     - --store.grpc.series-max-concurrency=2
+    - --block-discovery-strategy=recursive
+    - --sync-block-duration=30m
     - --block-sync-concurrency=2
     - --block-meta-fetch-concurrency=2
     secrets:
@@ -598,6 +600,11 @@ services:
     - --data-dir=/data
     - --http-address=0.0.0.0:10902
     - --wait
+    - --wait-interval=30m
+    - --block-discovery-strategy=recursive
+    - --compact.cleanup-interval=0s
+    - --compact.progress-interval=1h
+    - --block-viewer.global.sync-block-interval=1h
     - --compact.concurrency=1
     - --debug.max-compaction-level=2
     - --downsampling.disable

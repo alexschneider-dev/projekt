@@ -207,6 +207,57 @@ PostgreSQL, Grafana und SMTP bleiben unverändert. Der Austausch beider Secrets 
 nicht atomar. Nach einem Teilerfolg kann derselbe Befehl erneut ausgeführt werden.
 Für eine bereits laufende Installation ist eine versionierte Rotation erforderlich.
 
+## S3-Anfragen und R2-Klasse A begrenzen
+
+Für den kleinen Einzelserver werden Hintergrundabfragen gebündelt. R2 zählt
+auch `ListObjects` zur Klasse A; häufige Verzeichnisprüfungen können daher trotz
+kleiner Datenmenge teuer werden. Die Konfiguration reduziert diese Aufrufe:
+
+| Dienst | Einstellung | Vorher | Jetzt |
+| --- | --- | --- | --- |
+| Thanos Store und Compactor | Blocksuche | Einzelabfrage je Verzeichnis | Rekursive, paginierte Gesamtliste innerhalb des Metrik-Präfixes |
+| Thanos Store | Synchronisierung | 15 Minuten | 30 Minuten |
+| Thanos Compactor | Kompaktierung | 5 Minuten | 30 Minuten |
+| Thanos Compactor | Globale Blockübersicht | 1 Minute | 1 Stunde |
+| Thanos Compactor | Fortschrittsberechnung | 5 Minuten | 1 Stunde |
+| Thanos Compactor | Zusätzliche Bereinigung | Alle 5 Minuten | Am Ende der Kompaktierung |
+| Loki | Indexsynchronisierung | 5 Minuten | 15 Minuten |
+| Loki | Kompaktierung | 10 Minuten | 30 Minuten |
+| Tempo | Maximale Blockdauer | 5 Minuten | 30 Minuten |
+| Tempo | Blocklistenprüfung | 5 Minuten | 15 Minuten |
+| Tempo | Parallele Listenbereiche | 3 | 1 |
+
+Die vorherigen impliziten Werte stammen aus den eingesetzten Programmversionen.
+Größenlimits, Neustarts und manuelle Flushes können weiterhin zusätzliche Blöcke
+verursachen. Die geringere Anzahl zeitbedingt abgeschlossener Tempo-Blöcke ist
+keine Zusage über eine entsprechende Senkung sämtlicher S3-Anfragen.
+
+Neue S3-Blöcke werden später entdeckt. Aktuelle Metriken bleiben über den
+Thanos-Sidecar erreichbar. Tempo hält abgeschlossene Blöcke eine Stunde lokal
+vor, fragt Ingester für die letzten zwei Stunden mit ab und behält kompaktierte
+Blöcke zwei Stunden. Damit überlappen lokale Suche und verzögerte S3-Erkennung.
+Der lokale Plattenbedarf kann steigen; RAM und Swap nach Bereitstellung prüfen.
+Loki-Aufzeichnungsregeln bleiben bei fünf Minuten mit Fünf-Minuten-Fenstern,
+damit Jahresauswertungen keine Abschnitte verlieren. Aufbewahrungsfristen bleiben
+unverändert; automatische Löschungen können später ausgeführt werden.
+
+Über den regulären Monitoring-Workflow bereitstellen; kein Datenreset erforderlich.
+Nach Bereitstellung neue Logs, aktuelle und archivierte Metriken sowie neue und
+archivierte Traces prüfen. Für die Kostenauswertung zwei vergleichbare volle
+Zeitfenster vor und nach der Bereitstellung verwenden, ohne Deployment-Spitzen.
+`r2-operations.graphql` liefert die Aufteilung nach S3-Operation. Die Abfrage
+verwendet die Cloudflare-Analytics-API, keinen S3-Zugangsschlüssel. Zugangstoken
+privat halten. Die Zahlen aus adaptiver Analytics können Schätzwerte sein;
+für tatsächliche Kosten gilt die Abrechnung.
+
+Bei gleichbleibender Last entspricht eine Million Klasse-A-Aufrufe in 30 Tagen
+etwa 8.333 Aufrufen pro sechs Stunden. Die Änderung garantiert nicht, dass dieses
+Budget erreicht wird. Klasse A, Klasse B und Speicher getrennt kontrollieren.
+
+Quellen: [R2-Abrechnung](https://developers.cloudflare.com/r2/pricing/),
+[Thanos 0.40.1 Compactor](https://github.com/thanos-io/thanos/blob/v0.40.1/cmd/thanos/compact.go),
+[Tempo 2.10.8 Speicherparameter](https://github.com/grafana/tempo/blob/v2.10.8/tempodb/config.go).
+
 ## S3-Anbieter einer laufenden Installation wechseln
 
 Zuerst die aktualisierten Skripte über den regulären Monitoring-Release bereitstellen,
