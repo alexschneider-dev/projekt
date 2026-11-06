@@ -21,6 +21,28 @@ Die Produktionsanleitung beschreibt eine Erstinstallation auf einem einzelnen
 Ubuntu-Server. Für bestehende Installationen gelten die Betriebs- und
 Umstellungshinweise in der Produktionsdokumentation.
 
+## Installation als App (PWA)
+
+Die Anwendung kann über HTTPS als App installiert werden. Unterstützende Browser
+zeigen „App installieren“ an; alternativ erfolgt die Installation über das
+Browsermenü. Auf iPhone und iPad in Safari „Teilen“ und anschließend „Zum
+Home-Bildschirm“ wählen. Die App startet auf der öffentlichen Homepage; auch nach
+dem Login bleibt die Homepage das Ziel.
+
+Anmeldung und Datenzugriffe benötigen weiterhin eine Internetverbindung. Nach
+dem ersten erfolgreichen Online-Aufruf im Produktionsbetrieb speichert der
+Service Worker ausschließlich die öffentliche Offline-Hinweisseite und ihre
+Styles. Bei einem fehlgeschlagenen Seitenaufruf erscheint „Keine Verbindung“;
+„Erneut versuchen“ öffnet die Homepage. In einer bereits geöffneten Anwendung
+erscheint bei gemeldetem Verbindungsverlust ein Hinweis mit einer Schaltfläche
+zum Neuladen. API-Antworten und geschützte Seiten werden nicht im Service-Worker-Cache gespeichert.
+
+Der Service Worker wird nur im Produktionsmodus registriert. Lokal lässt sich
+seine Funktion mit einem Produktionsbuild auf localhost prüfen. Für Änderungen
+an der Offline-Seite oder ihren Styles die Cache-Version in
+`lib/pwa/service-worker.ts` erhöhen. App-Symbole liegen unter `public/icons/`;
+`icon.svg` ist die gemeinsame Vorlage der PNG-Dateien.
+
 ## Observability
 
 Ein separater Docker-Swarm-Stack mit 15 Diensten erfasst Metriken, Logs und Traces:

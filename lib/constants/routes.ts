@@ -7,6 +7,8 @@ export const ROUTES = {
   telemetryConfig: "/api/telemetry-config",
   telemetryCollect: "/collect",
   home: "/",
+  offline: "/offline",
+  serviceWorker: "/sw.js",
   login: "/login",
   dashboard: "/dashboard",
   admin: "/admin",
