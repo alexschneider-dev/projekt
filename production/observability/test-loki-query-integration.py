@@ -79,10 +79,7 @@ def local_config():
     config["schema_config"]["configs"][0]["object_store"] = "filesystem"
     config["storage_config"] = {
         "filesystem": {"directory": "/loki/chunks"},
-        "tsdb_shipper": {
-            "active_index_directory": "/loki/index",
-            "cache_location": "/loki/index_cache",
-        },
+        "tsdb_shipper": config["storage_config"]["tsdb_shipper"],
     }
     config["compactor"]["delete_request_store"] = "filesystem"
     return config

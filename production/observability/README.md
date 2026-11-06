@@ -206,6 +206,7 @@ kleiner Datenmenge teuer werden. Die Konfiguration reduziert diese Aufrufe:
 | Thanos Compactor | Fortschrittsberechnung | 5 Minuten | 1 Stunde |
 | Thanos Compactor | Zusätzliche Bereinigung | Alle 5 Minuten | Am Ende der Kompaktierung |
 | Loki | Indexsynchronisierung | 5 Minuten | 15 Minuten |
+| Loki | Ungenutzte heruntergeladene Indexeinträge | 24 Stunden | 1 Stunde |
 | Loki | Kompaktierung | 10 Minuten | 30 Minuten |
 | Tempo | Maximale Blockdauer | 5 Minuten | 30 Minuten |
 | Tempo | Blocklistenprüfung | 5 Minuten | 15 Minuten |
@@ -215,6 +216,27 @@ Die vorherigen impliziten Werte stammen aus den eingesetzten Programmversionen.
 Größenlimits, Neustarts und manuelle Flushes können weiterhin zusätzliche Blöcke
 verursachen. Die geringere Anzahl zeitbedingt abgeschlossener Tempo-Blöcke ist
 keine Zusage über eine entsprechende Senkung sämtlicher S3-Anfragen.
+
+Loki verwendet `/loki/index_cache_v2` als neuen Download-Cache. Damit werden die
+im bisherigen `/loki/index_cache` möglicherweise durch lange Abfragen angelegten
+Tabellen beim Neustart nicht wieder eingelesen und regelmäßig synchronisiert.
+Der alte Cache bleibt zunächst unberührt. Aktiver Schreibindex, WAL und S3-Daten
+bleiben erhalten. Bei Bedarf lädt Loki historische Indizes erneut aus S3; die
+erste Abfrage kann deshalb länger dauern und zusätzliche Lesezugriffe erzeugen.
+Die Cache-TTL betrifft ausschließlich ungenutzte Download-Einträge. Loki prüft
+deren Ablauf stündlich, daher erfolgt die Bereinigung nicht exakt nach einer
+Stunde. Wiederholte Abfragen halten die benötigten Einträge weiter aktiv.
+
+Nach dem Deployment in Grafana Explore mit der Datenquelle „Prometheus Live
+(Alarme)“ einen vollständig nach der Umstellung liegenden Zeitraum prüfen:
+
+```promql
+sum by (operation) (increase(loki_s3_request_duration_seconds_count[1h]))
+```
+
+Der Zähler `S3.List` ist für diese Diagnose entscheidend. Die Prometheus-Werte
+sind hochgerechnete Zählerzuwächse, keine exakten R2-Abrechnungszahlen. Ein
+Rückbau der Regeln allein entfernt keinen zuvor aufgebauten Download-Cache.
 
 Neue S3-Blöcke werden später entdeckt. Aktuelle Metriken bleiben über den
 Thanos-Sidecar erreichbar. Tempo hält abgeschlossene Blöcke eine Stunde lokal

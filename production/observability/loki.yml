@@ -22,7 +22,9 @@ storage_config:
   object_prefix: projekt/production/loki/
   tsdb_shipper:
     active_index_directory: /loki/index
-    cache_location: /loki/index_cache
+    # Alten Cache langer Abfragen nicht erneut zur Synchronisierung laden.
+    cache_location: /loki/index_cache_v2
+    cache_ttl: 1h
     resync_interval: 15m
   aws:
     endpoint: ${LOKI_S3_ENDPOINT}
