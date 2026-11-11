@@ -14,6 +14,7 @@ import {
   join
 } from "node:path";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 
 
 const root = resolve(import.meta.dirname, "..");
@@ -502,7 +503,15 @@ esac
   assert.match(calls, /-c compose.edge.yml projekt-edge/);
   assert.match(calls, /-c compose.swarm.yml .* projekt/);
   assert.match(calls, /EDGE_IMAGE=example\/projekt-edge_edge:2.0@sha256:live/);
-  assert.match(calls, /EDGE_CONFIG_NAME=projekt_edge_haproxy_[a-f0-9]{64}/);
+  const configName = calls.match(/^EDGE_CONFIG_NAME=(.+)$/m)?.[1];
+  const configHash = createHash("sha256")
+    .update(readFileSync(join(dir, "edge-haproxy.cfg")))
+    .digest("hex");
+
+  assert.ok(configName);
+  assert.ok(configName.length <= 64);
+  assert.match(configName, /^[a-zA-Z0-9][a-zA-Z0-9_.-]*[a-zA-Z0-9]$/);
+  assert.equal(configName, `projekt_edge_haproxy_${configHash.slice(0, 40)}`);
 
   for (const service of [
     "nextjs",

@@ -27,7 +27,8 @@ done
 # einen neuen Config-Namen, weil Swarm Configs unveränderlich sind.
 EDGE_IMAGE=$(docker service inspect projekt-edge_edge --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}')
 [[ -n "$EDGE_IMAGE" ]] || exit 1
-EDGE_CONFIG_NAME="projekt_edge_haproxy_$(node -e 'process.stdout.write(require("node:crypto").createHash("sha256").update(require("node:fs").readFileSync("edge-haproxy.cfg")).digest("hex"))')"
+# 20 Zeichen Präfix plus 40 Hash-Zeichen bleiben unter Dockers Grenze von 64 Zeichen.
+EDGE_CONFIG_NAME="projekt_edge_haproxy_$(node -e 'process.stdout.write(require("node:crypto").createHash("sha256").update(require("node:fs").readFileSync("edge-haproxy.cfg")).digest("hex").slice(0, 40))')"
 export EDGE_IMAGE EDGE_CONFIG_NAME
 
 docker stack config -c compose.edge.yml >/dev/null
