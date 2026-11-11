@@ -137,8 +137,64 @@ Die Produktionsumgebung verwendet `/etc/projekt/runtime.json` für öffentliche 
 und Swarm-Secret-Verweise. Das gemountete Startscript lädt Secret-Inhalte aus
 `/run/secrets/runtime_*` als Prozessvariablen. Sie stehen dadurch nicht mehr im
 Klartext in der aktuellen Docker-Service-Spezifikation. Lokale Entwicklungs-Env-
-Dateien bleiben bestehen. Unbekannte Variablen werden standardmäßig Secrets;
-die öffentliche Allowlist steht in `public-keys.json`.
+Dateien bleiben bestehen. `runtime-keys.json` deklariert öffentliche Variablen und erforderliche Secrets je Service.
+Unbekannte Variablen (außer `NEXT_PUBLIC_*`) und fehlende Pflicht-Secrets stoppen die Vorbereitung.
+
+## Zentrale Secret-Zuordnung
+
+`production/runtime-keys.json` enthält ausschließlich Variablennamen. Die Liste
+unter `secrets` ist für den jeweiligen Service verpflichtend. Vorbereitung,
+Service-Deployment, Stack-Deployment und Prisma-Migration verwenden diese zentrale
+Deklaration. Der Resolver prüft nur die ausgewählten Services und kontrolliert die
+Existenz ihrer Docker-Secrets vor Änderungen am Stack.
+
+Bestehende externe Namen und Rotationseinträge aus `runtime.json` bleiben erhalten.
+Ohne vorhandenen Verweis verwendet ein neues Secret den Namen
+`projekt_SERVICE_variablenname_v1`. Neue Secret-Einbindungen kommen aus Git;
+zusätzliche Service-Zuordnungen in `runtime.json` sind nicht nötig. Die Datei wird
+nicht überschrieben. Öffentliche Werte und die Startscript-Config bleiben dort.
+`runtime-overlay.mjs` lässt weiterhin ausschließlich Umgebungsvariablen sowie
+Secret-/Config-Einbindungen durch. Betriebsparameter und `start-first` bleiben in Compose.
+Monitoring-Secrets bleiben wie bisher separat im Monitoring-Stack definiert.
+
+Vor der ersten Bereitstellung die vorhandenen Server-Zuordnungen ohne Secret-Werte
+mit der zentralen Liste abgleichen. Nicht deklarierte bisherige Einbindungen führen
+zum Abbruch; weitere tatsächlich benötigte Schlüssel zuerst in Git ergänzen.
+Entfernte Schlüssel auch aus den bisherigen Service-Zuordnungen entfernen.
+Docker-Secrets werden dabei weder gelöscht noch neu erzeugt.
+
+Der vom Betreiber bereitgestellte Export vom 11.11.2026 ist abgeglichen:
+Next.js verwendet `DATABASE_URL`, `REDIS_URL` und `NEXTAUTH_SECRET`, PostgreSQL
+verwendet `POSTGRES_PASSWORD`. Konfigurierte und laufende Secret-Zuordnungen
+stimmen überein; Nginx und Redis haben keine eingebundenen Secrets. `REDIS_URL`
+bleibt ausdrücklich ein Secret. Der bestehende rotierte Name von `NEXTAUTH_SECRET`
+bleibt erhalten. Alle exportierten öffentlichen Variablennamen sind bereits deklariert.
+`testing/fixtures/production-secret-inventory.json` hält ausschließlich die
+bereitgestellten Namen und Zuordnungen als Grundlage für den Regressionstest fest.
+
+Den Installer auf bestehenden Servern einmalig aus dem aktualisierten Checkout erneuern:
+
+```sh
+sudo install -o root -g root -m 0755 production/install-release.sh /usr/local/lib/projekt-deploy/install-release.sh
+```
+
+Der Workflow prüft die Installer-Kompatibilität und überträgt auch Resolver,
+Deklaration und zentrales Fehlermodul.
+
+Ein neues Secret zuerst unter `secrets` des Service deklarieren und dann auf dem
+Swarm-Manager anlegen, beispielsweise in Bash:
+
+```bash
+read -rsp 'Secret-Wert: ' SECRET_VALUE
+printf '\n'
+printf '%s' "$SECRET_VALUE" | sudo docker secret create projekt_nextjs_my_api_token_v1 -
+unset SECRET_VALUE
+```
+
+Anschließend den Service bereitstellen. Für eine Rotation ein neues versioniertes
+Docker-Secret erstellen und den externen `name` im obersten `secrets`-Objekt von
+`runtime.json` aktualisieren. Bei alten Service-Zuordnungen deren referenzierten
+Alias ändern, sonst `SERVICE_VARIABLENNAME` verwenden. Alte Secrets für Rollbacks behalten.
 
 ## Einmalige Umstellung eines bestehenden Servers
 
@@ -177,12 +233,15 @@ Zugriff auf die privaten GHCR-Images über die vorhandene Docker-Anmeldung.
 ```sh
 sudo install -d -o root -g root -m 0755 /usr/local/lib/projekt-deploy
 sudo install -d -o root -g root -m 0700 /etc/projekt
+sudo install -d -o root -g root -m 0755 /usr/local/lib/projekt-deploy/errors
+sudo install -o root -g root -m 0644 production/errors/config.mjs /usr/local/lib/projekt-deploy/errors/config.mjs
 sudo install -o root -g root -m 0755 \
   production/install-release.sh production/deploy.sh \
   production/deploy-stack.sh production/migrate.sh \
   /usr/local/lib/projekt-deploy/
 sudo install -o root -g root -m 0644 \
   production/compose.swarm.yml production/runtime-overlay.mjs \
+  production/runtime-config.mjs production/runtime-keys.json \
   production/compose.edge.yml production/edge-haproxy.cfg \
   /usr/local/lib/projekt-deploy/
 sudo visudo -f /etc/sudoers.d/projekt-deploy
@@ -206,7 +265,8 @@ Builds verwenden `GITHUB_TOKEN` zur Anmeldung bei GHCR.
 ### 3. Env-Dateien in Secrets überführen
 
 Den Pfad auf den tatsächlichen bisherigen Produktions-Env-Ordner setzen. Benötigt
-werden `nextjs.env` mit `DATABASE_URL` und `postgres.env` mit `POSTGRES_PASSWORD`.
+werden `nextjs.env` mit `DATABASE_URL`, `NEXTAUTH_SECRET` und `REDIS_URL` sowie
+`postgres.env` mit `POSTGRES_PASSWORD`.
 Bestehende Zugangsdaten unverändert übernehmen; keine neuen Passwörter erfinden.
 
 ```sh
@@ -215,7 +275,7 @@ sudo node production/prepare-config.mjs "$PROD_ENV_DIR" /etc/projekt/runtime.jso
 ```
 
 Diese Vorschau zeigt nur Variablennamen und erstellt nichts. Öffentliche Werte
-gegen `public-keys.json` prüfen. URLs dürfen keine Zugangsdaten enthalten;
+gegen `runtime-keys.json` prüfen. URLs dürfen keine Zugangsdaten enthalten;
 `NEXT_PUBLIC_*` darf niemals geheim sein. Browser-Bundle-Werte werden gegebenenfalls
 bereits beim Next.js-Build benötigt und lassen sich nicht durch Runtime-Secrets ersetzen.
 
@@ -311,7 +371,8 @@ Rollback-Strategie, Healthchecks, Netzwerke, Volumes und Startbefehle.
 Next.js verwendet `start-first`, reserviert 256 MiB und hat ein Limit von 1 GiB.
 Die Reservierung ist eine Planungsgröße und senkt nicht den tatsächlichen Verbrauch.
 
-Beide Deployment-Skripte ergänzen aus `/etc/projekt/runtime.json` ausschließlich
+Beide Deployment-Skripte lösen die Secret-Einbindungen zentral aus Git und den
+vorhandenen Namen in `/etc/projekt/runtime.json` auf. Das Ergebnis ergänzt ausschließlich
 `environment`, `secrets` und `configs` sowie die globalen Secret-/Config-Referenzen.
 Alte Einträge wie `services.nextjs.deploy` werden ignoriert; die Originaldatei wird
 nicht verändert. Die Startbefehle zum Laden der Secrets stehen in Compose.
@@ -320,8 +381,8 @@ Image-Versionen bleiben bewusst separat: Ein Service-Release verwendet seinen
 angeforderten Tag, ein Stack-Deployment erhält die aktuell laufenden Images.
 
 Bei einer bestehenden Installation zuerst den aktualisierten Installer und alle
-Deployment-Dateien nach Abschnitt 2 installieren. Der bisherige Installer kopiert
-`runtime-overlay.mjs` noch nicht. Anschließend wie gewohnt ausführen:
+Deployment-Dateien nach Abschnitt 2 installieren. Ältere Installer übertragen die
+neuen Runtime-Dateien und das Fehlermodul noch nicht. Anschließend wie gewohnt ausführen:
 
 ```sh
 sudo /usr/local/lib/projekt-deploy/deploy-stack.sh

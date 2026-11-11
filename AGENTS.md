@@ -188,6 +188,10 @@ Anweisungen des Nutzers haben Vorrang.
 
 ## Produktionsbereitstellung
 
+- Niemals selbst SSH verwenden oder SSH-Verbindungen zum Server aufbauen.
+- Den Nutzer niemals nach SSH-Zugängen, SSH-Zielen oder einer Freigabe für
+  SSH-Zugriffe fragen. Benötigte Server-Befehle zur manuellen Ausführung
+  bereitstellen; ausschließlich vom Nutzer bereitgestellte Ergebnisse auswerten.
 - `production/compose.swarm.yml` ist die maßgebliche Quelle für Betriebsparameter,
   insbesondere Ressourcen, Replikate und Update-Strategien.
 - `runtime.json` ergänzt nur Umgebungsvariablen und Secret-/Config-Einbindungen;

@@ -1,21 +1,38 @@
 import yaml from "js-yaml";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  rmSync
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve, join } from "node:path";
+import {
+  resolve,
+  join
+} from "node:path";
 import { spawnSync } from "node:child_process";
 
 
 const root = resolve(import.meta.dirname, "..");
 
-for (const finalState of ["completed", "rollback_completed", "paused", "updating"]) {
+for (const finalState of [
+  "completed",
+  "rollback_completed",
+  "paused",
+  "updating"
+]) {
   test(`Stack wartet auf Edge und bewertet ${finalState} korrekt`, t => {
     const dir = fixture(t);
 
     writeFileSync(join(dir, "runtime.json"), "{}");
 
-    for (const command of ["flock", "sleep"]) {
+    for (const command of [
+      "flock",
+      "sleep"
+    ]) {
       writeFileSync(join(dir, `bin/${command}`), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
     }
 
@@ -37,7 +54,9 @@ esac
       .replace("attempt<150", "attempt<3"));
 
     const result = run("bash", [join(dir, "deploy-stack.sh")], {
-      PATH: `${dir}/bin:${process.env.PATH}`, STATUS_DIR: dir, FINAL_STATE: finalState,
+      PATH: `${dir}/bin:${process.env.PATH}`,
+      STATUS_DIR: dir,
+      FINAL_STATE: finalState,
     });
 
     assert.equal(result.status, finalState === "completed" ? 0 : 1, result.stderr);
@@ -49,9 +68,16 @@ esac
 function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), "production-test-"));
 
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  t.after(() => rmSync(dir, {
+    recursive: true,
+    force: true
+  }));
 
   mkdirSync(join(dir, "bin"));
+  mkdirSync(join(dir, "errors"));
+  writeFileSync(join(dir, "errors/config.mjs"), readFileSync(join(root, "production/errors/config.mjs")));
+  writeFileSync(join(dir, "runtime-config.mjs"), readFileSync(join(root, "production/runtime-config.mjs")));
+  writeFileSync(join(dir, "runtime-keys.json"), "{}");
   writeFileSync(
     join(dir, "runtime-overlay.mjs"),
     readFileSync(join(root, "production/runtime-overlay.mjs"))
@@ -68,15 +94,24 @@ function fixture(t) {
 }
 
 function run(cmd, args, env = {}) {
-  return spawnSync(cmd, args, { encoding: "utf8", env: { ...process.env, ...env } });
+  return spawnSync(cmd, args, {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...env
+    }
+  });
 }
 
 test("Umstellung hält Zugangsdaten aus dem Manifest heraus; erzeugter Stack enthält keine Env-Dateien", t => {
   const dir = fixture(t);
 
-  for (const name of ["nextjs", "postgres"]) {
+  for (const name of [
+    "nextjs",
+    "postgres"
+  ]) {
     writeFileSync(join(dir, `${name}.env`), {
-      nextjs: 'DATABASE_URL="postgres://test:$literal@postgres/db"\nNEXTAUTH_SECRET="a $secret"\nNEXTAUTH_URL="https://example.test/$literal"\n',
+      nextjs: 'DATABASE_URL="postgres://test:$literal@postgres/db"\nNEXTAUTH_SECRET="a $secret"\nREDIS_URL="redis://test:private-redis@redis:6379"\nNEXTAUTH_URL="https://example.test/$literal"\n',
       postgres: 'POSTGRES_PASSWORD="private-password"\n',
     }[name] || "");
   }
@@ -90,19 +125,35 @@ test("Umstellung hält Zugangsdaten aus dem Manifest heraus; erzeugter Stack ent
   );
 
   const output = join(dir, "runtime.json");
-  const args = [join(root, "production/prepare-config.mjs"), dir, output, "test", "--apply"];
+  const args = [
+    join(root, "production/prepare-config.mjs"),
+    dir,
+    output,
+    "test",
+    "--apply"
+  ];
   const preview = run(process.execPath, args.slice(0, -1));
 
   assert.equal(preview.status, 0, preview.stderr);
   assert.ok(!preview.stdout.includes("private-password"));
 
-  const result = run(process.execPath, args, { PATH: `${dir}/bin:${process.env.PATH}`, DOCKER_LOG: dockerLog });
+  const result = run(process.execPath, args, {
+    PATH: `${dir}/bin:${process.env.PATH}`,
+    DOCKER_LOG: dockerLog
+  });
 
   assert.equal(result.status, 0, result.stderr);
 
   const text = readFileSync(output, "utf8");
 
-  for (const value of ["postgres://", "private-value", "private-password", "private-elastic", "a $secret"]) {
+  for (const value of [
+    "postgres://",
+    "private-value",
+    "private-password",
+    "private-redis",
+    "private-elastic",
+    "a $secret"
+  ]) {
     assert.ok(!text.includes(value), value);
   }
 
@@ -113,42 +164,100 @@ test("Umstellung hält Zugangsdaten aus dem Manifest heraus; erzeugter Stack ent
   assert.equal(spec.services.postgres.command, undefined);
   assert.equal(spec.services.nextjs.entrypoint, undefined);
 
-  const imageEnv = Object.fromEntries(["NEXTJS", "NGINX", "POSTGRES", "REDIS"]
-    .map(name => [`${name}_IMAGE`, "example/test:1.0"]));
+  const imageEnv = Object.fromEntries([
+    "NEXTJS",
+    "NGINX",
+    "POSTGRES",
+    "REDIS"
+  ]
+    .map(name => [
+      `${name}_IMAGE`,
+      "example/test:1.0"
+    ]));
   const rendered = run(
     "docker",
-    ["stack", "config", "-c", join(root, "production/compose.swarm.yml"), "-c", output],
+    [
+      "stack",
+      "config",
+      "-c",
+      join(root, "production/compose.swarm.yml"),
+      "-c",
+      output
+    ],
     imageEnv
   );
 
   assert.equal(rendered.status, 0, rendered.stderr);
   assert.ok(!rendered.stdout.includes("env_file"));
 
-  const retry = run(process.execPath, args, { PATH: `${dir}/bin:${process.env.PATH}`, DOCKER_LOG: dockerLog });
+  const retry = run(process.execPath, args, {
+    PATH: `${dir}/bin:${process.env.PATH}`,
+    DOCKER_LOG: dockerLog
+  });
 
   assert.notEqual(retry.status, 0, "Ein bestehendes Manifest darf nicht überschrieben werden");
 });
 
-for (const state of ["Complete 1 second ago", "Failed 1 second ago", "missing-secret"]) {
+for (const state of [
+  "Complete 1 second ago",
+  "Failed 1 second ago",
+  "missing-secret"
+]) {
   test(`Prisma-Migration verwendet nur eingebundene Zugangsdaten; Status=${state}`, t => {
     const dir = fixture(t);
     const log = join(dir, "calls");
 
+    writeFileSync(join(dir, "runtime-keys.json"), JSON.stringify({
+      nextjs: {
+        public: [],
+        secrets: ["DATABASE_URL"]
+      }
+    }));
+    writeFileSync(join(dir, "runtime.json"), JSON.stringify({
+      services: {
+        nextjs: {
+          secrets: [{
+            source: "database",
+            target: "runtime_DATABASE_URL"
+          }],
+          configs: [{
+            source: "entrypoint",
+            target: "/production-entrypoint.sh"
+          }]
+        }
+      },
+      secrets: {
+        database: {
+          external: true,
+          name: "db_url_v1"
+        }
+      },
+      configs: {
+        entrypoint: {
+          external: true,
+          name: "entrypoint_v1"
+        }
+      }
+    }));
     writeFileSync(join(dir, "bin/flock"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
     writeFileSync(join(dir, "bin/docker"), `#!/usr/bin/env node
 const fs = require('node:fs');
 const args = process.argv.slice(2);
 fs.appendFileSync(process.env.CALL_LOG, JSON.stringify(args) + "\\n");
-if (args[1] === 'inspect' && process.env.TEST_STATE !== 'missing-secret') {
-  console.log(args.join(' ').includes('ContainerSpec.Secrets') ? 'db_url_v1' : 'entrypoint_v1');
-}
+if (args[0] === 'secret' && args[1] === 'inspect' && process.env.TEST_STATE === 'missing-secret') process.exit(1);
 if (args[1] === 'ps') console.log(process.env.TEST_STATE);
 `, { mode: 0o755 });
     writeFileSync(join(dir, "migrate.sh"), readFileSync(join(root, "production/migrate.sh"), "utf8")
-      .replace("/var/lock/projekt-deploy.lock", join(dir, "lock")));
+      .replace("/var/lock/projekt-deploy.lock", join(dir, "lock"))
+      .replace("/etc/projekt/runtime.json", join(dir, "runtime.json")));
 
-    const result = run("bash", [join(dir, "migrate.sh"), "2.0"], {
-      PATH: `${dir}/bin:${process.env.PATH}`, CALL_LOG: log, TEST_STATE: state,
+    const result = run("bash", [
+      join(dir, "migrate.sh"),
+      "2.0"
+    ], {
+      PATH: `${dir}/bin:${process.env.PATH}`,
+      CALL_LOG: log,
+      TEST_STATE: state,
     });
 
     assert.equal(result.status, state.startsWith("Complete") ? 0 : 1, result.stderr);
@@ -167,7 +276,11 @@ if (args[1] === 'ps') console.log(process.env.TEST_STATE);
       assert.ok(create.includes("source=entrypoint_v1,target=/production-entrypoint.sh"));
       assert.ok(create.includes("ghcr.io/alexschneider-dev/projekt-migration:2.0"));
       assert.ok(create.includes("projekt_net"));
-      assert.deepEqual(calls.at(-1), ["service", "rm", "projekt_migration"]);
+      assert.deepEqual(calls.at(-1), [
+        "service",
+        "rm",
+        "projekt_migration"
+      ]);
     }
   });
 }
@@ -187,21 +300,34 @@ test("Startscript erhält Shell-Syntax als Text und abschließende Zeilenumbrüc
 
   writeFileSync(join(dir, "entrypoint.sh"), script);
 
-  const result = run("sh", [join(dir, "entrypoint.sh"), process.execPath,
-    "-e", "process.stdout.write(process.env.TEST_CREDENTIAL)"]);
+  const result = run("sh", [
+    join(dir, "entrypoint.sh"),
+    process.execPath,
+    "-e",
+    "process.stdout.write(process.env.TEST_CREDENTIAL)"
+  ]);
 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, value);
 });
 
-for (const service of ["nextjs", "nginx"]) {
-  for (const rollback of [false, true]) {
+for (const service of [
+  "nextjs",
+  "nginx"
+]) {
+  for (const rollback of [
+    false,
+    true
+  ]) {
     test(`Nur ${service} erhält Image und Konfiguration; Rollback=${rollback}`, t => {
       const dir = fixture(t);
       const log = join(dir, "calls");
       const captured = join(dir, "applied.yml");
       const repository = service === "nextjs" ? "projekt" : "nginx-projekt";
-      const dockerPath = run("sh", ["-c", "command -v docker"]).stdout.trim();
+      const dockerPath = run("sh", [
+        "-c",
+        "command -v docker"
+      ]).stdout.trim();
       const base = yaml.load(readFileSync(join(root, "production/compose.swarm.yml"), "utf8"));
 
       base.services[service].deploy.replicas = 4;
@@ -211,25 +337,53 @@ for (const service of ["nextjs", "nginx"]) {
 
       const runtime = {
         version: "3.9",
-        services: Object.fromEntries(Object.keys(base.services).map(name => [name, {
-          environment: { TEST_LITERAL: "keep-$$literal" },
-          deploy: {
-            replicas: 9,
-            update_config: { order: "stop-first" },
-            resources: { limits: { memory: "8G" } },
-          },
-          image: "example/wrong:9.0",
-          command: ["false"],
-          entrypoint: ["false"],
-          networks: ["unexpected"],
-          secrets: ["nginx", "redis"].includes(name)
-            ? [] : [{ source: "test_token", target: "runtime_NEW_API_TOKEN" }],
-          configs: [{ source: "entrypoint", target: "/production-entrypoint.sh" }],
-        }])),
-        secrets: { test_token: { external: true, name: "token_v2" } },
-        configs: { entrypoint: { external: true, name: "entrypoint_v1" } },
+        services: Object.fromEntries(Object.keys(base.services).map(name => [
+          name,
+          {
+            environment: { TEST_LITERAL: "keep-$$literal" },
+            deploy: {
+              replicas: 9,
+              update_config: { order: "stop-first" },
+              resources: { limits: { memory: "8G" } },
+            },
+            image: "example/wrong:9.0",
+            command: ["false"],
+            entrypoint: ["false"],
+            networks: ["unexpected"],
+            secrets: [
+              "nginx",
+              "redis"
+            ].includes(name)
+              ? [] : [{
+                source: "test_token",
+                target: "runtime_NEW_API_TOKEN"
+              }],
+            configs: [{
+              source: "entrypoint",
+              target: "/production-entrypoint.sh"
+            }],
+          }
+        ])),
+        secrets: {
+          test_token: {
+            external: true,
+            name: "token_v2"
+          }
+        },
+        configs: {
+          entrypoint: {
+            external: true,
+            name: "entrypoint_v1"
+          }
+        },
       };
 
+      writeFileSync(join(dir, "runtime-keys.json"), JSON.stringify({
+        nextjs: {
+          public: ["TEST_LITERAL"],
+          secrets: ["NEW_API_TOKEN"]
+        }
+      }));
       writeFileSync(join(dir, "runtime.json"), JSON.stringify(runtime));
       writeFileSync(join(dir, "bin/docker"), `#!/usr/bin/env node
 const fs = require('node:fs');
@@ -264,9 +418,16 @@ if (args[0] === 'service' && args[1] === 'inspect') {
         .replace("/var/lock/projekt-deploy.lock", join(dir, "lock"))
         .replace("/etc/projekt/runtime.json", join(dir, "runtime.json")));
       // Der angeforderte Tag läuft bereits; reine Konfigurationsänderungen müssen dennoch greifen.
-      const result = run("bash", [join(dir, "deploy.sh"), service, "2.0"], {
-        PATH: `${dir}/bin:${process.env.PATH}`, CALL_LOG: log, CAPTURED: captured,
-        REAL_DOCKER: dockerPath, TEST_STATE: rollback ? "rollback_completed" : "completed",
+      const result = run("bash", [
+        join(dir, "deploy.sh"),
+        service,
+        "2.0"
+      ], {
+        PATH: `${dir}/bin:${process.env.PATH}`,
+        CALL_LOG: log,
+        CAPTURED: captured,
+        REAL_DOCKER: dockerPath,
+        TEST_STATE: rollback ? "rollback_completed" : "completed",
         TEST_IMAGE: `ghcr.io/alexschneider-dev/${repository}:2.0@sha256:test`,
       });
 
@@ -329,7 +490,8 @@ esac
 
   const log = join(dir, "calls");
   const result = run("bash", [join(dir, "deploy-stack.sh")], {
-    PATH: `${dir}/bin:${process.env.PATH}`, CALL_LOG: log,
+    PATH: `${dir}/bin:${process.env.PATH}`,
+    CALL_LOG: log,
   });
 
   assert.equal(result.status, 0, result.stderr);
@@ -342,7 +504,12 @@ esac
   assert.match(calls, /EDGE_IMAGE=example\/projekt-edge_edge:2.0@sha256:live/);
   assert.match(calls, /EDGE_CONFIG_NAME=projekt_edge_haproxy_[a-f0-9]{64}/);
 
-  for (const service of ["nextjs", "nginx", "postgres", "redis"]) {
+  for (const service of [
+    "nextjs",
+    "nginx",
+    "postgres",
+    "redis"
+  ]) {
     assert.ok(calls.includes(`${service.toUpperCase()}_IMAGE=example/projekt_${service}:2.0@sha256:live`));
   }
 });
@@ -381,14 +548,18 @@ test("Stack verwendet Compose trotz widersprüchlicher Laufzeit-Betriebsparamete
       },
       unexpected: { image: "example/unexpected:1.0" }
     },
-    secrets: { auth: {
-      external: true,
-      name: "existing_auth"
-    } },
-    configs: { entrypoint: {
-      external: true,
-      name: "existing_entrypoint"
-    } }
+    secrets: {
+      auth: {
+        external: true,
+        name: "existing_auth"
+      }
+    },
+    configs: {
+      entrypoint: {
+        external: true,
+        name: "existing_entrypoint"
+      }
+    }
   };
 
   writeFileSync(runtimePath, JSON.stringify(runtime));
@@ -441,3 +612,30 @@ if (args[0] === "service" && args[1] === "inspect") {
   assert.equal(applied.services.unexpected, undefined);
   assert.deepEqual(JSON.parse(readFileSync(runtimePath, "utf8")), runtime);
 });
+
+for (const unknown of [
+  false,
+  true
+]) {
+  test(`Vorbereitung lehnt ${unknown ? "unbekannte" : "fehlende"} Secrets vor Docker-Änderungen ab`, t => {
+    const dir = fixture(t);
+    const output = join(dir, "rejected.json");
+    const env = "DATABASE_URL=testwert\n" + (unknown ? "NEXTAUTH_SECRET=testwert\nUNKNOWN_SECRET=testwert\n" : "");
+
+    writeFileSync(join(dir, "nextjs.env"), env);
+    writeFileSync(join(dir, "postgres.env"), "POSTGRES_PASSWORD=testwert\n");
+
+    const result = run(process.execPath, [
+      join(root, "production/prepare-config.mjs"),
+      dir,
+      output,
+      "test",
+      "--apply"
+    ]);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, unknown ? /Unbekannte Laufzeitvariable/ : /Pflicht-Secret fehlt/);
+    assert.throws(() => readFileSync(output), { code: "ENOENT" });
+    assert.ok(!result.stderr.includes("testwert"));
+  });
+}

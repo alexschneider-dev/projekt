@@ -10,8 +10,20 @@ fi
 source_dir="$1"
 destination=/usr/local/lib/projekt-deploy
 [[ -d "$source_dir" && ! -L "$source_dir" ]] || exit 1
-scripts=(deploy.sh deploy-stack.sh migrate.sh)
-files=(compose.swarm.yml runtime-overlay.mjs compose.edge.yml edge-haproxy.cfg)
+scripts=(
+  deploy.sh
+  deploy-stack.sh
+  migrate.sh
+)
+files=(
+  compose.swarm.yml
+  runtime-overlay.mjs
+  runtime-config.mjs
+  runtime-keys.json
+  errors/config.mjs
+  compose.edge.yml
+  edge-haproxy.cfg
+)
 for file in "${scripts[@]}" "${files[@]}"; do
   [[ -f "$source_dir/$file" && ! -L "$source_dir/$file" ]] || exit 1
 done
@@ -20,6 +32,7 @@ flock -w 900 9
 for file in "${scripts[@]}"; do
   bash -n "$source_dir/$file"
 done
+install -d -o root -g root -m 0755 "$destination/errors"
 for file in "${scripts[@]}"; do
   install -o root -g root -m 0755 "$source_dir/$file" "$destination/$file.new"
   mv -f "$destination/$file.new" "$destination/$file"

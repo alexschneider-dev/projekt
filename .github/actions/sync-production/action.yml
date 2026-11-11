@@ -18,13 +18,21 @@ runs:
         set -Eeuo pipefail
         target="${PROD_USER}@${PROD_HOST}"
         ssh_opts=(-i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=yes)
+        if ! ssh "${ssh_opts[@]}" "$target" \
+          'grep -Fq runtime-config.mjs /usr/local/lib/projekt-deploy/install-release.sh && grep -Fq runtime-keys.json /usr/local/lib/projekt-deploy/install-release.sh && grep -Fq errors/config.mjs /usr/local/lib/projekt-deploy/install-release.sh'; then
+          cat production/errors/installer.txt >&2
+          exit 1
+        fi
         remote_dir=$(ssh "${ssh_opts[@]}" "$target" 'mktemp -d /tmp/projekt-deploy.XXXXXXXX')
         [[ "$remote_dir" =~ ^/tmp/projekt-deploy\.[a-zA-Z0-9]+$ ]]
         trap 'ssh "${ssh_opts[@]}" "$target" "rm -rf -- ${remote_dir}"' EXIT
         scp "${ssh_opts[@]}" \
           production/deploy.sh production/deploy-stack.sh production/migrate.sh \
           production/compose.swarm.yml production/runtime-overlay.mjs \
+          production/runtime-config.mjs production/runtime-keys.json \
           production/compose.edge.yml production/edge-haproxy.cfg \
           "$target:$remote_dir/"
+        ssh "${ssh_opts[@]}" "$target" "mkdir -m 0700 '$remote_dir/errors'"
+        scp "${ssh_opts[@]}" production/errors/config.mjs "$target:$remote_dir/errors/"
         ssh "${ssh_opts[@]}" "$target" \
           "sudo -n /usr/local/lib/projekt-deploy/install-release.sh '$remote_dir'"

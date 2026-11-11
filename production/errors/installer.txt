@@ -1,0 +1,1 @@
+Server-Installer nicht kompatibel oder per SSH nicht prüfbar. Im aktualisierten Server-Checkout ausführen: sudo install -o root -g root -m 0755 production/install-release.sh /usr/local/lib/projekt-deploy/install-release.sh

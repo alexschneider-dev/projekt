@@ -1,0 +1,29 @@
+{
+  "nextjs": {
+    "public": [
+      "NODE_ENV",
+      "HOSTNAME",
+      "PORT",
+      "NEXTAUTH_URL",
+      "OBSERVABILITY_ENABLED",
+      "OTEL_EXPORTER_OTLP_ENDPOINT",
+      "OTEL_EXPORTER_OTLP_PROTOCOL",
+      "OTEL_SERVICE_VERSION"
+    ],
+    "secrets": [
+      "DATABASE_URL",
+      "NEXTAUTH_SECRET",
+      "REDIS_URL"
+    ]
+  },
+  "postgres": {
+    "public": [
+      "POSTGRES_USER",
+      "POSTGRES_DB",
+      "PGDATA"
+    ],
+    "secrets": [
+      "POSTGRES_PASSWORD"
+    ]
+  }
+}

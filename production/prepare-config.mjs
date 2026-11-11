@@ -1,3 +1,7 @@
+import {
+  runtimeKeys,
+  secretName
+} from "./runtime-config.mjs";
 import { ERROR_CONFIG } from "./errors/config.mjs";
 import {
   readFileSync,
@@ -13,7 +17,12 @@ import { execFileSync } from "node:child_process";
 
 
 // Benötigt util.parseEnv (Node 20.12+ oder 22+). Niemals Secret-Werte ausgeben.
-const [envDirectory, output, revision, mode] = process.argv.slice(2);
+const [
+  envDirectory,
+  output,
+  revision,
+  mode
+] = process.argv.slice(2);
 
 if (!envDirectory || !output || !/^[a-z0-9][a-z0-9-]{0,24}$/.test(revision || "") ||
   (mode && mode !== "--apply")) {
@@ -21,11 +30,6 @@ if (!envDirectory || !output || !/^[a-z0-9][a-z0-9-]{0,24}$/.test(revision || ""
 }
 
 const root = dirname(fileURLToPath(import.meta.url));
-const publicKeys = JSON.parse(readFileSync(resolve(root, "public-keys.json"), "utf8"));
-const filenames = {
-  nextjs: "nextjs",
-  postgres: "postgres"
-};
 const manifest = {
   version: "3.9",
   services: {},
@@ -39,8 +43,8 @@ const manifest = {
 };
 const pending = [];
 
-for (const [service, filename] of Object.entries(filenames)) {
-  const values = parseEnv(readFileSync(resolve(envDirectory, `${filename}.env`), "utf8"));
+for (const service of Object.keys(runtimeKeys)) {
+  const values = parseEnv(readFileSync(resolve(envDirectory, `${service}.env`), "utf8"));
   const spec = {
     environment: {},
     secrets: [],
@@ -51,21 +55,25 @@ for (const [service, filename] of Object.entries(filenames)) {
     }],
   };
 
-  for (const [key, value] of Object.entries(values)) {
-    if (publicKeys[service].includes(key) || key.startsWith("NEXT_PUBLIC_")) {
+  for (const [
+    key,
+    value
+  ] of Object.entries(values)) {
+    if (runtimeKeys[service].public.includes(key) || key.startsWith("NEXT_PUBLIC_")) {
       // Docker Compose ersetzt Dollarzeichen auch in JSON-Eingaben.
       const publicKey = key;
 
       spec.environment[publicKey] = value.replaceAll("$", () => "$$");
     } else {
+      if (!runtimeKeys[service].secrets.includes(key)) {
+        throw new Error(ERROR_CONFIG.UNKNOWN_RUNTIME_KEY.message(service, key));
+      }
       if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) || value.includes("\0")) {
         throw new Error(ERROR_CONFIG.INVALID_SECRET.message(service, key));
       }
 
       const alias = `${service}_${key}`;
-      const name = `projekt_${service}_${key.toLowerCase()}_${revision}`;
-
-      if (name.length > 64) throw new Error(ERROR_CONFIG.SECRET_NAME_TOO_LONG.message(service, key));
+      const name = secretName(service, key, revision);
 
       manifest.secrets[alias] = {
         external: true,
@@ -82,11 +90,14 @@ for (const [service, filename] of Object.entries(filenames)) {
     }
   }
 
+  for (const key of runtimeKeys[service].secrets) {
+    if (!manifest.secrets[`${service}_${key}`]) {
+      throw new Error(ERROR_CONFIG.MISSING_RUNTIME_SECRET.message(service, key));
+    }
+  }
+
   manifest.services[service] = spec;
 }
-
-if (!manifest.secrets.nextjs_DATABASE_URL) throw new Error(ERROR_CONFIG.DATABASE_URL_MISSING.message);
-if (!manifest.secrets.postgres_POSTGRES_PASSWORD) throw new Error(ERROR_CONFIG.POSTGRES_PASSWORD_MISSING.message);
 
 // Bestehende Manifeste nicht überschreiben und unveränderliche Revisionen nicht wiederverwenden.
 const docker = (args, input) => execFileSync("docker", args, {
@@ -134,10 +145,13 @@ if (mode === "--apply") {
 
   console.log(`${pending.length} Secrets und ${output} erstellt. Ursprüngliche Env-Dateien bleiben erhalten.`);
 } else {
-  for (const [service, spec] of Object.entries(manifest.services)) {
+  for (const [
+    service,
+    spec
+  ] of Object.entries(manifest.services)) {
     console.log(`${service}: öffentliche Variablen: ${Object.keys(spec.environment).join(", ")}`);
     console.log(`${service}: geheime Variablen: ${spec.secrets.map(s => s.target.slice(8)).join(", ")}`);
   }
 
-  console.log("Nur Vorschau. public-keys.json prüfen, danach erneut mit --apply ausführen.");
+  console.log("Nur Vorschau. runtime-keys.json prüfen, danach erneut mit --apply ausführen.");
 }

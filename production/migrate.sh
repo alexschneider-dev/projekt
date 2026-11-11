@@ -18,20 +18,19 @@ fi
 exec 9>/var/lock/projekt-deploy.lock
 flock -w 900 9
 
-DATABASE_SECRET=$(docker service inspect projekt_nextjs --format \
-  '{{range .Spec.TaskTemplate.ContainerSpec.Secrets}}{{if eq .File.Name "runtime_DATABASE_URL"}}{{.SecretName}}{{end}}{{end}}')
-ENTRYPOINT_CONFIG=$(docker service inspect projekt_nextjs --format \
-  '{{range .Spec.TaskTemplate.ContainerSpec.Configs}}{{if eq .File.Name "/production-entrypoint.sh"}}{{.ConfigName}}{{end}}{{end}}')
-if [[ -z "$DATABASE_SECRET" || -z "$ENTRYPOINT_CONFIG" ]]; then
-  echo "Zuerst Produktion auf Swarm Secrets umstellen." >&2
-  exit 1
-fi
+cd "$(dirname "$0")"
+umask 077
+runtime_copy=$(mktemp)
+trap 'rm -f -- "$runtime_copy"' EXIT
+node runtime-config.mjs /etc/projekt/runtime.json "$runtime_copy" nextjs
+DATABASE_SECRET=$(node -e 'const fs = require("node:fs"); const r = JSON.parse(fs.readFileSync(process.argv[1])); console.log(r.secrets.nextjs_DATABASE_URL.name)' "$runtime_copy")
+ENTRYPOINT_CONFIG=$(node -e 'const fs = require("node:fs"); const r = JSON.parse(fs.readFileSync(process.argv[1])); const c = r.services.nextjs.configs.find(c => c.target === "/production-entrypoint.sh"); console.log(r.configs[c.source].name)' "$runtime_copy")
 
 echo "Prüfe Image: $IMAGE"
 docker pull "$IMAGE"
 
 cleanup
-trap cleanup EXIT
+trap 'cleanup; rm -f -- "$runtime_copy"' EXIT
 
 docker service create \
   --detach \

@@ -35,6 +35,7 @@ devnotes.md
 # Produktionskonfiguration bleibt auf dem Manager
 /production/env/
 /production/runtime*.json
+!/production/runtime-keys.json
 /production/versions.env
 
 # Testergebnisse

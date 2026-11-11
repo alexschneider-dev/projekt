@@ -1,3 +1,4 @@
+import { resolveRuntime } from "./runtime-config.mjs";
 import {
   readFileSync,
   writeFileSync
@@ -9,13 +10,14 @@ const [
   output,
   selectedService
 ] = process.argv.slice(2);
-const runtime = JSON.parse(readFileSync(input, "utf8"));
+const inputRuntime = JSON.parse(readFileSync(input, "utf8"));
 const serviceNames = selectedService ? [selectedService] : [
   "nextjs",
   "nginx",
   "postgres",
   "redis"
 ];
+const runtime = resolveRuntime(inputRuntime, serviceNames);
 const allowedFields = [
   "environment",
   "secrets",
