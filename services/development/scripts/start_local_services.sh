@@ -48,43 +48,6 @@ export LOGS_CMD STATS_CMD
 TERM_MARKER="PROJEKT_MONITOR"
 export TERM_MARKER
 
-# 1) Zuerst die Terminal-Fenster öffnen, damit VS Code den Fokus nicht stört.
-
-osascript <<'EOF'
-on ensureMonitor(tabTitle, commandText)
-  tell application "Terminal"
-    set targetTab to missing value
-    repeat with candidateWindow in windows
-      repeat with candidateTab in tabs of candidateWindow
-        if custom title of candidateTab is tabTitle then
-          set targetTab to contents of candidateTab
-          exit repeat
-        end if
-      end repeat
-      if targetTab is not missing value then exit repeat
-    end repeat
-
-    if targetTab is missing value then
-      -- Ohne Ziel öffnet Terminal ein Fenster und startet den Befehl direkt.
-      set targetTab to do script commandText
-      set custom title of targetTab to tabTitle
-    else if not (busy of targetTab) then
-      -- Keine Eingaben an einen laufenden Watch- oder Statistikprozess senden.
-      do script commandText in targetTab
-    end if
-  end tell
-end ensureMonitor
-
-set logsCmd to system attribute "LOGS_CMD"
-set statsCmd to system attribute "STATS_CMD"
-set marker to system attribute "TERM_MARKER"
-
-my ensureMonitor(marker & " LOGS", logsCmd)
-my ensureMonitor(marker & " STATS", statsCmd)
-tell application "Terminal" to activate
-EOF
-
-# 2) VS Code nach den Terminal-Fenstern öffnen.
 osascript <<EOF
 set projectDir to "$PROJECT_DIR"
 

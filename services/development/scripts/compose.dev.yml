@@ -56,8 +56,6 @@ services:
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres?connection_limit=10&pool_timeout=50&connect_timeout=10
       REDIS_URL: redis://redis:6379
-    ports:
-      - "3000:3000"
     volumes:
       # Compose Watch überträgt Quellcode für native Linux-Dateiereignisse.
       - type: bind
@@ -102,7 +100,15 @@ services:
           path: ../../../prisma
         - action: rebuild
           path: ../../../prisma.config.ts
-    command: ["npm", "run", "dev", "--", "--port", "3000", "--hostname", "0.0.0.0"]
+    command:
+      - npm
+      - run
+      - dev
+      - --
+      - --port
+      - "3000"
+      - --hostname
+      - "0.0.0.0"
     depends_on:
       postgres:
         condition: service_healthy

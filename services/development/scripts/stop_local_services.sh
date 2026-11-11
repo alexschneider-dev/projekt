@@ -24,28 +24,6 @@ elif ! docker compose \
   STOP_STATUS=1
 fi
 
-echo "Visual Studio Code wird geschlossen..."
-
-# osascript \
-#   -e 'tell application "System Events"' \
-#   -e 'if exists process "Code" then' \
-#   -e 'tell application "Visual Studio Code" to quit' \
-#   -e 'end if' \
-#   -e 'end tell' || {
-#     echo "⚠️ Visual Studio Code konnte nicht geschlossen werden." >&2
-#     STOP_STATUS=1
-#   }
-
-echo "Google Chrome wird geschlossen..."
-
-osascript \
-  -e 'tell application "Google Chrome"' \
-  -e 'if it is running then quit' \
-  -e 'end tell' || {
-    echo "⚠️ Google Chrome konnte nicht geschlossen werden." >&2
-    STOP_STATUS=1
-  }
-
 if command -v colima >/dev/null 2>&1; then
   if colima status >/dev/null 2>&1; then
     echo "Colima wird gestoppt..."
@@ -64,10 +42,5 @@ else
   echo "⚠️ Beenden mit Fehlern abgeschlossen. Bitte die Meldungen oben prüfen." >&2
 fi
 
-
-(
-  sleep 1
-  osascript -e 'tell application "Terminal" to quit'
-) >/dev/null 2>&1 &
 
 exit "$STOP_STATUS"
