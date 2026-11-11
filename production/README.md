@@ -142,6 +142,12 @@ Unbekannte Variablen (außer `NEXT_PUBLIC_*`) und fehlende Pflicht-Secrets stopp
 
 ## Zentrale Secret-Zuordnung
 
+Die Telemetrie verwendet standardmäßig das bereitgestellte Next.js-Image aus
+`NEXTJS_IMAGE` als `OTEL_SERVICE_VERSION`. Das gilt sowohl für einzelne Releases
+als auch für Stack-Bereitstellungen. Die Browser-Telemetrie erhält daraus nur
+eine gehashte Release-Kennung. Ein expliziter Wert in `runtime.json` überschreibt
+diesen Standard und muss bei Versionswechseln entsprechend gepflegt werden.
+
 `production/runtime-keys.json` enthält ausschließlich Variablennamen. Die Liste
 unter `secrets` ist für den jeweiligen Service verpflichtend. Vorbereitung,
 Service-Deployment, Stack-Deployment und Prisma-Migration verwenden diese zentrale
