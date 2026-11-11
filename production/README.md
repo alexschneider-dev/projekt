@@ -178,8 +178,10 @@ Den Installer auf bestehenden Servern einmalig aus dem aktualisierten Checkout e
 sudo install -o root -g root -m 0755 production/install-release.sh /usr/local/lib/projekt-deploy/install-release.sh
 ```
 
-Der Workflow prüft die Installer-Kompatibilität und überträgt auch Resolver,
-Deklaration und zentrales Fehlermodul.
+Der Workflow prüft die Installer-Kompatibilität über dessen erlaubten `sudo`-Aufruf
+mit einem temporären Prüfverzeichnis. Die Abfrage verändert keine installierten
+Dateien und benötigt keine Leserechte des Deploy-Benutzers im Installationsverzeichnis.
+Danach überträgt der Workflow auch Resolver, Deklaration und zentrales Fehlermodul.
 
 Ein neues Secret zuerst unter `secrets` des Service deklarieren und dann auf dem
 Swarm-Manager anlegen, beispielsweise in Bash:

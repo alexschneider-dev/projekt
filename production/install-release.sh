@@ -10,6 +10,13 @@ fi
 source_dir="$1"
 destination=/usr/local/lib/projekt-deploy
 [[ -d "$source_dir" && ! -L "$source_dir" ]] || exit 1
+# Die Abfrage nutzt denselben eingeschränkten sudo-Aufruf wie die Installation.
+# Alte Installer scheitern am leeren Prüfverzeichnis, bevor sie Dateien ersetzen.
+if [[ -f "$source_dir/.check-compatibility" && ! -L "$source_dir/.check-compatibility" ]]; then
+  printf '%s\n' 'projekt-runtime-v1'
+  exit 0
+fi
+
 scripts=(
   deploy.sh
   deploy-stack.sh

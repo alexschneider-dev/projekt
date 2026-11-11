@@ -18,14 +18,15 @@ runs:
         set -Eeuo pipefail
         target="${PROD_USER}@${PROD_HOST}"
         ssh_opts=(-i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=yes)
-        if ! ssh "${ssh_opts[@]}" "$target" \
-          'grep -Fq runtime-config.mjs /usr/local/lib/projekt-deploy/install-release.sh && grep -Fq runtime-keys.json /usr/local/lib/projekt-deploy/install-release.sh && grep -Fq errors/config.mjs /usr/local/lib/projekt-deploy/install-release.sh'; then
-          cat production/errors/installer.txt >&2
-          exit 1
-        fi
         remote_dir=$(ssh "${ssh_opts[@]}" "$target" 'mktemp -d /tmp/projekt-deploy.XXXXXXXX')
         [[ "$remote_dir" =~ ^/tmp/projekt-deploy\.[a-zA-Z0-9]+$ ]]
         trap 'ssh "${ssh_opts[@]}" "$target" "rm -rf -- ${remote_dir}"' EXIT
+        if ! compatibility=$(ssh "${ssh_opts[@]}" "$target" \
+          "touch '$remote_dir/.check-compatibility' && sudo -n /usr/local/lib/projekt-deploy/install-release.sh '$remote_dir'") || [[ "$compatibility" != 'projekt-runtime-v1' ]]; then
+          cat production/errors/installer.txt >&2
+          exit 1
+        fi
+        ssh "${ssh_opts[@]}" "$target" "rm -- '$remote_dir/.check-compatibility'"
         scp "${ssh_opts[@]}" \
           production/deploy.sh production/deploy-stack.sh production/migrate.sh \
           production/compose.swarm.yml production/runtime-overlay.mjs \
