@@ -4,10 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/http/fetch-json";
 import { ROUTES } from "@/lib/constants/routes";
 import { useAppMutation } from "@/lib/query/use-app-mutation";
-import type { JobSearchValues } from "@/lib/schemas/jobs/jobs.schema";
+import type {
+  JobSearchValues,
+  MarkJobInput,
+} from "@/lib/schemas/jobs/jobs.schema";
 import type {
   CreateJobSearchResult,
   JobsPageResult,
+  JobSearchesResult,
+  JobLink,
 } from "@/lib/types/jobs";
 import {
   createPageQueryString,
@@ -31,6 +36,16 @@ export function useJobsQuery(page: number) {
   });
 }
 
+export function useJobSearchesQuery() {
+  return useQuery({
+    queryKey: ["job-searches"],
+    queryFn: ({ signal }) => fetchJson<JobSearchesResult>(ROUTES.jobSearchesApi, {
+      method: "GET",
+      signal,
+    }),
+  });
+}
+
 export function useCreateJobSearch() {
   return useAppMutation<CreateJobSearchResult, JobSearchValues>({
     mutationFn: (body) => fetchJson(ROUTES.jobSearchesApi, {
@@ -38,5 +53,15 @@ export function useCreateJobSearch() {
       body,
     }),
     invalidateKeys: [["job-searches"]],
+  });
+}
+
+export function useMarkJob() {
+  return useAppMutation<JobLink, MarkJobInput>({
+    mutationFn: (body) => fetchJson(ROUTES.jobsApi, {
+      method: "PATCH",
+      body,
+    }),
+    invalidateKeys: [["jobs"]],
   });
 }

@@ -3,6 +3,11 @@ import type { ApiErrorDefinition } from "./types";
 
 
 export const ERROR_JOBS = {
+  INVALID_ID: {
+    status: HTTP_STATUS.BAD_REQUEST,
+    code: "INVALID_JOB_ID",
+    message: "Die Stellen-ID muss eine gültige positive Ganzzahl sein.",
+  },
   INVALID_SEARCH_URL: {
     status: HTTP_STATUS.BAD_REQUEST,
     code: "INVALID_SEARCH_URL",
@@ -22,5 +27,10 @@ export const ERROR_JOBS = {
     status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
     code: "JOBS_LOAD_FAILED",
     message: "Die Stellen konnten nicht geladen werden. Bitte versuche es erneut.",
+  },
+  SEARCHES_LOAD_FAILED: {
+    status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+    code: "JOB_SEARCHES_LOAD_FAILED",
+    message: "Die Such-URLs konnten nicht geladen werden. Bitte versuche es erneut.",
   },
 } as const satisfies Record<string, ApiErrorDefinition>;

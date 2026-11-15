@@ -10,8 +10,39 @@ import { randomUUID } from "node:crypto";
 
 test("Stellen-APIs benötigen eine Anmeldung", async ({ request }) => {
   expect((await request.get(ROUTES.jobsApi)).status()).toBe(HTTP_STATUS.UNAUTHORIZED);
+  expect((await request.patch(ROUTES.jobsApi, { data: { id: 1 } })).status()).toBe(HTTP_STATUS.UNAUTHORIZED);
+  expect((await request.get(ROUTES.jobSearchesApi)).status()).toBe(HTTP_STATUS.UNAUTHORIZED);
   expect((await request.post(ROUTES.jobSearchesApi, { data: { url: "test" } })).status())
     .toBe(HTTP_STATUS.UNAUTHORIZED);
+});
+
+test("Stellen werden dauerhaft und wiederholt ohne Umschalten markiert", async ({
+  request,
+  database,
+  createAccount,
+}) => {
+  const account = await createAccount();
+  await login(request, account.email);
+  const job = await database.jobListing.create({
+    data: { url: `https://example.test/jobs/${randomUUID()}` },
+  });
+
+  try {
+    expect(job.isMarkiert).toBe(false);
+    expect((await request.patch(ROUTES.jobsApi, { data: { id: -1 } })).status()).toBe(HTTP_STATUS.BAD_REQUEST);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await request.patch(ROUTES.jobsApi, { data: { id: job.id } });
+      expect(response.status()).toBe(HTTP_STATUS.OK);
+      expect(await response.json()).toEqual({
+        id: job.id,
+        url: job.url,
+        isMarkiert: true,
+      });
+    }
+    expect((await database.jobListing.findUniqueOrThrow({ where: { id: job.id } })).isMarkiert).toBe(true);
+  } finally {
+    await database.jobListing.delete({ where: { id: job.id } });
+  }
 });
 
 test("Such-URL validieren, normalisieren und ohne Duplikate speichern", async ({
@@ -36,6 +67,17 @@ test("Such-URL validieren, normalisieren und ohne Duplikate speichern", async ({
     const second = await request.post(ROUTES.jobSearchesApi, { data: { url } });
     expect(await second.json()).toEqual({ created: false });
     expect(await database.jobSearch.findUniqueOrThrow({ where: { url } })).toEqual(saved);
+    await database.jobSearch.update({
+      where: { url },
+      data: { active: false },
+    });
+    const searches = await request.get(ROUTES.jobSearchesApi);
+    expect(searches.status()).toBe(HTTP_STATUS.OK);
+    expect(await searches.json()).toContainEqual({
+      id: saved.id,
+      url,
+      active: false,
+    });
   } finally {
     await database.jobSearch.deleteMany({ where: { url } });
   }

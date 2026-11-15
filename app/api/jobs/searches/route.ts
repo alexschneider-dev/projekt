@@ -6,7 +6,15 @@ import {
 import { checkApiRequest } from "@/lib/http/check-api-request";
 import { jobSearchSchema } from "@/lib/schemas/jobs/jobs.schema";
 import { prisma } from "@/lib/prisma";
+import { listJobSearches } from "@/lib/jobs/searches";
 
+
+export const GET = apiHandler(async () => {
+  const apiGate = await requireRole();
+  if (!apiGate.ok) return apiGate.response;
+
+  return successResponse(await listJobSearches());
+});
 
 export const POST = apiHandler(async (request) => {
   const apiGate = await requireRole();

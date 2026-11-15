@@ -1,0 +1,1 @@
+ALTER TABLE "JobListing" ADD COLUMN "isMarkiert" BOOLEAN NOT NULL DEFAULT false;

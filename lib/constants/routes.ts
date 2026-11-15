@@ -12,6 +12,7 @@ export const ROUTES = {
   login: "/login",
   dashboard: "/dashboard",
   jobs: "/stellen",
+  jobSearches: "/such-urls",
   jobsApi: "/api/jobs",
   jobSearchesApi: "/api/jobs/searches",
   admin: "/admin",

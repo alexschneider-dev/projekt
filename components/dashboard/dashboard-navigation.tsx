@@ -27,6 +27,12 @@ export function DashboardNavigation({ role }: { role: InternalRole }) {
       >
         Stellen
       </AppLink>
+      <AppLink
+        href={ROUTES.jobSearches}
+        variant="navigation"
+      >
+        Such-URLs
+      </AppLink>
       {hasRole(role, ADMIN) && (
         <AppLink
           href={ROUTES.admin}

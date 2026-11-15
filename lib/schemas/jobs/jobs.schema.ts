@@ -23,6 +23,14 @@ export const jobsQuerySchema = z.object({
     .pipe(z.number().int().max(1_000_000, ERROR_JOBS.INVALID_PAGE.message)),
 });
 
+export const markJobSchema = z.object({
+  id: z.number({ error: ERROR_JOBS.INVALID_ID.message })
+    .int(ERROR_JOBS.INVALID_ID.message)
+    .min(1, ERROR_JOBS.INVALID_ID.message)
+    .max(2_147_483_647, ERROR_JOBS.INVALID_ID.message),
+});
+
+export type MarkJobInput = z.infer<typeof markJobSchema>;
 export type JobSearchInput = z.input<typeof jobSearchSchema>;
 export type JobSearchValues = z.output<typeof jobSearchSchema>;
 export type JobsQuery = z.output<typeof jobsQuerySchema>;

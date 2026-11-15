@@ -13,6 +13,14 @@ NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=EIN_ZUFAELLIGES_SECRET
 ```
 
+Bei der lokalen Docker-Entwicklung über Nginx `NEXTAUTH_URL=https://localhost`
+verwenden. Ein zufälliges `NEXTAUTH_SECRET` einmalig in `.env.local` hinterlegen
+und bei Neustarts beibehalten. Nach einer Änderung den lokalen Next.js-Container
+neu starten. Bei `JWT_SESSION_ERROR` mit „decryption operation failed“ nach einem
+Secret-Wechsel die alten Session-Cookies für `localhost` löschen und neu anmelden.
+Cookies werden auch zwischen verschiedenen Ports desselben Hosts geteilt;
+andere lokale Projekte deshalb möglichst über eigene Hostnamen aufrufen.
+
 Für Produktion die tatsächliche HTTPS-Adresse und ein zufälliges Secret verwenden
 (z. B. lokal mit `openssl rand -base64 32` erzeugen). Keine Secrets committen.
 Die Produktionskonfiguration für Next.js muss diese Variablen ebenfalls erhalten.

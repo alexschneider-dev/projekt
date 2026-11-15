@@ -8,24 +8,32 @@ import {
 import { AppLink } from "@/components/ui/app-link";
 import { DataTable } from "@/components/ui/table/data-table";
 import { TablePagination } from "@/components/ui/table/table-pagination";
+import { MarkJobButton } from "./mark-job-button";
 import type {
   JobLink,
   JobsPageResult,
 } from "@/lib/types/jobs";
 
 
-const columns: ColumnDef<JobLink>[] = [{
-  accessorKey: "url",
-  header: "Stellenlink",
-  cell: ({ row }) => (
-    <AppLink
-      href={row.original.url}
-      navigationMode="document"
-    >
-      {row.original.url}
-    </AppLink>
-  ),
-}];
+const columns: ColumnDef<JobLink>[] = [
+  {
+    accessorKey: "url",
+    header: "Stellenlink",
+    cell: ({ row }) => (
+      <AppLink
+        href={row.original.url}
+        navigationMode="document"
+      >
+        {row.original.url}
+      </AppLink>
+    ),
+  },
+  {
+    accessorKey: "isMarkiert",
+    header: "Markierung",
+    cell: ({ row }) => <MarkJobButton job={row.original} />,
+  },
+];
 
 export function JobsTable({
   result,

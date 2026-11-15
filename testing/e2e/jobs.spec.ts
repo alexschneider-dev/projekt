@@ -18,6 +18,8 @@ test("Stellen sind geschützt und neue Links stehen zuerst", async ({
 }, testInfo) => {
   await page.goto(ROUTES.jobs);
   await expect(page).toHaveURL(new RegExp(ROUTES.login));
+  await page.goto(ROUTES.jobSearches);
+  await expect(page).toHaveURL(new RegExp(ROUTES.login));
 
   const account = await createAccount();
   await login(page.request, account.email);
@@ -48,6 +50,12 @@ test("Stellen sind geschützt und neue Links stehen zuerst", async ({
     await expect(links).toHaveCount(2);
     await expect(links.nth(0)).toHaveAttribute("href", newer);
     await expect(links.nth(1)).toHaveAttribute("href", older);
+    const row = page.getByRole("row").filter({ has: page.locator(`a[href="${newer}"]`) });
+    await row.getByRole("button", { name: "Markieren", exact: true }).click();
+    await expect(row.getByRole("button", { name: "Markiert", exact: true })).toBeDisabled();
+    expect((await database.jobListing.findUniqueOrThrow({ where: { url: newer } })).isMarkiert).toBe(true);
+    await page.reload();
+    await expect(row.getByRole("button", { name: "Markiert", exact: true })).toBeDisabled();
     await page.screenshot({ path: testInfo.outputPath("stellen.png") });
   } finally {
     await database.jobListing.deleteMany({ where: { url: { in: urls } } });
@@ -64,7 +72,7 @@ test("Suchformular speichert und zeigt Feldfehler sowie doppelte URLs", async ({
   const url = `https://www.stepstone.de/jobs/test-${randomUUID()}`;
 
   try {
-    await page.goto(ROUTES.jobs);
+    await page.goto(ROUTES.jobSearches);
     const input = page.getByLabel("Neue Such-URL");
     await input.fill("keine-url");
     await page.getByRole("button", { name: "Such-URL hinzufügen" }).click();
@@ -76,6 +84,9 @@ test("Suchformular speichert und zeigt Feldfehler sowie doppelte URLs", async ({
     await page.getByRole("button", { name: "Such-URL hinzufügen" }).click();
     await expect(page.getByText("Such-URL gespeichert. Sie wird beim nächsten Import berücksichtigt.")).toBeVisible();
     expect(await database.jobSearch.count({ where: { url } })).toBe(1);
+    await expect(page.getByRole("link", { name: url, exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("link", { name: url, exact: true })).toBeVisible();
     await input.fill(url);
     await page.getByRole("button", { name: "Such-URL hinzufügen" }).click();
     await expect(page.getByText("Diese Such-URL ist bereits gespeichert und wurde unverändert belassen.")).toBeVisible();
@@ -118,14 +129,19 @@ test("API-Fehler erscheinen als schließbare Benachrichtigung", async ({
 }) => {
   const account = await createAccount();
   await login(page.request, account.email);
-  await page.route(`**${ROUTES.jobSearchesApi}`, (route) => route.fulfill({
-    status: ERROR_JOBS.SAVE_FAILED.status,
-    contentType: "application/json",
-    body: JSON.stringify({
-      code: ERROR_JOBS.SAVE_FAILED.code,
-      error: ERROR_JOBS.SAVE_FAILED.message,
-    }),
-  }));
+  await page.route(`**${ROUTES.jobSearchesApi}`, (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+
+    return route.fulfill({
+      status: ERROR_JOBS.SAVE_FAILED.status,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: ERROR_JOBS.SAVE_FAILED.code,
+        error: ERROR_JOBS.SAVE_FAILED.message,
+      }),
+    });
+  });
+
   // Verzögertes JavaScript darf keine Eingabe vor der Formularinitialisierung zulassen.
   let releaseScripts!: () => void;
   const scriptsReady = new Promise<void>((resolve) => { releaseScripts = resolve; });
@@ -137,7 +153,7 @@ test("API-Fehler erscheinen als schließbare Benachrichtigung", async ({
   const submit = page.getByRole("button", { name: "Such-URL hinzufügen" });
 
   try {
-    await page.goto(ROUTES.jobs, { waitUntil: "commit" });
+    await page.goto(ROUTES.jobSearches, { waitUntil: "commit" });
     await expect(input).toBeVisible();
     await expect(input).toBeDisabled();
     await expect(submit).toBeDisabled();

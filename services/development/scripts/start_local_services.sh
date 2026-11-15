@@ -28,16 +28,20 @@ docker compose \
   --env-file "$ENV_FILE" \
   -f "$COMPOSE_FILE" \
   --profile dev \
+  up -d
+
+docker compose \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  --profile dev \
   ps
 
-echo "✅ Container gestartet; Next.js wird im Protokollfenster vorbereitet."
+echo "✅ Container gestartet; Compose Watch läuft anschließend in diesem Terminal."
 echo "Website: https://localhost"
 
-# Compose Watch bleibt während der Entwicklung im Protokollfenster aktiv.
-# Synchronisierte Dateien lösen Turbopack ohne Neustart von Next.js aus.
-LOGS_CMD="cd '$PROJECT_DIR' && docker compose --env-file '$ENV_FILE' -f '$COMPOSE_FILE' --profile dev up --watch --menu=false --no-deps nextjs-projekt"
-STATS_CMD="cd '$PROJECT_DIR' && docker stats --all --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'"
-
-export LOGS_CMD STATS_CMD
-TERM_MARKER="PROJEKT_MONITOR"
-export TERM_MARKER
+# Compose Watch synchronisiert Quellcode und führt konfigurierte Neubauten aus.
+exec docker compose \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  --profile dev \
+  watch --no-up
