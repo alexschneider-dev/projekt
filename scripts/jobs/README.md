@@ -80,16 +80,24 @@ Der erste Durchlauf startet sofort. Alle Anfragen laufen nacheinander mit
 5–10 Sekunden Abstand. Bei HTTP 429 und Serverfehlern folgen höchstens zwei
 Wiederholungen. `Retry-After` wird beachtet; ohne verwertbare Angabe wird
 zunehmend länger gewartet. HTTP 403 bricht den Durchlauf ab. Weiterleitungen
-werden nicht automatisch verfolgt. Bei Zeitüberschreitungen (60 Sekunden je
-Abruf einschließlich Antwortinhalt) folgen ebenfalls höchstens zwei Wiederholungen
-mit zusätzlichen Pausen von 60 und 120 Sekunden. Die Logs enthalten Suchgruppen-ID,
-Seite, Versuch und Wartezeit. Scheitert auch der dritte Versuch, bleibt die
-Trefferzahl dieser Gruppe unverändert und der Import fährt mit der nächsten Gruppe
-fort. Bereits gespeicherte Stellen bleiben erhalten. Der gesamte Durchlauf wird
-in diesem Fall weiterhin als fehlgeschlagen gekennzeichnet; das Abschlussprotokoll
-enthält die Zahl der fehlgeschlagenen Gruppen. Andere Fehler beenden den Durchlauf.
-Ein neuer Durchlauf erfolgt im nächsten Intervall oder auf manuelle Anforderung.
-Beenden mit Strg+C.
+werden nicht automatisch verfolgt. Bei einer Zeitüberschreitung (60 Sekunden je
+Abruf einschließlich Antwortinhalt) wird diese Suchgruppe sofort beendet, ohne
+weitere Wiederholung oder Abruf späterer Seiten. Danach folgt die nächste Gruppe.
+
+Pro Gruppe werden der letzte Abrufzeitpunkt, die gemeldete Gesamttrefferzahl,
+die Gesamtseitenzahl, vollständig erfasste Seiten und die Anzahl eindeutiger
+Links dieses Durchlaufs gespeichert. Ein Timeout auf Seite 7 kann beispielsweise
+„6 von 11 Seiten, 150 von 266 Treffern erfasst – Unvollständig“ ergeben. Bereits
+bekannte Links zählen zu den erfassten Treffern; die Zahl neuer Datenbankeinträge
+wird separat im Importstatus geführt. Scheitert bereits Seite 1, sind die
+Gesamtzahlen unbekannt. Alte Abrufe ohne diese Messwerte zeigen weiterhin ihre
+bisherige Trefferzahl; zusätzliche Details entstehen beim nächsten Abruf.
+
+Bereits gespeicherte Stellen bleiben erhalten. Ein Durchlauf mit unvollständigen
+Gruppen bleibt als fehlgeschlagen gekennzeichnet. Ein neuer Durchlauf beginnt
+wieder bei Seite 1 und erfolgt im nächsten Intervall oder auf manuelle Anforderung.
+Die Migration `20261115220000_search_progress` muss vor dem Update von Next.js und
+Importdienst angewendet werden. Beenden mit Strg+C.
 
 Suchaufträge und Stellenanzeigen werden über Prisma verwaltet, mit demselben
 Schema wie in Next.js. Der Container erzeugt seinen Prisma Client beim Build.
@@ -108,7 +116,7 @@ späteren Fehler erhalten; ein erneuter Durchlauf ergänzt fehlende Links.
 
 In der Tabelle „Such-URLs“ schaltet „Deaktivieren“ eine Suchgruppe auf inaktiv;
 „Aktivieren“ nimmt sie wieder in künftige Importe auf. Der Zustand bleibt beim
-Neuladen erhalten. Gespeicherte Stellen und die Werte des letzten erfolgreichen
+Neuladen erhalten. Gespeicherte Stellen und die Werte des letzten
 Abrufs bleiben unverändert. Ein bereits gestarteter Abruf wird nicht abgebrochen.
 
 Nach Anmeldung ist die Liste über „Stellen“ im internen Bereich erreichbar.

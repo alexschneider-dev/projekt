@@ -18,7 +18,7 @@ export function JobSearchesContent() {
     <SectionWrapper>
       <h1>Such-URLs</h1>
       <Text variant="intro">
-        Klicke auf einen Titel, um die Suche zu verwalten. Die Trefferzahl stammt vom letzten erfolgreichen Abruf.
+        Klicke auf einen Titel, um die Suche zu verwalten. Der letzte Abruf zeigt die erfassten Seiten und Treffer, auch bei einem unvollständigen Import.
       </Text>
       <div className="space-y-8">
         <JobImportControl />

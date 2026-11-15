@@ -21,7 +21,7 @@ export function JobSearchDetails({ search }: { search: JobSearchesResult[number]
           <JobSearchForm search={search} />
         </QueryProvider>
         <div className="space-y-2">
-          <h2>Letzter erfolgreicher Abruf</h2>
+          <h2>Letzter Abruf</h2>
           <SearchLastResult search={search} />
         </div>
       </div>

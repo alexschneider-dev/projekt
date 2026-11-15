@@ -22,12 +22,11 @@ export function retryDelay(value, attempt, now = Date.now()) {
   return 60_000 * 2 ** attempt;
 }
 
-export async function fetchPage(url, context = {}, wait = sleep) {
+export async function fetchPage(url, wait = sleep) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await wait(5000 + Math.floor(Math.random() * 5001));
     const signal = AbortSignal.timeout(60_000);
     let response;
-    let delay;
     try {
       response = await fetch(url, {
         redirect: "manual",
@@ -39,28 +38,19 @@ export async function fetchPage(url, context = {}, wait = sleep) {
     } catch (error) {
       if (!signal.aborted && error?.name !== "TimeoutError") throw error;
 
-      const timeout = Object.assign(new Error(JOB_ERRORS.timeout, { cause: error }), { name: "TimeoutError" });
-      if (attempt === 2) throw timeout;
-
-      delay = retryDelay(null, attempt);
-      console.warn(jobErrorLog(timeout, {
-        ...context,
-        attempt: attempt + 1,
-        retryInMs: delay,
-      }));
+      // Bei Zeitüberschreitungen keine weiteren Abrufe dieser Suchgruppe versuchen.
+      throw Object.assign(new Error(JOB_ERRORS.timeout, { cause: error }), { name: "TimeoutError" });
     }
 
-    if (response && delay === undefined) {
-      await response.body?.cancel();
-      const fail = (message) => Object.assign(new Error(message), { httpStatus: response.status });
-      if (response.status >= 300 && response.status < 400) throw fail(JOB_ERRORS.redirect);
-      if (response.status === HTTP_STATUS.FORBIDDEN) throw fail(JOB_ERRORS.blocked);
-      const retryable = response.status === HTTP_STATUS.TOO_MANY_REQUESTS
-        || response.status >= HTTP_STATUS.INTERNAL_SERVER_ERROR;
-      if (!retryable || attempt === 2) throw fail(JOB_ERRORS.response);
+    await response.body?.cancel();
+    const fail = (message) => Object.assign(new Error(message), { httpStatus: response.status });
+    if (response.status >= 300 && response.status < 400) throw fail(JOB_ERRORS.redirect);
+    if (response.status === HTTP_STATUS.FORBIDDEN) throw fail(JOB_ERRORS.blocked);
+    const retryable = response.status === HTTP_STATUS.TOO_MANY_REQUESTS
+      || response.status >= HTTP_STATUS.INTERNAL_SERVER_ERROR;
+    if (!retryable || attempt === 2) throw fail(JOB_ERRORS.response);
 
-      delay = retryDelay(response.headers.get("retry-after"), attempt);
-    }
+    const delay = retryDelay(response.headers.get("retry-after"), attempt);
 
     // Lange Retry-After-Werte in sichere Timer-Abschnitte teilen.
     for (let remaining = delay; remaining > 0; remaining -= 60_000) {
@@ -92,6 +82,22 @@ export async function saveNewUrls(database, urls, userId) {
     skipDuplicates: true,
   });
   return result.count;
+}
+
+async function saveSearchProgress(database, search, userId, progress) {
+  // Eine während des Imports geänderte oder deaktivierte Suche nicht überschreiben.
+  await database.jobSearch.updateMany({
+    where: {
+      id: search.id,
+      userId,
+      url: search.url,
+      active: true,
+    },
+    data: {
+      ...progress,
+      lastFetchedAt: new Date(),
+    },
+  });
 }
 
 export async function importJobs(database, lockClient, loadPage = fetchPage, userId) {
@@ -133,10 +139,11 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
         userId,
         searchId: search.id,
       }));
-      let totalPages = 1;
-      let total = 0;
+      let totalPages = null;
+      let total = null;
+      let scannedPages = 0;
       const seen = new Set();
-      for (let page = 1; page <= totalPages; page += 1) {
+      for (let page = 1; page <= (totalPages ?? 1); page += 1) {
         const url = new URL(search.requestUrl);
         url.searchParams.set("page", String(page));
         context = {
@@ -147,21 +154,34 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
         };
         let html;
         try {
-          html = await loadPage(url, context);
+          html = await loadPage(url);
         } catch (error) {
           if (error?.name !== "TimeoutError") throw error;
 
+          context.phase = "Teilstand speichern";
+          await saveSearchProgress(database, search, userId, {
+            lastResultCount: total,
+            lastTotalPages: totalPages,
+            lastScannedPages: scannedPages,
+            lastScannedCount: seen.size,
+            lastScanComplete: false,
+          });
+          context.phase = "Suchseite abrufen";
           failedSearches += 1;
           console.error(jobErrorLog(error, {
             ...context,
             nextSearch: true,
+            scannedPages,
+            totalPages,
+            scannedCount: seen.size,
+            total,
           }));
           continue searchesLoop;
         }
         context.phase = "Suchseite auswerten";
         const result = parseSearchPage(html, page);
         if (page === 1) {
-          totalPages = result.totalPages;
+          totalPages = Math.max(1, result.totalPages);
           total = result.total;
         }
         if (totalPages > 1000) throw new Error(JOB_ERRORS.metadata);
@@ -172,21 +192,16 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
         context.phase = "Stellen speichern";
         inserted += await saveNewUrls(database, result.urls, userId);
         result.urls.forEach((entry) => seen.add(entry));
+        scannedPages += 1;
       }
 
-      // Nur vollständige Abrufe speichern; eine inzwischen geänderte Suche nicht überschreiben.
-      context.phase = "Trefferzahl speichern";
-      await database.jobSearch.updateMany({
-        where: {
-          id: search.id,
-          userId,
-          url: search.url,
-          active: true,
-        },
-        data: {
-          lastResultCount: total,
-          lastFetchedAt: new Date(),
-        },
+      context.phase = "Abrufstand speichern";
+      await saveSearchProgress(database, search, userId, {
+        lastResultCount: total,
+        lastTotalPages: totalPages,
+        lastScannedPages: scannedPages,
+        lastScannedCount: seen.size,
+        lastScanComplete: true,
       });
       console.log(JSON.stringify({
         message: "Suchgruppe abgeschlossen.",

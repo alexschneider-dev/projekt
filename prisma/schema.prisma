@@ -48,15 +48,19 @@ model JobListing {
 }
 
 model JobSearch {
-  userId          String
-  user            User      @relation(fields: [userId], references: [id])
-  id              Int       @id @default(autoincrement())
-  url             String
-  active          Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  title           String    @default("Gespeicherte Suche")
-  lastResultCount Int?
-  lastFetchedAt   DateTime?
+  userId           String
+  user             User      @relation(fields: [userId], references: [id])
+  id               Int       @id @default(autoincrement())
+  url              String
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  title            String    @default("Gespeicherte Suche")
+  lastResultCount  Int?
+  lastFetchedAt    DateTime?
+  lastScannedPages Int?
+  lastTotalPages   Int?
+  lastScannedCount Int?
+  lastScanComplete Boolean?
 
   @@unique([userId, url])
 }

@@ -9,6 +9,10 @@ const select = {
   active: true,
   lastResultCount: true,
   lastFetchedAt: true,
+  lastScannedPages: true,
+  lastTotalPages: true,
+  lastScannedCount: true,
+  lastScanComplete: true,
 } as const;
 
 function serializeSearch(search: Awaited<ReturnType<typeof findSearch>>) {
@@ -50,6 +54,10 @@ export async function updateJobSearch(userId: string, id: number, values: Update
         ...("url" in values && previous.url !== values.url ? {
           lastResultCount: null,
           lastFetchedAt: null,
+          lastScannedPages: null,
+          lastTotalPages: null,
+          lastScannedCount: null,
+          lastScanComplete: null,
         } : {}),
       },
       select,

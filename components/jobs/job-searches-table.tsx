@@ -43,7 +43,7 @@ const columns: ColumnDef<JobSearchesResult[number]>[] = [
   },
   {
     accessorKey: "lastResultCount",
-    header: "Letzter erfolgreicher Abruf",
+    header: "Letzter Abruf",
     cell: ({ row }) => <SearchLastResult search={row.original} />,
   },
   {

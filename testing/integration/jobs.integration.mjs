@@ -86,6 +86,10 @@ test("PostgreSQL: Suchliste, Pagination, Duplikate, Reihenfolge und Importsperre
         }
       });
       assert.equal(recorded.lastResultCount, 55);
+      assert.equal(recorded.lastScannedPages, 3);
+      assert.equal(recorded.lastTotalPages, 3);
+      assert.equal(recorded.lastScannedCount, 3);
+      assert.equal(recorded.lastScanComplete, true);
       assert.ok(recorded.lastFetchedAt instanceof Date);
       const inactive = await database.jobSearch.findUniqueOrThrow({
         where: {
@@ -148,6 +152,16 @@ test("PostgreSQL: Suchliste, Pagination, Duplikate, Reihenfolge und Importsperre
         }
       }), beforeFailure);
       assert.equal((await database.jobImportState.findUniqueOrThrow({ where: { userId } })).succeeded, false);
+      await assert.rejects(importJobs(database, client, async (url) => {
+        if (url.searchParams.get("page") === "2") throw new DOMException("", "TimeoutError");
+        return pageHtml(1, 1);
+      }, userId));
+      const partial = await database.jobSearch.findUniqueOrThrow({ where: { id: recorded.id } });
+      assert.equal(partial.lastResultCount, 55);
+      assert.equal(partial.lastTotalPages, 3);
+      assert.equal(partial.lastScannedPages, 1);
+      assert.equal(partial.lastScannedCount, 1);
+      assert.equal(partial.lastScanComplete, false);
       await importJobs(database, client, async () => JSON.stringify({
         searchResultsDisplayedPageNumber: 1,
         searchResultsTotalJobCount: 0,

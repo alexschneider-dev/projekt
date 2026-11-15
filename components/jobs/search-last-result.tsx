@@ -3,9 +3,24 @@ import type { JobSearchesResult } from "@/lib/types/jobs";
 
 
 export function SearchLastResult({ search }: { search: JobSearchesResult[number] }) {
+  const hasProgress = search.lastScannedCount !== null;
+  const result = hasProgress
+    ? `${search.lastScannedCount} von ${search.lastResultCount ?? "unbekannt"} Treffern erfasst`
+    : search.lastResultCount === null ? "Noch nicht abgerufen" : `${search.lastResultCount} Treffer`;
+
   return (
     <div className="space-y-1">
-      <Text>{search.lastResultCount === null ? "Noch nicht abgerufen" : `${search.lastResultCount} Treffer`}</Text>
+      <Text>{result}</Text>
+      {search.lastScannedPages !== null && (
+        <Text variant="meta">
+          {search.lastScannedPages} von {search.lastTotalPages ?? "unbekannt"} Seiten erfasst
+        </Text>
+      )}
+      {search.lastScanComplete !== null && (
+        <Text variant="meta">
+          {search.lastScanComplete ? "Vollständig" : "Unvollständig"}
+        </Text>
+      )}
       {search.lastFetchedAt && (
         <Text variant="meta">
           <time dateTime={search.lastFetchedAt}>

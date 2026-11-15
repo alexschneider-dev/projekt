@@ -437,12 +437,58 @@ test("Suchgruppe in der Tabelle deaktivieren, neu laden und wieder aktivieren", 
   await login(page.request, account.email);
   await page.goto(ROUTES.jobSearches);
   const row = page.getByRole("row").filter({ hasText: search.title });
-  await row.getByRole("button", { name: "Deaktivieren", exact: true }).click();
-  await expect(row.getByRole("cell", { name: "Inaktiv", exact: true })).toBeVisible();
-  await expect(row.getByRole("button", { name: "Aktivieren", exact: true })).toBeEnabled();
+  await row.getByRole("button", {
+    name: "Deaktivieren",
+    exact: true
+  }).click();
+  await expect(row.getByRole("cell", {
+    name: "Inaktiv",
+    exact: true
+  })).toBeVisible();
+  await expect(row.getByRole("button", {
+    name: "Aktivieren",
+    exact: true
+  })).toBeEnabled();
   await page.reload();
-  await expect(row.getByRole("cell", { name: "Inaktiv", exact: true })).toBeVisible();
-  await row.getByRole("button", { name: "Aktivieren", exact: true }).click();
-  await expect(row.getByRole("cell", { name: "Aktiv", exact: true })).toBeVisible();
+  await expect(row.getByRole("cell", {
+    name: "Inaktiv",
+    exact: true
+  })).toBeVisible();
+  await row.getByRole("button", {
+    name: "Aktivieren",
+    exact: true
+  }).click();
+  await expect(row.getByRole("cell", {
+    name: "Aktiv",
+    exact: true
+  })).toBeVisible();
   expect((await database.jobSearch.findUniqueOrThrow({ where: { id: search.id } })).active).toBe(true);
+});
+
+test("Unvollständige Suchgruppe zeigt erfasste Seiten und Treffer nach Neuladen", async ({
+  page,
+  database,
+  createAccount,
+}) => {
+  const account = await createAccount();
+  await database.jobSearch.create({
+    data: {
+      userId: account.id,
+      title: "Teilweise erfasst",
+      url: `https://www.stepstone.de/jobs/test-${randomUUID()}`,
+      lastResultCount: 266,
+      lastScannedCount: 150,
+      lastScannedPages: 6,
+      lastTotalPages: 11,
+      lastScanComplete: false,
+      lastFetchedAt: new Date(),
+    },
+  });
+  await login(page.request, account.email);
+  await page.goto(ROUTES.jobSearches);
+  await page.reload();
+  const row = page.getByRole("row").filter({ hasText: "Teilweise erfasst" });
+  await expect(row).toContainText("150 von 266 Treffern erfasst");
+  await expect(row).toContainText("6 von 11 Seiten erfasst");
+  await expect(row).toContainText("Unvollständig");
 });

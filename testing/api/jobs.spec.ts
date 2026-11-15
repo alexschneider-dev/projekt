@@ -34,6 +34,10 @@ test("Suche bearbeiten: Titel erhält Abrufwerte, eine neue URL setzt sie zurüc
       url: `https://www.stepstone.de/jobs/${randomUUID()}`,
       lastResultCount: 55,
       lastFetchedAt: new Date("2026-11-15T10:00:00Z"),
+      lastScannedPages: 2,
+      lastTotalPages: 3,
+      lastScannedCount: 50,
+      lastScanComplete: false,
     },
   });
 
@@ -57,6 +61,10 @@ test("Suche bearbeiten: Titel erhält Abrufwerte, eine neue URL setzt sie zurüc
       title: "Neuer Titel",
       lastResultCount: 55,
       lastFetchedAt: "2026-11-15T10:00:00.000Z",
+      lastScannedPages: 2,
+      lastTotalPages: 3,
+      lastScannedCount: 50,
+      lastScanComplete: false,
     });
     const edited = await request.patch(endpoint, {
       data: {
@@ -70,6 +78,10 @@ test("Suche bearbeiten: Titel erhält Abrufwerte, eine neue URL setzt sie zurüc
       url: `${search.url}?q=neu`,
       lastResultCount: null,
       lastFetchedAt: null,
+      lastScannedPages: null,
+      lastTotalPages: null,
+      lastScannedCount: null,
+      lastScanComplete: null,
     });
   } finally {
     await database.jobSearch.delete({ where: { id: search.id } });
@@ -201,6 +213,10 @@ test("Such-URL validieren, normalisieren und ohne Duplikate speichern", async ({
       title: "Testsuche",
       lastResultCount: null,
       lastFetchedAt: null,
+      lastScannedPages: null,
+      lastTotalPages: null,
+      lastScannedCount: null,
+      lastScanComplete: null,
       url,
       active: false,
     });

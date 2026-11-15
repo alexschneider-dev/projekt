@@ -57,7 +57,7 @@ test("HTTP-Weiterleitungen werden mit Status protokollierbar abgelehnt", async (
     assert.equal(options.redirect, "manual");
     return new Response(null, { status: 302 });
   });
-  const result = fetchPage(new URL("https://example.test/jobs"), {}, async () => { });
+  const result = fetchPage(new URL("https://example.test/jobs"), async () => { });
   const rejection = assert.rejects(result, (error) => {
     assert.equal(error.message, JOB_ERRORS.redirect);
     assert.equal(JSON.parse(jobErrorLog(error)).httpStatus, 302);
@@ -182,38 +182,28 @@ test("Retry-After als Sekunden oder Datum und exponentielle Wartezeit", () => {
   assert.equal(retryDelay(null, 2), 240_000);
 });
 
-test("Zeitüberschreitungen bei Anfrage und Antwortinhalt werden mit Pausen wiederholt", async (context) => {
-  const waits = [];
-  const warnings = context.mock.method(console, "warn", () => { });
-  let calls = 0;
-  context.mock.method(globalThis, "fetch", async () => {
-    calls += 1;
-    if (calls === 1) throw new DOMException(JOB_ERRORS.timeout, "TimeoutError");
-    if (calls === 2) {
+for (const bodyTimeout of [
+  false,
+  true
+]) {
+  test(`Timeout ${bodyTimeout ? "im Antwortinhalt" : "bei der Anfrage"} wird nicht wiederholt`, async (context) => {
+    const waits = [];
+    const fail = async () => { throw new DOMException(JOB_ERRORS.timeout, "TimeoutError"); };
+    const request = context.mock.method(globalThis, "fetch", async () => {
+      if (!bodyTimeout) return fail();
       return {
         ok: true,
-        text: async () => { throw new DOMException(JOB_ERRORS.timeout, "TimeoutError"); },
+        text: fail,
       };
-    }
-    return new Response("Ergebnis");
+    });
+    await assert.rejects(fetchPage("https://example.test/jobs", async (delay) => waits.push(delay)), {
+      name: "TimeoutError",
+    });
+    assert.equal(request.mock.callCount(), 1);
+    assert.equal(waits.length, 1);
+    assert.ok(waits[0] >= 5000 && waits[0] <= 10_000);
   });
-  const result = await fetchPage("https://example.test/jobs", { searchId: 7 }, async (delay) => waits.push(delay));
-  assert.equal(result, "Ergebnis");
-  assert.equal(calls, 3);
-  assert.equal(waits.filter((delay) => delay >= 5000 && delay <= 10_000).length, 3);
-  assert.equal(waits.filter((delay) => delay === 60_000).length, 3);
-  assert.equal(warnings.mock.callCount(), 2);
-  assert.equal(JSON.parse(warnings.mock.calls[1].arguments[0]).retryInMs, 120_000);
-});
-
-test("Nach drei Zeitüberschreitungen endet der Seitenabruf", async (context) => {
-  context.mock.method(console, "warn", () => { });
-  const request = context.mock.method(globalThis, "fetch", async () => {
-    throw new DOMException(JOB_ERRORS.timeout, "TimeoutError");
-  });
-  await assert.rejects(fetchPage("https://example.test/jobs", {}, async () => { }), { name: "TimeoutError" });
-  assert.equal(request.mock.callCount(), 3);
-});
+}
 
 test("Nach Timeout weiterarbeiten, Teilergebnisse erhalten und Durchlauf als fehlgeschlagen speichern", async (context) => {
   context.mock.method(console, "error", () => { });
@@ -253,7 +243,10 @@ test("Nach Timeout weiterarbeiten, Teilergebnisse erhalten und Durchlauf als feh
     "/jobs/erste:2",
     "/jobs/zweite:1",
   ]);
-  assert.deepEqual(completed, [8]);
+  assert.deepEqual(completed, [
+    7,
+    8
+  ]);
   assert.equal(states.at(-1).inserted, 2);
   assert.equal(states.at(-1).succeeded, false);
   assert.equal(states.at(-1).running, false);
@@ -275,9 +268,60 @@ test("Zugriffssperren beenden den Durchlauf sofort ohne weitere Suchgruppe", asy
   ];
   const request = context.mock.method(globalThis, "fetch", async () => new Response(null, { status: 403 }));
   const lock = { query: async () => ({ rows: [{ locked: true }] }) };
-  await assert.rejects(importJobs(database, lock, (url) => fetchPage(url, {}, async () => { }), "test-customer"), {
+  await assert.rejects(importJobs(database, lock, (url) => fetchPage(url, async () => { }), "test-customer"), {
     message: JOB_ERRORS.blocked,
     httpStatus: 403,
   });
   assert.equal(request.mock.callCount(), 1);
+});
+
+
+test("Timeout auf Seite sieben speichert sechs Seiten und 150 von 266 Treffern", async (context) => {
+  context.mock.method(console, "error", () => { });
+  const database = databaseStub();
+  const progress = [];
+  const pages = [];
+  database.jobSearch.updateMany = async (update) => progress.push(update);
+  const lock = { query: async () => ({ rows: [{ locked: true }] }) };
+  await assert.rejects(importJobs(database, lock, async (url) => {
+    const page = Number(url.searchParams.get("page"));
+    pages.push(page);
+    if (page === 7) throw new DOMException(JOB_ERRORS.timeout, "TimeoutError");
+    return fixture(page, 266, Array.from({ length: 25 }, (_, index) => page * 25 + index));
+  }, "test-user"), { message: JOB_ERRORS.partial });
+  assert.deepEqual(pages, [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ]);
+  assert.equal(progress.length, 1);
+  assert.deepEqual(progress[0].data, {
+    lastResultCount: 266,
+    lastTotalPages: 11,
+    lastScannedPages: 6,
+    lastScannedCount: 150,
+    lastScanComplete: false,
+    lastFetchedAt: progress[0].data.lastFetchedAt,
+  });
+  assert.equal(progress[0].where.userId, "test-user");
+});
+
+test("Timeout auf der ersten Seite speichert unbekannte Gesamtzahlen statt null Treffer", async (context) => {
+  context.mock.method(console, "error", () => { });
+  const database = databaseStub();
+  let progress;
+  database.jobSearch.updateMany = async ({ data }) => { progress = data; };
+  const lock = { query: async () => ({ rows: [{ locked: true }] }) };
+  await assert.rejects(importJobs(database, lock, async () => {
+    throw new DOMException(JOB_ERRORS.timeout, "TimeoutError");
+  }, "test-user"));
+  assert.equal(progress.lastResultCount, null);
+  assert.equal(progress.lastTotalPages, null);
+  assert.equal(progress.lastScannedPages, 0);
+  assert.equal(progress.lastScannedCount, 0);
+  assert.equal(progress.lastScanComplete, false);
 });
