@@ -10,12 +10,27 @@ import {
 import {
   createPageQueryString,
   createQueryHref,
+  createJobsQueryString,
 } from "@/lib/shared/search-params/query-state";
 
 
 describe("Stellen: Validierung und URL-Zustand", () => {
+  it("unterscheidet true, false und einen fehlenden Markierungsfilter", () => {
+    expect(jobsQuerySchema.parse({ isMarkiert: "true" }).isMarkiert).toBe(true);
+    expect(jobsQuerySchema.parse({ isMarkiert: "false" }).isMarkiert).toBe(false);
+    expect(jobsQuerySchema.parse({}).isMarkiert).toBeUndefined();
+    expect(jobsQuerySchema.safeParse({ isMarkiert: "0" }).success).toBe(false);
+    expect(createJobsQueryString("quelle=test&page=3", 1, false)).toBe("quelle=test&isMarkiert=false");
+    expect(createJobsQueryString("quelle=test&isMarkiert=false", 2, false))
+      .toBe("quelle=test&page=2&isMarkiert=false");
+    expect(createJobsQueryString("quelle=test&isMarkiert=true&page=2", 1)).toBe("quelle=test");
+  });
+
   it("normalisiert Such-URLs und lehnt fremde Hosts ab", () => {
-    const result = jobSearchSchema.parse({ url: "https://www.stepstone.de/jobs/test?page=2&q=test#oben" });
+    const result = jobSearchSchema.parse({
+      title: "Testsuche",
+      url: "https://www.stepstone.de/jobs/test?page=2&q=test#oben",
+    });
     expect(result.url).toBe("https://www.stepstone.de/jobs/test?q=test");
     for (const url of [
       "",
@@ -26,7 +41,23 @@ describe("Stellen: Validierung und URL-Zustand", () => {
       "https://name:passwort@www.stepstone.de/jobs/test",
       "x".repeat(4097),
     ]) {
-      expect(jobSearchSchema.safeParse({ url }).success).toBe(false);
+      expect(jobSearchSchema.safeParse({
+        title: "Testsuche",
+        url,
+      }).success).toBe(false);
+    }
+  });
+
+  it("verlangt einen nicht leeren Titel mit höchstens 200 Zeichen", () => {
+    for (const title of [
+      "",
+      "   ",
+      "x".repeat(201),
+    ]) {
+      expect(jobSearchSchema.safeParse({
+        title,
+        url: "https://www.stepstone.de/jobs/test",
+      }).success).toBe(false);
     }
   });
 

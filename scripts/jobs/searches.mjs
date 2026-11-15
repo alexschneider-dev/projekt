@@ -10,12 +10,22 @@ export function validateSearchUrl(value) {
 }
 
 export async function loadSearchUrls(database) {
+  return [...new Set((await loadSearches(database)).map((search) => search.requestUrl))];
+}
+
+export async function loadSearches(database) {
   const searches = await database.jobSearch.findMany({
     where: { active: true },
     orderBy: { id: "asc" },
-    select: { url: true },
+    select: {
+      id: true,
+      url: true,
+    },
   });
-  return [...new Set(searches.map((search) => validateSearchUrl(search.url)))];
+  return searches.map((search) => ({
+    ...search,
+    requestUrl: validateSearchUrl(search.url),
+  }));
 }
 
 export async function addSearchUrl(database, value) {

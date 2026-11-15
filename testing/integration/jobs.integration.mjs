@@ -56,6 +56,13 @@ test("PostgreSQL: Suchliste, Pagination, Duplikate, Reihenfolge und Importsperre
         return pageHtml(page, page);
       };
       assert.equal((await importJobs(database, client, loadPage)).inserted, 3);
+      const recorded = await database.jobSearch.findUniqueOrThrow({ where: { url: search } });
+      assert.equal(recorded.lastResultCount, 55);
+      assert.ok(recorded.lastFetchedAt instanceof Date);
+      const inactive = await database.jobSearch.findUniqueOrThrow({
+        where: { url: "https://www.stepstone.de/jobs/inaktiv" },
+      });
+      assert.equal(inactive.lastResultCount, null);
       assert.deepEqual(pages, [
         1,
         2,
@@ -88,7 +95,33 @@ test("PostgreSQL: Suchliste, Pagination, Duplikate, Reihenfolge und Importsperre
         await client.query("SELECT pg_advisory_unlock(74195621)");
       }
 
-      await assert.rejects(importJobs(database, client, async () => "ungültige Antwort"));
+      const beforeFailure = await database.jobSearch.findUniqueOrThrow({ where: { url: search } });
+      await assert.rejects(importJobs(database, client, async (url) => {
+        return url.searchParams.get("page") === "1" ? pageHtml(1, 1) : "ungültige Antwort";
+      }));
+      assert.deepEqual(await database.jobSearch.findUniqueOrThrow({ where: { url: search } }), beforeFailure);
+      await importJobs(database, client, async () => JSON.stringify({
+        searchResultsDisplayedPageNumber: 1,
+        searchResultsTotalJobCount: 0,
+        ssaResultsPerPage: 25,
+      }));
+      assert.equal((await database.jobSearch.findUniqueOrThrow({ where: { url: search } })).lastResultCount, 0);
+
+      await importJobs(database, client, async (url) => {
+        const page = Number(url.searchParams.get("page"));
+        if (url.pathname === "/jobs/test" && page === 1) {
+          await database.jobSearch.update({
+            where: { url: search },
+            data: {
+              url: `${search}&q2=neu`,
+              lastResultCount: null,
+              lastFetchedAt: null,
+            },
+          });
+        }
+        return pageHtml(page, page);
+      });
+      assert.equal((await database.jobSearch.findUniqueOrThrow({ where: { id: recorded.id } })).lastResultCount, null);
       const available = await competitor.query("SELECT pg_try_advisory_lock(74195621) AS locked");
       assert.equal(available.rows[0].locked, true);
       await competitor.query("SELECT pg_advisory_unlock(74195621)");

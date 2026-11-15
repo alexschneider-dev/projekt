@@ -17,7 +17,7 @@ export function JobSearchesContent() {
     <SectionWrapper>
       <h1>Such-URLs</h1>
       <Text variant="intro">
-        Alle gespeicherten Such-URLs, neueste zuerst. Aktive Such-URLs werden beim regelmäßigen Import berücksichtigt.
+        Klicke auf einen Titel, um die Suche zu verwalten. Die Trefferzahl stammt vom letzten erfolgreichen Abruf.
       </Text>
       <div className="space-y-8">
         <JobSearchForm />

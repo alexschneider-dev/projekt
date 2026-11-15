@@ -63,5 +63,6 @@ export function parseSearchPage(html, expectedPage) {
   return {
     urls: [...urls],
     totalPages: Math.ceil(total / perPage),
+    total,
   };
 }

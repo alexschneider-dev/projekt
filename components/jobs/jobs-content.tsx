@@ -6,6 +6,7 @@ import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { JobsTable } from "./jobs-table";
+import { JobsFilter } from "./jobs-filter";
 import { useJobsQuery } from "@/hooks/jobs/use-jobs-query";
 import { useJobsSearchParams } from "@/hooks/jobs/use-jobs-search-params";
 import { ERROR_JOBS } from "@/lib/http/errors/jobs";
@@ -16,8 +17,10 @@ export function JobsContent() {
     page,
     setPage,
     valid,
+    isMarkiert,
+    setIsMarkiert,
   } = useJobsSearchParams();
-  const query = useJobsQuery(page);
+  const query = useJobsQuery(page, isMarkiert);
 
   useEffect(() => {
     if (!valid || (query.data && query.data.page !== page)) {
@@ -37,6 +40,10 @@ export function JobsContent() {
         Neueste Funde zuerst. Pro Seite werden bis zu 100 Stellen angezeigt.
       </Text>
       <div className="space-y-8">
+        <JobsFilter
+          isMarkiert={isMarkiert}
+          onChange={setIsMarkiert}
+        />
         {query.isPending ? (
           <Text role="status">Stellen werden geladen …</Text>
         ) : query.isError ? (

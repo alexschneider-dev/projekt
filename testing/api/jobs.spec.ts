@@ -3,7 +3,10 @@ import {
   expect,
   login,
 } from "../support/fixtures";
-import { ROUTES } from "@/lib/constants/routes";
+import {
+  ROUTES,
+  jobSearchApiHref,
+} from "@/lib/constants/routes";
 import { HTTP_STATUS } from "@/lib/http/status";
 import { randomUUID } from "node:crypto";
 
@@ -12,8 +15,54 @@ test("Stellen-APIs benötigen eine Anmeldung", async ({ request }) => {
   expect((await request.get(ROUTES.jobsApi)).status()).toBe(HTTP_STATUS.UNAUTHORIZED);
   expect((await request.patch(ROUTES.jobsApi, { data: { id: 1 } })).status()).toBe(HTTP_STATUS.UNAUTHORIZED);
   expect((await request.get(ROUTES.jobSearchesApi)).status()).toBe(HTTP_STATUS.UNAUTHORIZED);
+  expect((await request.patch(jobSearchApiHref(1), { data: {} })).status()).toBe(HTTP_STATUS.UNAUTHORIZED);
   expect((await request.post(ROUTES.jobSearchesApi, { data: { url: "test" } })).status())
     .toBe(HTTP_STATUS.UNAUTHORIZED);
+});
+
+test("Suche bearbeiten: Titel erhält Abrufwerte, eine neue URL setzt sie zurück", async ({
+  request,
+  database,
+  createAccount,
+}) => {
+  const account = await createAccount();
+  await login(request, account.email);
+  const search = await database.jobSearch.create({
+    data: {
+      title: "Bisheriger Titel",
+      url: `https://www.stepstone.de/jobs/${randomUUID()}`,
+      lastResultCount: 55,
+      lastFetchedAt: new Date("2026-11-15T10:00:00Z"),
+    },
+  });
+
+  try {
+    const endpoint = jobSearchApiHref(search.id);
+    expect((await request.patch(endpoint, { data: { title: "", url: search.url } })).status())
+      .toBe(HTTP_STATUS.BAD_REQUEST);
+    const renamed = await request.patch(endpoint, { data: { title: "Neuer Titel", url: search.url } });
+    expect(renamed.status()).toBe(HTTP_STATUS.OK);
+    expect(await renamed.json()).toMatchObject({
+      title: "Neuer Titel",
+      lastResultCount: 55,
+      lastFetchedAt: "2026-11-15T10:00:00.000Z",
+    });
+    const edited = await request.patch(endpoint, {
+      data: {
+        title: "Neue Suche",
+        url: `${search.url}?q=neu&page=2`,
+      },
+    });
+    expect(edited.status()).toBe(HTTP_STATUS.OK);
+    expect(await edited.json()).toMatchObject({
+      title: "Neue Suche",
+      url: `${search.url}?q=neu`,
+      lastResultCount: null,
+      lastFetchedAt: null,
+    });
+  } finally {
+    await database.jobSearch.delete({ where: { id: search.id } });
+  }
 });
 
 test("Stellen werden dauerhaft und wiederholt ohne Umschalten markiert", async ({
@@ -24,11 +73,22 @@ test("Stellen werden dauerhaft und wiederholt ohne Umschalten markiert", async (
   const account = await createAccount();
   await login(request, account.email);
   const job = await database.jobListing.create({
-    data: { url: `https://example.test/jobs/${randomUUID()}` },
+    data: {
+      url: `https://example.test/jobs/${randomUUID()}`,
+      createdAt: new Date("2300-01-01T00:00:00Z"),
+    },
   });
 
   try {
     expect(job.isMarkiert).toBe(false);
+    const unmarked = await (await request.get(`${ROUTES.jobsApi}?isMarkiert=false`)).json();
+    expect(unmarked.items).toContainEqual({
+      id: job.id,
+      url: job.url,
+      isMarkiert: false,
+    });
+    expect(unmarked.items.every((item: { isMarkiert: boolean }) => !item.isMarkiert)).toBe(true);
+    expect((await request.get(`${ROUTES.jobsApi}?isMarkiert=invalid`)).status()).toBe(HTTP_STATUS.BAD_REQUEST);
     expect((await request.patch(ROUTES.jobsApi, { data: { id: -1 } })).status()).toBe(HTTP_STATUS.BAD_REQUEST);
     for (let attempt = 0; attempt < 2; attempt++) {
       const response = await request.patch(ROUTES.jobsApi, { data: { id: job.id } });
@@ -40,6 +100,14 @@ test("Stellen werden dauerhaft und wiederholt ohne Umschalten markiert", async (
       });
     }
     expect((await database.jobListing.findUniqueOrThrow({ where: { id: job.id } })).isMarkiert).toBe(true);
+    const marked = await (await request.get(`${ROUTES.jobsApi}?isMarkiert=true`)).json();
+    expect(marked.items).toContainEqual({
+      id: job.id,
+      url: job.url,
+      isMarkiert: true,
+    });
+    expect(marked.items.every((item: { isMarkiert: boolean }) => item.isMarkiert)).toBe(true);
+    expect(marked.pageCount).toBe(Math.max(1, Math.ceil(marked.total / marked.pageSize)));
   } finally {
     await database.jobListing.delete({ where: { id: job.id } });
   }
@@ -59,12 +127,12 @@ test("Such-URL validieren, normalisieren und ohne Duplikate speichern", async ({
       .toBe(HTTP_STATUS.BAD_REQUEST);
     expect((await request.post(ROUTES.jobSearchesApi, { data: { url: "https://example.org/jobs/test" } })).status())
       .toBe(HTTP_STATUS.BAD_REQUEST);
-    const first = await request.post(ROUTES.jobSearchesApi, { data: { url: `${url}?page=2#oben` } });
+    const first = await request.post(ROUTES.jobSearchesApi, { data: { title: "Testsuche", url: `${url}?page=2#oben` } });
     expect(first.status()).toBe(HTTP_STATUS.OK);
     expect(await first.json()).toEqual({ created: true });
     const saved = await database.jobSearch.findUniqueOrThrow({ where: { url } });
     expect(saved.active).toBe(true);
-    const second = await request.post(ROUTES.jobSearchesApi, { data: { url } });
+    const second = await request.post(ROUTES.jobSearchesApi, { data: { title: "Testsuche", url } });
     expect(await second.json()).toEqual({ created: false });
     expect(await database.jobSearch.findUniqueOrThrow({ where: { url } })).toEqual(saved);
     await database.jobSearch.update({
@@ -75,6 +143,9 @@ test("Such-URL validieren, normalisieren und ohne Duplikate speichern", async ({
     expect(searches.status()).toBe(HTTP_STATUS.OK);
     expect(await searches.json()).toContainEqual({
       id: saved.id,
+      title: "Testsuche",
+      lastResultCount: null,
+      lastFetchedAt: null,
       url,
       active: false,
     });

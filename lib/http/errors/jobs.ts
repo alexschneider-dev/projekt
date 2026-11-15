@@ -3,6 +3,21 @@ import type { ApiErrorDefinition } from "./types";
 
 
 export const ERROR_JOBS = {
+  INVALID_TITLE: {
+    status: HTTP_STATUS.BAD_REQUEST,
+    code: "INVALID_SEARCH_TITLE",
+    message: "Bitte gib einen Titel mit 1 bis 200 Zeichen ein.",
+  },
+  INVALID_SEARCH_ID: {
+    status: HTTP_STATUS.BAD_REQUEST,
+    code: "INVALID_SEARCH_ID",
+    message: "Die Such-ID muss eine gültige positive Ganzzahl sein.",
+  },
+  INVALID_MARK_FILTER: {
+    status: HTTP_STATUS.BAD_REQUEST,
+    code: "INVALID_MARK_FILTER",
+    message: "Der Markierungsfilter muss true oder false sein.",
+  },
   INVALID_ID: {
     status: HTTP_STATUS.BAD_REQUEST,
     code: "INVALID_JOB_ID",

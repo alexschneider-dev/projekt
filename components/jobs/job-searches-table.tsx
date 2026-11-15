@@ -8,9 +8,16 @@ import {
 import { AppLink } from "@/components/ui/app-link";
 import { DataTable } from "@/components/ui/table/data-table";
 import type { JobSearchesResult } from "@/lib/types/jobs";
+import { jobSearchHref } from "@/lib/constants/routes";
+import { SearchLastResult } from "./search-last-result";
 
 
 const columns: ColumnDef<JobSearchesResult[number]>[] = [
+  {
+    accessorKey: "title",
+    header: "Titel",
+    cell: ({ row }) => <AppLink href={jobSearchHref(row.original.id)}>{row.original.title}</AppLink>,
+  },
   {
     accessorKey: "url",
     header: "Such-URL",
@@ -22,6 +29,11 @@ const columns: ColumnDef<JobSearchesResult[number]>[] = [
         {row.original.url}
       </AppLink>
     ),
+  },
+  {
+    accessorKey: "lastResultCount",
+    header: "Letzter erfolgreicher Abruf",
+    cell: ({ row }) => <SearchLastResult search={row.original} />,
   },
   {
     accessorKey: "active",

@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { JOB_ERRORS } from "./errors/index.mjs";
-import { loadSearchUrls } from "./searches.mjs";
+import { loadSearches } from "./searches.mjs";
 import { parseSearchPage } from "./parser.mjs";
 
 
@@ -69,15 +69,19 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
 
   let inserted = 0;
   try {
-    const searches = await loadSearchUrls(database);
+    const searches = await loadSearches(database);
     for (const search of searches) {
       let totalPages = 1;
+      let total = 0;
       const seen = new Set();
       for (let page = 1; page <= totalPages; page += 1) {
-        const url = new URL(search);
+        const url = new URL(search.requestUrl);
         url.searchParams.set("page", String(page));
         const result = parseSearchPage(await loadPage(url), page);
-        if (page === 1) totalPages = result.totalPages;
+        if (page === 1) {
+          totalPages = result.totalPages;
+          total = result.total;
+        }
         if (totalPages > 1000) throw new Error(JOB_ERRORS.metadata);
         if (result.urls.length > 0 && result.urls.every((entry) => seen.has(entry))) {
           throw new Error(JOB_ERRORS.pagination);
@@ -86,6 +90,19 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
         inserted += await saveNewUrls(database, result.urls);
         result.urls.forEach((entry) => seen.add(entry));
       }
+
+      // Nur vollständige Abrufe speichern; eine inzwischen geänderte Suche nicht überschreiben.
+      await database.jobSearch.updateMany({
+        where: {
+          id: search.id,
+          url: search.url,
+          active: true,
+        },
+        data: {
+          lastResultCount: total,
+          lastFetchedAt: new Date(),
+        },
+      });
     }
 
     return {

@@ -21,7 +21,7 @@ export const GET = apiHandler(async (request) => {
   const query = await checkApiQuery(request, jobsQuerySchema);
   if (!query.ok) return query.response;
 
-  const result = await listJobs(query.data.page);
+  const result = await listJobs(query.data.page, query.data.isMarkiert);
   const response = successResponse(result);
 
   return response;

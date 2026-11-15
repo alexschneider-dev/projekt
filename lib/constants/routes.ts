@@ -18,3 +18,6 @@ export const ROUTES = {
   admin: "/admin",
   superAdmin: "/super-admin",
 } as const;
+
+export const jobSearchHref = (id: number) => `${ROUTES.jobSearches}/${id}`;
+export const jobSearchApiHref = (id: number) => `${ROUTES.jobSearchesApi}/${id}`;

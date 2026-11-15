@@ -39,7 +39,11 @@ test("Leere Suche zulassen, unlesbare Antworten und falsche Seiten ablehnen", ()
 function databaseStub() {
   return {
     jobSearch: {
-      findMany: async () => [{ url: "https://www.stepstone.de/jobs/test" }],
+      findMany: async () => [{
+        id: 1,
+        url: "https://www.stepstone.de/jobs/test",
+      }],
+      updateMany: async () => ({ count: 1 }),
     },
     jobListing: {
       findMany: async () => [],

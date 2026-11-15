@@ -3,7 +3,10 @@ import {
   expect,
   login,
 } from "../support/fixtures";
-import { ROUTES } from "@/lib/constants/routes";
+import {
+  ROUTES,
+  jobSearchHref,
+} from "@/lib/constants/routes";
 import { ERROR_JOBS } from "@/lib/http/errors/jobs";
 import { randomUUID } from "node:crypto";
 
@@ -56,6 +59,22 @@ test("Stellen sind geschützt und neue Links stehen zuerst", async ({
     expect((await database.jobListing.findUniqueOrThrow({ where: { url: newer } })).isMarkiert).toBe(true);
     await page.reload();
     await expect(row.getByRole("button", { name: "Markiert", exact: true })).toBeDisabled();
+    const filter = page.getByRole("combobox", { name: "Markierung" });
+    await filter.selectOption("false");
+    await expect(page).toHaveURL(/isMarkiert=false/);
+    await expect(row).toHaveCount(0);
+    await filter.selectOption("true");
+    await expect(page).toHaveURL(/isMarkiert=true/);
+    await expect(row).toBeVisible();
+    await page.reload();
+    await expect(filter).toHaveValue("true");
+    await expect(row).toBeVisible();
+    await page.goBack();
+    await expect(filter).toHaveValue("false");
+    await expect(row).toHaveCount(0);
+    await filter.selectOption("all");
+    await expect(page).toHaveURL(ROUTES.jobs);
+    await expect(row).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath("stellen.png") });
   } finally {
     await database.jobListing.deleteMany({ where: { url: { in: urls } } });
@@ -74,6 +93,7 @@ test("Suchformular speichert und zeigt Feldfehler sowie doppelte URLs", async ({
   try {
     await page.goto(ROUTES.jobSearches);
     const input = page.getByLabel("Neue Such-URL");
+    await page.getByLabel("Titel", { exact: true }).fill("Testsuche");
     await input.fill("keine-url");
     await page.getByRole("button", { name: "Such-URL hinzufügen" }).click();
     await expect(page.getByText("Bitte gib eine gültige HTTPS-Such-URL der unterstützten Jobbörse ein.")).toBeVisible();
@@ -87,11 +107,51 @@ test("Suchformular speichert und zeigt Feldfehler sowie doppelte URLs", async ({
     await expect(page.getByRole("link", { name: url, exact: true })).toBeVisible();
     await page.reload();
     await expect(page.getByRole("link", { name: url, exact: true })).toBeVisible();
+    await page.getByLabel("Titel", { exact: true }).fill("Testsuche");
     await input.fill(url);
     await page.getByRole("button", { name: "Such-URL hinzufügen" }).click();
     await expect(page.getByText("Diese Such-URL ist bereits gespeichert und wurde unverändert belassen.")).toBeVisible();
   } finally {
     await database.jobSearch.deleteMany({ where: { url } });
+  }
+});
+
+test("Suchverwaltung zeigt den letzten Abruf und speichert Titel und URL", async ({
+  page,
+  database,
+  createAccount,
+}, testInfo) => {
+  const account = await createAccount();
+  await login(page.request, account.email);
+  const title = `Suche ${randomUUID()}`;
+  const search = await database.jobSearch.create({
+    data: {
+      title,
+      url: `https://www.stepstone.de/jobs/${randomUUID()}`,
+      lastResultCount: 55,
+      lastFetchedAt: new Date("2026-11-15T10:00:00Z"),
+    },
+  });
+
+  try {
+    await page.goto(ROUTES.jobSearches);
+    const row = page.getByRole("row").filter({ hasText: title });
+    await expect(row).toContainText("55 Treffer");
+    await page.screenshot({ path: testInfo.outputPath("such-urls.png") });
+    await row.getByRole("link", { name: title }).click();
+    await expect(page).toHaveURL(jobSearchHref(search.id));
+    await expect(page.getByLabel("Titel", { exact: true })).toHaveValue(title);
+    await page.getByLabel("Titel", { exact: true }).fill("Geänderte Suche");
+    await page.getByLabel("Such-URL", { exact: true }).fill(`${search.url}?q=neu`);
+    await page.getByRole("button", { name: "Änderungen speichern" }).click();
+    await expect(page.getByText("Suche gespeichert.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Noch nicht abgerufen", { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Titel", { exact: true })).toHaveValue("Geänderte Suche");
+    await expect(page.getByLabel("Such-URL", { exact: true })).toHaveValue(`${search.url}?q=neu`);
+    expect((await database.jobSearch.findUniqueOrThrow({ where: { id: search.id } })).lastResultCount).toBeNull();
+  } finally {
+    await database.jobSearch.delete({ where: { id: search.id } });
   }
 });
 
@@ -116,6 +176,10 @@ test("Tabellenpagination bleibt nach Neuladen und Browser-Zurück erhalten", asy
     await expect(page.getByText(/Seite 2 von/)).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(`${ROUTES.jobs}?quelle=test`);
+    await expect(page.getByText(/Seite 1 von/)).toBeVisible();
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await page.getByRole("combobox", { name: "Markierung" }).selectOption("false");
+    await expect(page).toHaveURL(`${ROUTES.jobs}?quelle=test&isMarkiert=false`);
     await expect(page.getByText(/Seite 1 von/)).toBeVisible();
   } finally {
     await database.jobListing.deleteMany({ where: { url: { in: urls } } });
@@ -161,6 +225,7 @@ test("API-Fehler erscheinen als schließbare Benachrichtigung", async ({
     releaseScripts();
   }
 
+  await page.getByLabel("Titel", { exact: true }).fill("Testsuche");
   await input.fill("https://www.stepstone.de/jobs/typescript");
   await expect(input).toHaveValue("https://www.stepstone.de/jobs/typescript");
   const failureResponse = page.waitForResponse((response) =>

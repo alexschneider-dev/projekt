@@ -2,7 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/http/fetch-json";
-import { ROUTES } from "@/lib/constants/routes";
+import {
+  ROUTES,
+  jobSearchApiHref,
+} from "@/lib/constants/routes";
 import { useAppMutation } from "@/lib/query/use-app-mutation";
 import type {
   JobSearchValues,
@@ -15,19 +18,20 @@ import type {
   JobLink,
 } from "@/lib/types/jobs";
 import {
-  createPageQueryString,
+  createJobsQueryString,
   createQueryHref,
 } from "@/lib/shared/search-params/query-state";
 
 
-export function useJobsQuery(page: number) {
+export function useJobsQuery(page: number, isMarkiert?: boolean) {
   return useQuery({
     queryKey: [
       "jobs",
       page,
+      isMarkiert ?? "all",
     ],
     queryFn: ({ signal }) => fetchJson<JobsPageResult>(
-      createQueryHref(ROUTES.jobsApi, createPageQueryString("", page)),
+      createQueryHref(ROUTES.jobsApi, createJobsQueryString("", page, isMarkiert)),
       {
         method: "GET",
         signal,
@@ -63,5 +67,18 @@ export function useMarkJob() {
       body,
     }),
     invalidateKeys: [["jobs"]],
+  });
+}
+
+export function useUpdateJobSearch() {
+  return useAppMutation<JobSearchesResult[number], JobSearchValues & { id: number }>({
+    mutationFn: ({
+      id,
+      ...body
+    }) => fetchJson(jobSearchApiHref(id), {
+      method: "PATCH",
+      body,
+    }),
+    invalidateKeys: [["job-searches"]],
   });
 }

@@ -44,8 +44,11 @@ model JobListing {
 }
 
 model JobSearch {
-  id        Int      @id @default(autoincrement())
-  url       String   @unique
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id              Int       @id @default(autoincrement())
+  url             String    @unique
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  title           String    @default("Gespeicherte Suche")
+  lastResultCount Int?
+  lastFetchedAt   DateTime?
 }

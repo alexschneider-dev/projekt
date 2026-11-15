@@ -12,3 +12,9 @@ export function createPageQueryString(current: string, page: number) {
 export function createQueryHref(pathname: string, query: string) {
   return query ? `${pathname}?${query}` : pathname;
 }
+
+export function createJobsQueryString(current: string, page: number, isMarkiert?: boolean) {
+  const params = new URLSearchParams(createPageQueryString(current, page));
+  setOrDelete(params, "isMarkiert", isMarkiert === undefined ? undefined : String(isMarkiert));
+  return params.toString();
+}
