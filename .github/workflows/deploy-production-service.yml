@@ -31,7 +31,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -Eeuo pipefail
-          [[ "$SERVICE" =~ ^(nextjs|nginx)$ ]]
+          [[ "$SERVICE" =~ ^(nextjs|nginx|jobs)$ ]]
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]
 
       - name: SSH konfigurieren

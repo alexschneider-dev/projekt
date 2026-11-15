@@ -395,3 +395,25 @@ neuen Runtime-Dateien und das Fehlermodul noch nicht. Anschließend wie gewohnt 
 ```sh
 sudo /usr/local/lib/projekt-deploy/deploy-stack.sh
 ```
+
+
+## Stündlicher Stellenimport
+
+Der Service `jobs` führt den HTTP-Import unabhängig von Next.js aus. Es gibt
+keinen zusätzlichen API-Endpunkt und keinen Cron-Daemon. Das Docker-Ziel
+`jobs` in `services/Dockerfile` wird als `projekt-jobs` im bestehenden
+Next.js-Release-Workflow gebaut und nach Migration und Next.js bereitgestellt.
+Der Service kann dabei erstmalig angelegt werden.
+
+Der Laufzeit-Resolver übernimmt standardmäßig nur das Datenbank-Secret und die
+Startscript-Config von Next.js. Bestehende `runtime.json`-Dateien benötigen
+keinen neuen Eintrag. Die Datenbank-Secret-Revision wird auch für `jobs`
+aufgelöst; nach einer Rotation beide Services neu bereitstellen.
+
+`deploy-stack.sh` erhält ein bestehendes Import-Image. Fehlt der Service noch,
+wird die zur laufenden Next.js-Version passende `projekt-jobs`-Version verwendet;
+diese muss bereits in der Registry liegen. Replikate, Ressourcen und
+Update-Strategien stehen ausschließlich in `compose.swarm.yml`.
+
+Die Suchliste und Befehle für lokalen Betrieb stehen in
+[der Import-Anleitung](../scripts/jobs/README.md).

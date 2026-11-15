@@ -29,6 +29,27 @@ function inspectSecret(name) {
 
 // Git definiert Einbindungen; der Server liefert öffentliche Werte und versionierte Namen.
 export function resolveRuntime(input, services, definitions = runtimeKeys, inspect = inspectSecret) {
+  // Der Import teilt nur Datenbank und Startscript mit Next.js, keine Auth-Secrets.
+  if (services.includes("jobs") && definitions.jobs && !input.services?.jobs) {
+    input = structuredClone(input);
+    const nextjs = input.services?.nextjs;
+    const database = nextjs?.secrets?.find(secret => secret.target === "runtime_DATABASE_URL");
+    const reference = input.secrets?.[database?.source || "nextjs_DATABASE_URL"];
+    input.secrets = {
+      ...input.secrets,
+      jobs_DATABASE_URL: reference ?? {
+        external: true,
+        name: secretName("nextjs", "DATABASE_URL"),
+      },
+    };
+    input.services = {
+      ...input.services,
+      jobs: {
+        configs: nextjs?.configs?.filter(config => config.target === "/production-entrypoint.sh") ?? [],
+      },
+    };
+  }
+
   const runtime = structuredClone(input);
 
   runtime.services = {};

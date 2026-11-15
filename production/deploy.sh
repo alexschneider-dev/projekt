@@ -8,6 +8,7 @@ if [[ -z "$SERVICE" || -z "$VERSION" ]]; then
   echo "Verwendung:"
   echo "  ./deploy.sh nextjs 13.29"
   echo "  ./deploy.sh nginx 4.61"
+  echo "  ./deploy.sh jobs 13.29"
   exit 1
 fi
 
@@ -15,6 +16,10 @@ case "$SERVICE" in
   nextjs)
     SWARM_SERVICE="projekt_nextjs"
     IMAGE="ghcr.io/alexschneider-dev/projekt"
+    ;;
+  jobs)
+    SWARM_SERVICE="projekt_jobs"
+    IMAGE="ghcr.io/alexschneider-dev/projekt-jobs"
     ;;
   nginx)
     SWARM_SERVICE="projekt_nginx"
@@ -38,8 +43,10 @@ flock -w 900 9
 cd "$(dirname "$0")"
 RUNTIME=/etc/projekt/runtime.json
 [[ -s "$RUNTIME" ]] || { echo "Datei fehlt oder ist leer: $RUNTIME" >&2; exit 1; }
-# Vor der Bereitstellung abbrechen, falls der ausgewählte Service nicht existiert.
-docker service inspect "$SWARM_SERVICE" >/dev/null
+# Bestehende Services prüfen; der Importservice darf hier erstmals angelegt werden.
+if [[ "$SERVICE" != "jobs" ]]; then
+  docker service inspect "$SWARM_SERVICE" >/dev/null
+fi
 
 umask 077
 work_dir=$(mktemp -d)

@@ -21,6 +21,12 @@ export function DashboardNavigation({ role }: { role: InternalRole }) {
       >
         Übersicht
       </AppLink>
+      <AppLink
+        href={ROUTES.jobs}
+        variant="navigation"
+      >
+        Stellen
+      </AppLink>
       {hasRole(role, ADMIN) && (
         <AppLink
           href={ROUTES.admin}

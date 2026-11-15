@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "1.21"
+        description: "1.22"
         required: true
         type: string
       deploy:
@@ -99,6 +99,20 @@ jobs:
           cache-from: type=gha,scope=projekt-migration
           cache-to: type=gha,mode=max,scope=projekt-migration
 
+      - name: Stellenimport-Image bauen und pushen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./services/Dockerfile
+          target: jobs
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/alexschneider-dev/projekt-jobs:${{ inputs.version }}
+            ghcr.io/alexschneider-dev/projekt-jobs:${{ github.sha }}
+          cache-from: type=gha,scope=projekt-jobs
+          cache-to: type=gha,mode=max,scope=projekt-jobs
+
       - name: Next.js-Image bauen und pushen
         uses: docker/build-push-action@v6
         with:
@@ -118,5 +132,14 @@ jobs:
     uses: ./.github/workflows/deploy-production-service.yml
     with:
       service: nextjs
+      version: ${{ inputs.version }}
+    secrets: inherit
+
+  deploy-jobs:
+    if: ${{ inputs.deploy }}
+    needs: deploy
+    uses: ./.github/workflows/deploy-production-service.yml
+    with:
+      service: jobs
       version: ${{ inputs.version }}
     secrets: inherit

@@ -314,7 +314,8 @@ test("Startscript erhält Shell-Syntax als Text und abschließende Zeilenumbrüc
 
 for (const service of [
   "nextjs",
-  "nginx"
+  "nginx",
+  "jobs"
 ]) {
   for (const rollback of [
     false,
@@ -324,7 +325,12 @@ for (const service of [
       const dir = fixture(t);
       const log = join(dir, "calls");
       const captured = join(dir, "applied.yml");
-      const repository = service === "nextjs" ? "projekt" : "nginx-projekt";
+      const repositories = {
+        nextjs: "projekt",
+        nginx: "nginx-projekt",
+        jobs: "projekt-jobs",
+      };
+      const repository = repositories[service];
       const dockerPath = run("sh", [
         "-c",
         "command -v docker"
@@ -442,7 +448,7 @@ if (args[0] === 'service' && args[1] === 'inspect') {
 
       assert.equal(spec.image, `ghcr.io/alexschneider-dev/${repository}:2.0`);
       assert.equal(spec.deploy.replicas, 4);
-      assert.equal(spec.deploy.update_config.order, "start-first");
+      assert.equal(spec.deploy.update_config.order, base.services[service].deploy.update_config.order);
       assert.deepEqual(spec.command, base.services[service].command);
       assert.deepEqual(spec.entrypoint, base.services[service].entrypoint);
       assert.ok(!Object.hasOwn(spec.networks, "unexpected"));
@@ -517,7 +523,8 @@ esac
     "nextjs",
     "nginx",
     "postgres",
-    "redis"
+    "redis",
+    "jobs"
   ]) {
     assert.ok(calls.includes(`${service.toUpperCase()}_IMAGE=example/projekt_${service}:2.0@sha256:live`));
   }

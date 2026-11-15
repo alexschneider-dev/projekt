@@ -11,6 +11,7 @@ export const ROUTES = {
   serviceWorker: "/sw.js",
   login: "/login",
   dashboard: "/dashboard",
+  jobs: "/stellen",
   admin: "/admin",
   superAdmin: "/super-admin",
 } as const;

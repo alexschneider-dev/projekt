@@ -25,5 +25,13 @@
     "secrets": [
       "POSTGRES_PASSWORD"
     ]
+  },
+  "jobs": {
+    "public": [
+      "NODE_ENV"
+    ],
+    "secrets": [
+      "DATABASE_URL"
+    ]
   }
 }

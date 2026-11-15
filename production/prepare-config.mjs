@@ -44,6 +44,9 @@ const manifest = {
 const pending = [];
 
 for (const service of Object.keys(runtimeKeys)) {
+  // Der Stellenimport verwendet die Datenbank-Einbindung von Next.js im Resolver.
+  if (service === "jobs") continue;
+
   const values = parseEnv(readFileSync(resolve(envDirectory, `${service}.env`), "utf8"));
   const spec = {
     environment: {},

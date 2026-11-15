@@ -33,3 +33,18 @@ model LoginAttempt {
 
   @@index([expiresAt])
 }
+
+model JobListing {
+  id        Int      @id @default(autoincrement())
+  url       String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([createdAt, id])
+}
+
+model JobSearch {
+  id        Int      @id @default(autoincrement())
+  url       String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}

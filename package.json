@@ -34,7 +34,11 @@
     "test:report": "playwright show-report",
     "test:all": "npm run check && npm run test:legacy && npm run test:coverage && npm run test:e2e && npm run test:visual",
     "test:smoke": "playwright test --config=playwright.smoke.config.ts",
-    "test:server": "node testing/run.mjs server"
+    "test:server": "node testing/run.mjs server",
+    "jobs:import": "node scripts/jobs/run.mjs --once",
+    "jobs:watch": "node scripts/jobs/run.mjs",
+    "jobs:search:add": "node scripts/jobs/add-search.mjs",
+    "test:jobs:db": "node --test testing/integration/jobs.integration.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.0.0",

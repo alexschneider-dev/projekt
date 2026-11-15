@@ -221,3 +221,20 @@ test("Server-Bestand erhält sämtliche konfigurierten und laufenden Secret-Zuor
   assert.equal(output.secrets.nextjs_NEXTAUTH_SECRET.name, "projekt_nextauth_secret_1793284396714");
   assert.equal(output.secrets.nextjs_REDIS_URL.name, "projekt_nextjs_redis_url_r1");
 });
+
+test("Stellenimport erbt nur das rotierte Datenbank-Secret und das Startscript", () => {
+  const input = fixture();
+  const original = structuredClone(input);
+  const inspected = [];
+  const result = resolveRuntime(input, ["jobs"], runtimeKeys, name => inspected.push(name));
+
+  assert.deepEqual(input, original);
+  assert.deepEqual(inspected, ["database_r7"]);
+  assert.deepEqual(result.services.jobs.secrets, [{
+    source: "jobs_DATABASE_URL",
+    target: "runtime_DATABASE_URL",
+  }]);
+  assert.equal(result.secrets.jobs_DATABASE_URL.name, "database_r7");
+  assert.deepEqual(result.services.jobs.configs, input.services.nextjs.configs);
+  assert.equal(result.services.jobs.environment, undefined);
+});

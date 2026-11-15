@@ -16,6 +16,23 @@ COPY services/migration/package.json ./services/migration/package.json
 RUN npm ci
 
 
+# Separater Importprozess mit denselben festgelegten Paketversionen.
+FROM deps AS jobs-deps
+COPY prisma/schema.prisma ./prisma/schema.prisma
+RUN npx prisma generate --schema prisma/schema.prisma
+RUN npm prune --omit=dev --ignore-scripts
+
+
+FROM base AS jobs
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=jobs-deps /app ./
+COPY --chown=node:node scripts/jobs ./scripts/jobs
+COPY --chown=node:node lib/schemas/jobs ./lib/schemas/jobs
+USER node
+CMD ["node", "scripts/jobs/run.mjs"]
+
+
 FROM base AS builder
 WORKDIR /app
 

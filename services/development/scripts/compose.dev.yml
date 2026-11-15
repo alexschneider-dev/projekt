@@ -117,6 +117,22 @@ services:
     networks:
       - nextjs_dev
 
+  jobs:
+    profiles: ["jobs"]
+    build:
+      context: ../../..
+      dockerfile: services/Dockerfile
+      target: jobs
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - nextjs_dev
+
   nginx:
     profiles: ["dev"]
     build:

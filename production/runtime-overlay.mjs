@@ -13,6 +13,7 @@ const [
 const inputRuntime = JSON.parse(readFileSync(input, "utf8"));
 const serviceNames = selectedService ? [selectedService] : [
   "nextjs",
+  "jobs",
   "nginx",
   "postgres",
   "redis"

@@ -70,6 +70,44 @@ services:
         reservations:
           memory: 256M
 
+  jobs:
+    image: ${JOBS_IMAGE}
+    entrypoint:
+      - /bin/sh
+      - /production-entrypoint.sh
+      - docker-entrypoint.sh
+    command:
+      - node
+      - scripts/jobs/run.mjs
+    environment:
+      NODE_ENV: production
+    networks:
+      - projekt_net
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    stop_grace_period: 30s
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: stop-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: any
+        delay: 30s
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+
   nginx:
     image: ${NGINX_IMAGE}
     stop_signal: SIGQUIT
