@@ -7,23 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 enum InternalRole {
   USER
-  ADMIN
   SUPER_ADMIN
 }
 
 model User {
-  id             String       @id @default(cuid())
-  email          String       @unique
+  id             String          @id @default(cuid())
+  email          String          @unique
   name           String?
   passwordHash   String
-  role           InternalRole @default(USER)
-  active         Boolean      @default(true)
-  sessionVersion Int          @default(0)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  role           InternalRole    @default(USER)
+  active         Boolean         @default(true)
+  sessionVersion Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  jobs           JobListing[]
+  searches       JobSearch[]
+  importState    JobImportState?
 }
 
 model LoginAttempt {
@@ -35,31 +36,40 @@ model LoginAttempt {
 }
 
 model JobListing {
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
   id         Int      @id @default(autoincrement())
-  url        String   @unique
+  url        String
   createdAt  DateTime @default(now())
   isMarkiert Boolean  @default(false)
 
-  @@index([createdAt, id])
+  @@unique([userId, url])
+  @@index([userId, createdAt, id])
 }
 
 model JobSearch {
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
   id              Int       @id @default(autoincrement())
-  url             String    @unique
+  url             String
   active          Boolean   @default(true)
   createdAt       DateTime  @default(now())
   title           String    @default("Gespeicherte Suche")
   lastResultCount Int?
   lastFetchedAt   DateTime?
+
+  @@unique([userId, url])
 }
 
 model JobImportState {
-  id             Int       @id @default(1)
-  requested      Boolean   @default(false)
-  running        Boolean   @default(false)
-  requestedAt    DateTime?
-  startedAt      DateTime?
-  finishedAt     DateTime?
-  succeeded      Boolean?
-  inserted       Int       @default(0)
+  id          Int       @id @default(autoincrement())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id])
+  requested   Boolean   @default(false)
+  running     Boolean   @default(false)
+  requestedAt DateTime?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  succeeded   Boolean?
+  inserted    Int       @default(0)
 }

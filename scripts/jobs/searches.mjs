@@ -9,13 +9,18 @@ export function validateSearchUrl(value) {
   return result.data;
 }
 
-export async function loadSearchUrls(database) {
-  return [...new Set((await loadSearches(database)).map((search) => search.requestUrl))];
+export async function loadSearchUrls(database, userId) {
+  return [...new Set((await loadSearches(database, userId)).map((search) => search.requestUrl))];
 }
 
-export async function loadSearches(database) {
+export async function loadSearches(database, userId) {
+  if (!userId) throw new Error(JOB_ERRORS.user);
+
   const searches = await database.jobSearch.findMany({
-    where: { active: true },
+    where: {
+      userId,
+      active: true,
+    },
     orderBy: { id: "asc" },
     select: {
       id: true,
@@ -28,10 +33,15 @@ export async function loadSearches(database) {
   }));
 }
 
-export async function addSearchUrl(database, value) {
+export async function addSearchUrl(database, value, userId) {
+  if (!userId) throw new Error(JOB_ERRORS.user);
+
   const url = validateSearchUrl(value);
   const result = await database.jobSearch.createMany({
-    data: [{ url }],
+    data: [{
+      userId,
+      url,
+    }],
     skipDuplicates: true,
   });
   return result.count;

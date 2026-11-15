@@ -9,6 +9,7 @@ import {
 import { useAppMutation } from "@/lib/query/use-app-mutation";
 import type {
   JobSearchValues,
+  UpdateJobSearchValues,
   MarkJobInput,
 } from "@/lib/schemas/jobs/jobs.schema";
 import type {
@@ -71,7 +72,7 @@ export function useMarkJob() {
 }
 
 export function useUpdateJobSearch() {
-  return useAppMutation<JobSearchesResult[number], JobSearchValues & { id: number }>({
+  return useAppMutation<JobSearchesResult[number], UpdateJobSearchValues & { id: number }>({
     mutationFn: ({
       id,
       ...body

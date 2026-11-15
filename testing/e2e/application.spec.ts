@@ -6,7 +6,6 @@ import {
 } from "../support/fixtures";
 import {
   USER,
-  ADMIN,
   SUPER_ADMIN,
 } from "@/lib/auth/roles";
 import { ROUTES } from "@/lib/constants/routes";
@@ -89,7 +88,6 @@ for (const route of [
 
 for (const role of [
   USER,
-  ADMIN,
   SUPER_ADMIN,
 ] as const) {
   test(`serverseitige Seitenrechte für ${role}`, async ({
@@ -102,7 +100,7 @@ for (const role of [
     await page.goto(ROUTES.dashboard);
     await expect(page).toHaveURL(ROUTES.dashboard);
     await page.goto(ROUTES.admin);
-    await expect(page).toHaveURL(role === USER ? ROUTES.home : ROUTES.admin);
+    await expect(page).toHaveURL(ROUTES.admin);
     await page.goto(ROUTES.superAdmin);
     await expect(page).toHaveURL(role === SUPER_ADMIN ? ROUTES.superAdmin : ROUTES.home);
   });

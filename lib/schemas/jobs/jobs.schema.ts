@@ -18,6 +18,15 @@ export const jobSearchSchema = z.object({
   }),
 });
 
+export const jobSearchStatusSchema = z.object({
+  active: z.boolean({ error: ERROR_JOBS.INVALID_SEARCH_STATUS.message }),
+}).strict();
+
+export const updateJobSearchSchema = z.union([
+  jobSearchSchema.strict(),
+  jobSearchStatusSchema,
+]);
+
 export const jobSearchParamsSchema = z.object({
   id: z.string().regex(/^[1-9]\d*$/, ERROR_JOBS.INVALID_SEARCH_ID.message)
     .transform(Number)
@@ -49,3 +58,5 @@ export type MarkJobInput = z.infer<typeof markJobSchema>;
 export type JobSearchInput = z.input<typeof jobSearchSchema>;
 export type JobSearchValues = z.output<typeof jobSearchSchema>;
 export type JobsQuery = z.output<typeof jobsQuerySchema>;
+
+export type UpdateJobSearchValues = z.output<typeof updateJobSearchSchema>;

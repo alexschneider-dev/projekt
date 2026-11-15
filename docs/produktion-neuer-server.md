@@ -480,7 +480,7 @@ sudo docker stats --no-stream
 
 - HTTP leitet auf HTTPS um; Zertifikat und `www`-Weiterleitung stimmen.
 - Homepage, Anmeldung, Abmeldung und Datenbankzugriff funktionieren.
-- `SUPER_ADMIN` erreicht `/grafana/`; anonyme Benutzer, `USER` und `ADMIN` nicht.
+- `SUPER_ADMIN` erreicht `/grafana/`; anonyme Benutzer und `USER` nicht.
 - Metriken, Logs und Traces kommen an; ein Grafana-Testalarm erreicht den Empfänger.
 - Beide Backup-Timer sind aktiv, erste Sicherungen geprüft und ein isolierter Restore getestet.
 - Mindestens 24 Stunden einschließlich Dashboard-Abfragen, Backup und App-Update

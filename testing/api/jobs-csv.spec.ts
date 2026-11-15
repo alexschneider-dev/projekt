@@ -37,8 +37,12 @@ test("CSV markiert nur vorhandene Stellen und verarbeitet ungültige Dateien ohn
   const unknown = `https://www.stepstone.de/stellenangebote--${marker}-3-inline.html`;
   await database.jobListing.createMany({
     data: [
-      { url: fresh },
       {
+        url: fresh,
+        userId: account.id
+      },
+      {
+        userId: account.id,
         url: marked,
         isMarkiert: true,
       },
@@ -48,7 +52,14 @@ test("CSV markiert nur vorhandene Stellen und verarbeitet ungültige Dateien ohn
   try {
     expect((await request.post(ROUTES.jobsCsvApi, upload(`${fresh}\nungültig`))).status())
       .toBe(HTTP_STATUS.BAD_REQUEST);
-    expect((await database.jobListing.findUniqueOrThrow({ where: { url: fresh } })).isMarkiert).toBe(false);
+    expect((await database.jobListing.findUniqueOrThrow({
+      where: {
+        userId_url: {
+          userId: account.id,
+          url: fresh
+        }
+      }
+    })).isMarkiert).toBe(false);
     const csv = `URL\n"${fresh}?tracking=1"\n${fresh}\n${marked}\n${unknown}`;
     const response = await request.post(ROUTES.jobsCsvApi, upload(csv));
     expect(response.status()).toBe(HTTP_STATUS.OK);
@@ -58,8 +69,22 @@ test("CSV markiert nur vorhandene Stellen und verarbeitet ungültige Dateien ohn
       notFound: 1,
       duplicates: 1,
     });
-    expect((await database.jobListing.findUniqueOrThrow({ where: { url: fresh } })).isMarkiert).toBe(true);
-    expect(await database.jobListing.findUnique({ where: { url: unknown } })).toBeNull();
+    expect((await database.jobListing.findUniqueOrThrow({
+      where: {
+        userId_url: {
+          userId: account.id,
+          url: fresh
+        }
+      }
+    })).isMarkiert).toBe(true);
+    expect(await database.jobListing.findUnique({
+      where: {
+        userId_url: {
+          userId: account.id,
+          url: unknown
+        }
+      }
+    })).toBeNull();
     const repeated = await request.post(ROUTES.jobsCsvApi, upload(csv));
     expect(await repeated.json()).toMatchObject({
       marked: 0,

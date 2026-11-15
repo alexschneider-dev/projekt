@@ -13,7 +13,7 @@ export const GET = apiHandler(async () => {
   const apiGate = await requireRole();
   if (!apiGate.ok) return apiGate.response;
 
-  return successResponse(await listJobSearches());
+  return successResponse(await listJobSearches(apiGate.user.id));
 });
 
 export const POST = apiHandler(async (request) => {
@@ -24,7 +24,10 @@ export const POST = apiHandler(async (request) => {
   if (!body.ok) return body.response;
 
   const result = await prisma.jobSearch.createMany({
-    data: [body.data],
+    data: [{
+      ...body.data,
+      userId: apiGate.user.id,
+    }],
     skipDuplicates: true,
   });
   return successResponse({ created: result.count > 0 });

@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/prisma";
 
 
-export async function getJobImportState() {
-  const state = await prisma.jobImportState.findUniqueOrThrow({ where: { id: 1 } });
+export async function getJobImportState(userId: string) {
+  const state = await prisma.jobImportState.upsert({
+    where: { userId },
+    create: { userId },
+    update: {},
+  });
   return {
     ...state,
     requestedAt: state.requestedAt?.toISOString() ?? null,
@@ -11,10 +15,12 @@ export async function getJobImportState() {
   };
 }
 
-export async function requestJobImport() {
+export async function requestJobImport(userId: string) {
+  await getJobImportState(userId);
+
   const result = await prisma.jobImportState.updateMany({
     where: {
-      id: 1,
+      userId,
       requested: false,
       running: false,
     },

@@ -1,6 +1,7 @@
 export const JOB_ERRORS = {
   configuration: "Die Such-URL muss eine gültige HTTPS-Suchseite der unterstützten Jobbörse sein.",
-  searchArgument: "Verwendung: npm run jobs:search:add -- SUCH_URL",
+  searchArgument: "Verwendung: npm run jobs:search:add -- SUCH_URL BENUTZER_ID",
+  user: "Für den Stellenimport ist eine Benutzer-ID erforderlich.",
   database: "DATABASE_URL fehlt.",
   metadata: "Die Seitenangaben fehlen oder sind ungültig. Der Import wird abgebrochen.",
   links: "Die Ergebnisseite enthält keine erkennbaren Stellenlinks.",

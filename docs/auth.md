@@ -1,7 +1,8 @@
 # Interner Login
 
 NextAuth v4 Credentials mit JWT-Sitzungen (8 Stunden), Prisma und PostgreSQL.
-Keine öffentliche Registrierung. Kundenrollen sind nicht Teil der internen Rollen.
+Keine öffentliche Registrierung. Stellen, Suchgruppen und Importstatus gehören
+direkt einem Benutzer. Es gibt ausschließlich die Rollen `USER` und `SUPER_ADMIN`.
 
 ## Einrichtung
 
@@ -37,7 +38,17 @@ npm run auth:create-user -- admin@example.com SUPER_ADMIN "Administration"
 ```
 
 Das Skript lädt `.env.local` und fragt das Passwort verdeckt mit Bestätigung ab.
-Weitere Konten genauso mit `ADMIN` oder `USER` anlegen; Standard ist `USER`.
+Weitere Konten mit `USER` oder `SUPER_ADMIN` anlegen; Standard ist `USER`.
+Das Skript gibt die Benutzer-ID aus. Ein neues Konto erhält einen eigenen,
+leeren Datenbereich. Es gibt keine gemeinsame Kundenmitgliedschaft.
+
+Die Migrationen entfernen die Rolle `ADMIN` und ordnen Bestandsdaten direkt einem
+Benutzer zu. Bestehende `ADMIN`-Konten werden zu `USER`; ihre Sitzungen werden
+ungültig. Die Bestandsdaten erhält der bisherige Super-Admin, andernfalls der
+älteste Benutzer. Gibt es für alte Daten überhaupt keinen Benutzer, erhält sie
+ein deaktivierter Bestandsbesitzer mit nicht nutzbarem Passwort. Seine Daten
+werden nicht automatisch importiert.
+
 Bestehende Konten werden nicht überschrieben.
 Die Migration zur Großschreibung benennt die vorhandenen Enum-Werte in der
 Datenbank um; Rollen und Konten bleiben dabei erhalten. Sie muss vor dem Start
@@ -49,8 +60,9 @@ der Anwendung mit den neuen Rollenwerten ausgeführt werden.
 - `/login`: Anmeldung; nach erfolgreichem Login geht es zur Homepage. Abmeldung führt zur Login-Seite zurück.
 - Fehlende Rollenberechtigung führt zur Homepage.
 - `/dashboard`: alle aktiven internen Benutzer.
-- `/admin`: Admin und Super-Admin.
-- `/super-admin`: ausschließlich Super-Admin.
+- `/admin`: angemeldete Benutzer.
+- `/super-admin` und `/grafana/`: ausschließlich Super-Admin.
+- `/stellen` und `/such-urls`: angemeldete Benutzer, ausschließlich ihre eigenen Daten.
 
 `requireRole()` mit dem Ergebnis `apiGate` an jeder geschützten Seite und insbesondere direkt vor Datenzugriffen
 und Server Actions aufrufen. Ein Layout oder ausgeblendete Navigation genügt nicht.
@@ -71,7 +83,7 @@ DELETE FROM "LoginAttempt" WHERE "expiresAt" < NOW();
 ```
 
 Die Verwaltungsseiten sind zunächst geschützte Platzhalter. Eine Oberfläche für
-Kontenverwaltung, Passwort-Zurücksetzen per E-Mail und Kundenmitgliedschaften ist
+Kontenverwaltung und Passwort-Zurücksetzen per E-Mail ist
 noch nicht enthalten. Passwörter können vorerst kontrolliert über ein administratives
 Skript mit `hashPassword()` geändert werden, dabei `sessionVersion` erhöhen.
 

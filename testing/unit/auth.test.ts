@@ -5,7 +5,6 @@ import {
 } from "vitest";
 import {
   USER,
-  ADMIN,
   SUPER_ADMIN,
   hasRole,
 } from "@/lib/auth/roles";
@@ -22,26 +21,6 @@ describe("Interne Rollen", () => {
     ],
     [
       USER,
-      ADMIN,
-      false
-    ],
-    [
-      USER,
-      SUPER_ADMIN,
-      false
-    ],
-    [
-      ADMIN,
-      USER,
-      true
-    ],
-    [
-      ADMIN,
-      ADMIN,
-      true
-    ],
-    [
-      ADMIN,
       SUPER_ADMIN,
       false
     ],
@@ -52,13 +31,13 @@ describe("Interne Rollen", () => {
     ],
     [
       SUPER_ADMIN,
-      ADMIN,
+      SUPER_ADMIN,
       true
     ],
     [
-      SUPER_ADMIN,
-      SUPER_ADMIN,
-      true
+      "ADMIN",
+      USER,
+      false
     ],
     [
       "customer_admin",

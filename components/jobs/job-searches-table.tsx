@@ -9,6 +9,7 @@ import { AppLink } from "@/components/ui/app-link";
 import { DataTable } from "@/components/ui/table/data-table";
 import type { JobSearchesResult } from "@/lib/types/jobs";
 import { jobSearchHref } from "@/lib/constants/routes";
+import { JobSearchStatusButton } from "./job-search-status-button";
 import { SearchLastResult } from "./search-last-result";
 
 
@@ -49,6 +50,11 @@ const columns: ColumnDef<JobSearchesResult[number]>[] = [
     accessorKey: "active",
     header: "Status",
     cell: ({ row }) => row.original.active ? "Aktiv" : "Inaktiv",
+  },
+  {
+    id: "actions",
+    header: "Aktion",
+    cell: ({ row }) => <JobSearchStatusButton search={row.original} />,
   },
 ];
 

@@ -27,23 +27,23 @@ test(
       role,
       expected,
     ] of [
-      [
-        undefined,
-        401,
-      ],
-      [
-        roles.USER,
-        403,
-      ],
-      [
-        roles.ADMIN,
-        403,
-      ],
-      [
-        roles.SUPER_ADMIN,
-        204,
-      ],
-    ]) {
+        [
+          undefined,
+          401,
+        ],
+        [
+          roles.USER,
+          403,
+        ],
+        [
+          roles.USER,
+          403,
+        ],
+        [
+          roles.SUPER_ADMIN,
+          204,
+        ],
+      ]) {
       const exported = {};
       const dependencies = {
         "@/lib/auth/roles": roles,

@@ -29,6 +29,7 @@ test("Suche bearbeiten: Titel erhält Abrufwerte, eine neue URL setzt sie zurüc
   await login(request, account.email);
   const search = await database.jobSearch.create({
     data: {
+      userId: account.id,
       title: "Bisheriger Titel",
       url: `https://www.stepstone.de/jobs/${randomUUID()}`,
       lastResultCount: 55,
@@ -38,9 +39,19 @@ test("Suche bearbeiten: Titel erhält Abrufwerte, eine neue URL setzt sie zurüc
 
   try {
     const endpoint = jobSearchApiHref(search.id);
-    expect((await request.patch(endpoint, { data: { title: "", url: search.url } })).status())
+    expect((await request.patch(endpoint, {
+      data: {
+        title: "",
+        url: search.url
+      }
+    })).status())
       .toBe(HTTP_STATUS.BAD_REQUEST);
-    const renamed = await request.patch(endpoint, { data: { title: "Neuer Titel", url: search.url } });
+    const renamed = await request.patch(endpoint, {
+      data: {
+        title: "Neuer Titel",
+        url: search.url
+      }
+    });
     expect(renamed.status()).toBe(HTTP_STATUS.OK);
     expect(await renamed.json()).toMatchObject({
       title: "Neuer Titel",
@@ -74,6 +85,7 @@ test("Stellen werden dauerhaft und wiederholt ohne Umschalten markiert", async (
   await login(request, account.email);
   const job = await database.jobListing.create({
     data: {
+      userId: account.id,
       url: `https://example.test/jobs/${randomUUID()}`,
       createdAt: new Date("2300-01-01T00:00:00Z"),
     },
@@ -141,16 +153,45 @@ test("Such-URL validieren, normalisieren und ohne Duplikate speichern", async ({
       .toBe(HTTP_STATUS.BAD_REQUEST);
     expect((await request.post(ROUTES.jobSearchesApi, { data: { url: "https://example.org/jobs/test" } })).status())
       .toBe(HTTP_STATUS.BAD_REQUEST);
-    const first = await request.post(ROUTES.jobSearchesApi, { data: { title: "Testsuche", url: `${url}?page=2#oben` } });
+    const first = await request.post(ROUTES.jobSearchesApi, {
+      data: {
+        title: "Testsuche",
+        url: `${url}?page=2#oben`
+      }
+    });
     expect(first.status()).toBe(HTTP_STATUS.OK);
     expect(await first.json()).toEqual({ created: true });
-    const saved = await database.jobSearch.findUniqueOrThrow({ where: { url } });
+    const saved = await database.jobSearch.findUniqueOrThrow({
+      where: {
+        userId_url: {
+          userId: account.id,
+          url
+        }
+      }
+    });
     expect(saved.active).toBe(true);
-    const second = await request.post(ROUTES.jobSearchesApi, { data: { title: "Testsuche", url } });
+    const second = await request.post(ROUTES.jobSearchesApi, {
+      data: {
+        title: "Testsuche",
+        url
+      }
+    });
     expect(await second.json()).toEqual({ created: false });
-    expect(await database.jobSearch.findUniqueOrThrow({ where: { url } })).toEqual(saved);
+    expect(await database.jobSearch.findUniqueOrThrow({
+      where: {
+        userId_url: {
+          userId: account.id,
+          url
+        }
+      }
+    })).toEqual(saved);
     await database.jobSearch.update({
-      where: { url },
+      where: {
+        userId_url: {
+          userId: account.id,
+          url
+        }
+      },
       data: { active: false },
     });
     const searches = await request.get(ROUTES.jobSearchesApi);
@@ -164,7 +205,12 @@ test("Such-URL validieren, normalisieren und ohne Duplikate speichern", async ({
       active: false,
     });
   } finally {
-    await database.jobSearch.deleteMany({ where: { url } });
+    await database.jobSearch.deleteMany({
+      where: {
+        userId: account.id,
+        url
+      }
+    });
   }
 });
 
@@ -177,7 +223,12 @@ test("Stellen-API paginiert mit 100 Einträgen und prüft Seitennummern", async 
   await login(request, account.email);
   const marker = randomUUID();
   const urls = Array.from({ length: 101 }, (_, index) => `https://example.test/jobs/${marker}/${index}`);
-  await database.jobListing.createMany({ data: urls.map((url) => ({ url })) });
+  await database.jobListing.createMany({
+    data: urls.map((url) => ({
+      url,
+      userId: account.id,
+    }))
+  });
 
   try {
     const first = await request.get(ROUTES.jobsApi);
@@ -194,5 +245,47 @@ test("Stellen-API paginiert mit 100 Einträgen und prüft Seitennummern", async 
     expect(last.page).toBe(last.pageCount);
   } finally {
     await database.jobListing.deleteMany({ where: { url: { in: urls } } });
+  }
+});
+
+test("Suchgruppen lassen sich ohne Verlust der Abrufdaten deaktivieren und wieder aktivieren", async ({
+  request,
+  database,
+  createAccount,
+}) => {
+  const account = await createAccount();
+  const other = await createAccount();
+  const search = await database.jobSearch.create({
+    data: {
+      userId: account.id,
+      title: "Umschaltbare Suche",
+      url: `https://www.stepstone.de/jobs/test-${randomUUID()}`,
+      lastResultCount: 55,
+      lastFetchedAt: new Date(),
+    },
+  });
+  const endpoint = jobSearchApiHref(search.id);
+  await login(request, other.email);
+  expect((await request.patch(endpoint, { data: { active: false } })).status()).toBe(HTTP_STATUS.NOT_FOUND);
+  await login(request, account.email);
+  expect((await request.patch(endpoint, { data: { active: "false" } })).status()).toBe(HTTP_STATUS.BAD_REQUEST);
+  expect((await request.patch(endpoint, { data: {} })).status()).toBe(HTTP_STATUS.BAD_REQUEST);
+
+  for (const active of [
+    false,
+    false,
+    true,
+    true,
+  ]) {
+    const response = await request.patch(endpoint, { data: { active } });
+    expect(response.status()).toBe(HTTP_STATUS.OK);
+    expect(await response.json()).toMatchObject({
+      active,
+      title: search.title,
+      url: search.url,
+      lastResultCount: 55,
+      lastFetchedAt: search.lastFetchedAt!.toISOString(),
+    });
+    expect((await database.jobSearch.findUniqueOrThrow({ where: { id: search.id } })).active).toBe(active);
   }
 });

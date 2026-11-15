@@ -51,16 +51,16 @@ const prisma = new PrismaClient();
 try {
   const passwordHash = await hashPassword(password);
 
-  await prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       email,
       role,
       name: name ?? null,
-      passwordHash
+      passwordHash,
     }
   });
 
-  console.log(`Konto angelegt: ${email} (${role})`);
+  console.log(`Konto angelegt: ${email} (${role}), Benutzer-ID: ${user.id}`);
 } catch (error) {
   if (error.code === "P2002") console.error(ERROR_ACCOUNT.EMAIL_ALREADY_EXISTS.message);
   else console.error(ERROR_ACCOUNT.ACCOUNT_CREATION_FAILED.message);

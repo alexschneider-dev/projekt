@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { JobSearchValues } from "@/lib/schemas/jobs/jobs.schema";
+import type { UpdateJobSearchValues } from "@/lib/schemas/jobs/jobs.schema";
 
 
 const select = {
@@ -18,25 +18,36 @@ function serializeSearch(search: Awaited<ReturnType<typeof findSearch>>) {
   } : null;
 }
 
-function findSearch(id: number) {
+function findSearch(userId: string, id: number) {
   return prisma.jobSearch.findUnique({
-    where: { id },
+    where: {
+      id,
+      userId,
+    },
     select,
   });
 }
 
-export async function getJobSearch(id: number) {
-  return serializeSearch(await findSearch(id));
+export async function getJobSearch(userId: string, id: number) {
+  return serializeSearch(await findSearch(userId, id));
 }
 
-export async function updateJobSearch(id: number, values: JobSearchValues) {
+export async function updateJobSearch(userId: string, id: number, values: UpdateJobSearchValues) {
   return prisma.$transaction(async (database) => {
-    const previous = await database.jobSearch.findUniqueOrThrow({ where: { id } });
+    const previous = await database.jobSearch.findUniqueOrThrow({
+      where: {
+        id,
+        userId,
+      },
+    });
     const search = await database.jobSearch.update({
-      where: { id },
+      where: {
+        id,
+        userId,
+      },
       data: {
         ...values,
-        ...(previous.url !== values.url ? {
+        ...("url" in values && previous.url !== values.url ? {
           lastResultCount: null,
           lastFetchedAt: null,
         } : {}),
@@ -47,8 +58,9 @@ export async function updateJobSearch(id: number, values: JobSearchValues) {
   });
 }
 
-export async function listJobSearches() {
+export async function listJobSearches(userId: string) {
   const searches = await prisma.jobSearch.findMany({
+    where: { userId },
     select,
     orderBy: [
       { createdAt: "desc" },

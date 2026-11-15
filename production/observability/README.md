@@ -35,7 +35,7 @@ Metriken bleiben erhalten, werden in diesen Panels jedoch nicht mehr verwendet.
   nach S3 und verbindet aktuelle und historische Abfragen.
 - Grafana unter `/grafana/` verwendet die bestehende NextAuth-Anmeldung. Jeder
   Zugriff wird serverseitig gegen den aktuellen Benutzer geprüft. Nur `SUPER_ADMIN` erhält
-  Zugriff mit der Grafana-Organisationsrolle `Admin`; `ADMIN` und `USER` werden abgewiesen.
+  Zugriff mit der Grafana-Organisationsrolle `Admin`; `USER` wird abgewiesen.
   Das ist keine globale Grafana-Serveradministratorrolle.
   Der Monitoring-Link lädt ein vollständiges Dokument ohne Next.js-Prefetch.
   Die interne Nginx-Auth-Anfrage verwendet GET und ausschließlich explizit gesetzte
@@ -463,7 +463,7 @@ installierten Backup-Code. Deshalb für neue Releases den Installer verwenden.
 
 ## Abnahme
 
-- Als anonymer Benutzer sowie als `USER` und `ADMIN` darf kein Grafana-Zugriff möglich sein.
+- Als anonymer Benutzer sowie als `USER` darf kein Grafana-Zugriff möglich sein.
   Fremde `X-Webauth-*`-Header dürfen das nicht umgehen.
 - Als `SUPER_ADMIN` Dashboard, Logs und Traces öffnen. Benutzer danach
   deaktivieren beziehungsweise Rolle entziehen und erneuten Zugriff prüfen.

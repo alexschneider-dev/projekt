@@ -6,12 +6,20 @@ import type { JobsPageResult } from "@/lib/types/jobs";
 
 export const JOBS_PAGE_SIZE = 100;
 
-export async function listJobs(requestedPage: number, isMarkiert?: boolean): Promise<JobsPageResult> {
-  const where: Prisma.JobListingWhereInput = isMarkiert === undefined ? {} : { isMarkiert };
+export async function listJobs(userId: string, requestedPage: number, isMarkiert?: boolean): Promise<JobsPageResult> {
+  const where: Prisma.JobListingWhereInput = {
+    userId,
+    ...(isMarkiert === undefined ? {} : { isMarkiert }),
+  };
 
   return prisma.$transaction(async (database) => {
     const total = await database.jobListing.count({ where });
-    const unmarkedTotal = await database.jobListing.count({ where: { isMarkiert: false } });
+    const unmarkedTotal = await database.jobListing.count({
+      where: {
+        userId,
+        isMarkiert: false,
+      },
+    });
     const pageCount = Math.max(1, Math.ceil(total / JOBS_PAGE_SIZE));
     const page = Math.min(requestedPage, pageCount);
     const items = await database.jobListing.findMany({

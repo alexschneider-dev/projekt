@@ -57,7 +57,7 @@ test("HTTP-Weiterleitungen werden mit Status protokollierbar abgelehnt", async (
     assert.equal(options.redirect, "manual");
     return new Response(null, { status: 302 });
   });
-  const result = fetchPage(new URL("https://example.test/jobs"), {}, async () => {});
+  const result = fetchPage(new URL("https://example.test/jobs"), {}, async () => { });
   const rejection = assert.rejects(result, (error) => {
     assert.equal(error.message, JOB_ERRORS.redirect);
     assert.equal(JSON.parse(jobErrorLog(error)).httpStatus, 302);
@@ -76,7 +76,10 @@ test("Leere Suche zulassen, unlesbare Antworten und falsche Seiten ablehnen", ()
 
 function databaseStub() {
   return {
-    jobImportState: { update: async () => ({}) },
+    jobImportState: {
+      update: async () => ({}),
+      upsert: async () => ({}),
+    },
     jobSearch: {
       findMany: async () => [{
         id: 1,
@@ -103,9 +106,12 @@ test("Vorhandene Links bleiben unverändert; nur neue Links einfügen", async ()
     "bekannt",
     "neu",
     "neu",
-  ]), 1);
+  ], "test-customer"), 1);
   assert.deepEqual(inserted, {
-    data: [{ url: "neu" }],
+    data: [{
+      url: "neu",
+      userId: "test-customer",
+    }],
     skipDuplicates: true,
   });
 });
@@ -113,7 +119,7 @@ test("Vorhandene Links bleiben unverändert; nur neue Links einfügen", async ()
 test("Manuelle Aufträge beenden die Wartezeit innerhalb von fünf Sekunden", async () => {
   let now = 0;
   const database = {
-    jobImportState: { findUniqueOrThrow: async () => ({ requested: now >= 5000 }) },
+    jobImportState: { findFirst: async () => now >= 5000 ? { requested: true } : null },
   };
   await waitForNextImport(database, 0, async (delay) => { now += delay; }, () => now);
   assert.equal(now, 5000);
@@ -122,7 +128,7 @@ test("Manuelle Aufträge beenden die Wartezeit innerhalb von fünf Sekunden", as
 test("Ohne Auftrag bleibt der stündliche Zeitplan erhalten", async () => {
   let now = 0;
   const database = {
-    jobImportState: { findUniqueOrThrow: async () => ({ requested: false }) },
+    jobImportState: { findFirst: async () => null },
   };
   await waitForNextImport(database, 0, async (delay) => {
     assert.ok(delay <= 5000);
@@ -144,7 +150,7 @@ test("Alle drei Seiten nacheinander importieren und Sperre freigeben", async () 
     const page = Number(url.searchParams.get("page"));
     pages.push(page);
     return fixture(page, 55, [page]);
-  });
+  }, "test-customer");
   assert.deepEqual(pages, [
     1,
     2,
@@ -158,7 +164,7 @@ test("Alle drei Seiten nacheinander importieren und Sperre freigeben", async () 
 test("Parallelen Import überspringen und Sperre auch nach Parserfehler freigeben", async () => {
   let unlocked = false;
   const busy = { query: async () => ({ rows: [{ locked: false }] }) };
-  assert.deepEqual(await importJobs({}, busy), { skipped: true });
+  assert.deepEqual(await importJobs({}, busy, undefined, "test-customer"), { skipped: true });
 
   const lockClient = {
     async query(sql) {
@@ -166,7 +172,7 @@ test("Parallelen Import überspringen und Sperre auch nach Parserfehler freigebe
       return { rows: [{ locked: true }] };
     },
   };
-  await assert.rejects(importJobs(databaseStub(), lockClient, async () => "ungültig"));
+  await assert.rejects(importJobs(databaseStub(), lockClient, async () => "ungültig", "test-customer"));
   assert.equal(unlocked, true);
 });
 
@@ -178,7 +184,7 @@ test("Retry-After als Sekunden oder Datum und exponentielle Wartezeit", () => {
 
 test("Zeitüberschreitungen bei Anfrage und Antwortinhalt werden mit Pausen wiederholt", async (context) => {
   const waits = [];
-  const warnings = context.mock.method(console, "warn", () => {});
+  const warnings = context.mock.method(console, "warn", () => { });
   let calls = 0;
   context.mock.method(globalThis, "fetch", async () => {
     calls += 1;
@@ -201,16 +207,16 @@ test("Zeitüberschreitungen bei Anfrage und Antwortinhalt werden mit Pausen wied
 });
 
 test("Nach drei Zeitüberschreitungen endet der Seitenabruf", async (context) => {
-  context.mock.method(console, "warn", () => {});
+  context.mock.method(console, "warn", () => { });
   const request = context.mock.method(globalThis, "fetch", async () => {
     throw new DOMException(JOB_ERRORS.timeout, "TimeoutError");
   });
-  await assert.rejects(fetchPage("https://example.test/jobs", {}, async () => {}), { name: "TimeoutError" });
+  await assert.rejects(fetchPage("https://example.test/jobs", {}, async () => { }), { name: "TimeoutError" });
   assert.equal(request.mock.callCount(), 3);
 });
 
 test("Nach Timeout weiterarbeiten, Teilergebnisse erhalten und Durchlauf als fehlgeschlagen speichern", async (context) => {
-  context.mock.method(console, "error", () => {});
+  context.mock.method(console, "error", () => { });
   const database = databaseStub();
   const states = [];
   const completed = [];
@@ -241,7 +247,7 @@ test("Nach Timeout weiterarbeiten, Teilergebnisse erhalten und Durchlauf als feh
       throw new DOMException(JOB_ERRORS.timeout, "TimeoutError");
     }
     return fixture(page, url.pathname.endsWith("erste") ? 50 : 1, [pages.length]);
-  }), { message: JOB_ERRORS.partial });
+  }, "test-customer"), { message: JOB_ERRORS.partial });
   assert.deepEqual(pages, [
     "/jobs/erste:1",
     "/jobs/erste:2",
@@ -255,7 +261,7 @@ test("Nach Timeout weiterarbeiten, Teilergebnisse erhalten und Durchlauf als feh
 });
 
 test("Zugriffssperren beenden den Durchlauf sofort ohne weitere Suchgruppe", async (context) => {
-  context.mock.method(console, "error", () => {});
+  context.mock.method(console, "error", () => { });
   const database = databaseStub();
   database.jobSearch.findMany = async () => [
     {
@@ -269,7 +275,7 @@ test("Zugriffssperren beenden den Durchlauf sofort ohne weitere Suchgruppe", asy
   ];
   const request = context.mock.method(globalThis, "fetch", async () => new Response(null, { status: 403 }));
   const lock = { query: async () => ({ rows: [{ locked: true }] }) };
-  await assert.rejects(importJobs(database, lock, (url) => fetchPage(url, {}, async () => {})), {
+  await assert.rejects(importJobs(database, lock, (url) => fetchPage(url, {}, async () => { }), "test-customer"), {
     message: JOB_ERRORS.blocked,
     httpStatus: 403,
   });

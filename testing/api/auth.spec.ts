@@ -5,7 +5,6 @@ import {
 } from "../support/fixtures";
 import {
   USER,
-  ADMIN,
   SUPER_ADMIN,
 } from "@/lib/auth/roles";
 import { ROUTES } from "@/lib/constants/routes";
@@ -29,7 +28,6 @@ test("geschützte API lehnt anonyme Anfragen ohne interne Details ab", async ({ 
 
 for (const role of [
   USER,
-  ADMIN,
   SUPER_ADMIN,
 ] as const) {
   test(`API-Berechtigung für ${role}`, async ({

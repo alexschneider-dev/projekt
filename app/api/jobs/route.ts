@@ -21,7 +21,7 @@ export const GET = apiHandler(async (request) => {
   const query = await checkApiQuery(request, jobsQuerySchema);
   if (!query.ok) return query.response;
 
-  const result = await listJobs(query.data.page, query.data.isMarkiert);
+  const result = await listJobs(apiGate.user.id, query.data.page, query.data.isMarkiert);
   const response = successResponse(result);
 
   return response;
@@ -35,7 +35,10 @@ export const PATCH = apiHandler(async (request) => {
   if (!body.ok) return body.response;
 
   const result = await prisma.jobListing.update({
-    where: { id: body.data.id },
+    where: {
+      id: body.data.id,
+      userId: apiGate.user.id,
+    },
     data: { isMarkiert: body.data.isMarkiert },
     select: JOB_LINK_SELECT,
   });

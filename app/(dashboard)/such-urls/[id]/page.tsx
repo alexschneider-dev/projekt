@@ -12,7 +12,7 @@ export default async function JobSearchPage({ params }: { params: Promise<{ id: 
 
   const parsed = jobSearchParamsSchema.safeParse(await params);
   if (!parsed.success) notFound();
-  const search = await getJobSearch(parsed.data.id);
+  const search = await getJobSearch(apiGate.user.id, parsed.data.id);
   if (!search) notFound();
 
   return <JobSearchDetails search={search} />;

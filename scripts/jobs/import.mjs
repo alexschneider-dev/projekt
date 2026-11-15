@@ -69,11 +69,15 @@ export async function fetchPage(url, context = {}, wait = sleep) {
   }
 }
 
-export async function saveNewUrls(database, urls) {
+export async function saveNewUrls(database, urls, userId) {
+  if (!userId) throw new Error(JOB_ERRORS.user);
   if (urls.length === 0) return 0;
 
   const existing = await database.jobListing.findMany({
-    where: { url: { in: urls } },
+    where: {
+      userId,
+      url: { in: urls },
+    },
     select: { url: true },
   });
   const known = new Set(existing.map((row) => row.url));
@@ -81,34 +85,52 @@ export async function saveNewUrls(database, urls) {
   if (fresh.length === 0) return 0;
 
   const result = await database.jobListing.createMany({
-    data: fresh.map((url) => ({ url })),
+    data: fresh.map((url) => ({
+      userId,
+      url,
+    })),
     skipDuplicates: true,
   });
   return result.count;
 }
 
-export async function importJobs(database, lockClient, loadPage = fetchPage) {
+export async function importJobs(database, lockClient, loadPage = fetchPage, userId) {
+  if (!userId) throw new Error(JOB_ERRORS.user);
+
   const lock = await lockClient.query("SELECT pg_try_advisory_lock($1) AS locked", [LOCK_ID]);
   if (!lock.rows[0].locked) return { skipped: true };
 
   let inserted = 0;
   let succeeded = false;
   let failedSearches = 0;
-  let context = { phase: "Startstatus speichern" };
+  let context = {
+    phase: "Startstatus speichern",
+    userId,
+  };
   try {
-    await database.jobImportState.update({
-      where: { id: 1 },
-      data: {
+    await database.jobImportState.upsert({
+      create: {
+        userId,
+        requested: false,
+        running: true,
+        startedAt: new Date(),
+      },
+      where: { userId },
+      update: {
         requested: false,
         running: true,
         startedAt: new Date(),
       },
     });
-    context = { phase: "Suchgruppen laden" };
-    const searches = await loadSearches(database);
+    context = {
+      phase: "Suchgruppen laden",
+      userId,
+    };
+    const searches = await loadSearches(database, userId);
     searchesLoop: for (const search of searches) {
       console.log(JSON.stringify({
         message: "Suchgruppe gestartet.",
+        userId,
         searchId: search.id,
       }));
       let totalPages = 1;
@@ -119,6 +141,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
         url.searchParams.set("page", String(page));
         context = {
           phase: "Suchseite abrufen",
+          userId,
           searchId: search.id,
           page,
         };
@@ -147,7 +170,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
         }
 
         context.phase = "Stellen speichern";
-        inserted += await saveNewUrls(database, result.urls);
+        inserted += await saveNewUrls(database, result.urls, userId);
         result.urls.forEach((entry) => seen.add(entry));
       }
 
@@ -156,6 +179,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
       await database.jobSearch.updateMany({
         where: {
           id: search.id,
+          userId,
           url: search.url,
           active: true,
         },
@@ -166,6 +190,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
       });
       console.log(JSON.stringify({
         message: "Suchgruppe abgeschlossen.",
+        userId,
         searchId: search.id,
         totalPages,
         total,
@@ -175,6 +200,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
     if (failedSearches > 0) {
       context = {
         phase: "Durchlauf abschließen",
+        userId,
         failedSearches,
       };
       throw new Error(JOB_ERRORS.partial);
@@ -192,7 +218,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
   } finally {
     try {
       await database.jobImportState.update({
-        where: { id: 1 },
+        where: { userId },
         data: {
           running: false,
           finishedAt: new Date(),

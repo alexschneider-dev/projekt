@@ -35,7 +35,7 @@ type Fixtures = {
 };
 
 export const test = base.extend<Fixtures>({
-  database: async ({}, provide) => {
+  database: async ({ }, provide) => {
     const database = new PrismaClient({ datasourceUrl: TEST_DATABASE_URL });
 
     try {
@@ -46,6 +46,7 @@ export const test = base.extend<Fixtures>({
   },
   createAccount: async ({ database }, provide) => {
     const emails: string[] = [];
+    const userIds: string[] = [];
     const passwordHash = await hashPassword(TEST_PASSWORD);
 
     try {
@@ -54,21 +55,27 @@ export const test = base.extend<Fixtures>({
 
         emails.push(email);
 
-        return database.user.create({
+        const user = await database.user.create({
           data: {
             email,
             name: "Automatisches Testkonto",
             passwordHash,
             role: options.role ?? USER,
             active: options.active ?? true,
+            importState: { create: {} },
           },
         });
+        userIds.push(user.id);
+        return user;
       });
     } finally {
       await database.loginAttempt.deleteMany({
         where: { key: { in: emails.map(email => createHash("sha256").update(email).digest("hex")) } },
       });
-      await database.user.deleteMany({ where: { email: { in: emails } } });
+      await database.jobListing.deleteMany({ where: { userId: { in: userIds } } });
+      await database.jobSearch.deleteMany({ where: { userId: { in: userIds } } });
+      await database.jobImportState.deleteMany({ where: { userId: { in: userIds } } });
+      await database.user.deleteMany({ where: { id: { in: userIds } } });
     }
   },
 });

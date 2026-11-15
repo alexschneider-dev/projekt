@@ -39,7 +39,7 @@ Eine externe `DATABASE_URL` wird für Testprozesse gezielt überschrieben.
 | E-Mail | Rolle | Zustand |
 |---|---|---|
 | `user@example.test` | `USER` | Aktiv |
-| `admin@example.test` | `ADMIN` | Aktiv |
+| `admin@example.test` | `USER` | Aktiv |
 | `super-admin@example.test` | `SUPER_ADMIN` | Aktiv |
 | `inaktiv@example.test` | `USER` | Deaktiviert |
 

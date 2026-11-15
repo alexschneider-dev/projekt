@@ -1,7 +1,7 @@
 # Projekt
 
-Grundgerüst einer Webanwendung mit öffentlicher Startseite, E-Mail-/Passwort-Login
-und geschützten Bereichen mit rollenbasierten Zugriffsrechten.
+Webanwendung zum Sammeln und Verwalten von Stellenanzeigen mit persönlichen
+Benutzerbereichen, E-Mail-/Passwort-Login und rollenbasierten Zugriffsrechten.
 
 - **Anwendung:** Next.js, React, TypeScript und Tailwind CSS.
 - **Authentifizierung und Datenbank:** NextAuth, Prisma und PostgreSQL.
@@ -9,6 +9,28 @@ und geschützten Bereichen mit rollenbasierten Zugriffsrechten.
 
 Das Repository enthält Anwendung, wiederverwendbare UI-Komponenten, Tests und
 Deployment-Konfiguration. Details zum Betrieb stehen in [production/README.md](production/README.md).
+
+## Stellenverwaltung und Benutzer
+
+Benutzer können Suchgruppen mit Titel und URL verwalten, Stellen automatisch oder
+manuell importieren, markieren und per CSV mit vorhandenen Listen abgleichen.
+Die Stellenliste bietet Filter, Seiten mit 100 Einträgen und einen Zähler für
+noch nicht markierte Stellen.
+
+Suchgruppen, Stellen, Markierungen und Importstatus gehören direkt zu einem
+Benutzer (`userId`). Andere Benutzer sehen diese Daten nicht. Gleiche URLs sind
+bei verschiedenen Benutzern erlaubt. Die Benutzer-ID stammt ausschließlich aus
+der serverseitig geprüften Anmeldung. Ein separates Kundenmodell gibt es nicht.
+
+- `USER`: alle Funktionen innerhalb der eigenen Daten.
+- `SUPER_ADMIN`: zusätzlich Grafana und Observability. Auch diese Rolle sieht
+  in der Stellenverwaltung ausschließlich die eigenen Daten.
+
+Der Importdienst verarbeitet aktive Benutzer und ihre Suchgruppen nacheinander.
+Manuelle Anforderungen gelten nur für den angemeldeten Benutzer. Der stündliche
+Durchlauf berücksichtigt alle aktiven Benutzer.
+
+Details: [Stellenimport](scripts/jobs/README.md) und [Benutzerkonten](docs/auth.md).
 
 ## Einrichtung nach dem Klonen
 

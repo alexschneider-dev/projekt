@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { parseJobCsv } from "./csv";
 
 
-export async function markJobsFromCsv(content: string) {
+export async function markJobsFromCsv(userId: string, content: string) {
   const {
     urls,
     duplicates,
@@ -10,11 +10,15 @@ export async function markJobsFromCsv(content: string) {
 
   return prisma.$transaction(async (database) => {
     const existing = await database.jobListing.findMany({
-      where: { url: { in: urls } },
+      where: {
+        userId,
+        url: { in: urls },
+      },
       select: { id: true },
     });
     const updated = await database.jobListing.updateMany({
       where: {
+        userId,
         id: { in: existing.map((job) => job.id) },
         isMarkiert: false,
       },

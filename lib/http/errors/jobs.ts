@@ -28,6 +28,11 @@ export const ERROR_JOBS = {
     code: "JOBS_CSV_LIMIT",
     message: "Die CSV darf höchstens 10.000 Stellenlinks enthalten.",
   },
+  INVALID_SEARCH_STATUS: {
+    status: HTTP_STATUS.BAD_REQUEST,
+    code: "INVALID_SEARCH_STATUS",
+    message: "Der Suchstatus muss true oder false sein.",
+  },
   INVALID_TITLE: {
     status: HTTP_STATUS.BAD_REQUEST,
     code: "INVALID_SEARCH_TITLE",

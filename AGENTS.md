@@ -113,7 +113,7 @@ Anweisungen des Nutzers haben Vorrang.
   Typdefinition. Das gilt auch, wenn dort zunächst ein Kommentar steht.
 - Funktionsparameter und Aufrufargumente innerhalb von `()` bei bis zu fünf
   Einträgen in einer Zeile schreiben, sofern die gesamte Signatur oder der
-  Aufruf kurz und gut lesbar bleibt, etwa `!hasRole(session.user.role, ADMIN)`.
+  Aufruf kurz und gut lesbar bleibt, etwa `!hasRole(session.user.role, SUPER_ADMIN)`.
   Bei langen Zeilen auch mit höchstens fünf Parametern oder Argumenten umbrechen;
   dabei Generics und Rückgabetypen in die Beurteilung der Zeilenlänge einbeziehen.
   Als Richtwert gelten 120 Zeichen pro Zeile. Einzelne lange Zeichenketten
@@ -158,12 +158,19 @@ Anweisungen des Nutzers haben Vorrang.
 ## Login, Rollen und Navigation
 
 - NextAuth für Login mit E-Mail und Passwort verwenden; kein Better Auth.
-- Interne Rollen: `USER`, `ADMIN` und `SUPER_ADMIN`.
-- Rollenwerte über die direkt exportierten Konstanten `USER`, `ADMIN` und
+- Interne Rollen: `USER` und `SUPER_ADMIN`. `ADMIN` ist entfernt.
+- Rollenwerte über die direkt exportierten Konstanten `USER` und
   `SUPER_ADMIN` aus `lib/auth/roles.ts` verwenden.
   Rollen externer Dienste separat zentral definieren und importieren, etwa
   `GRAFANA_ROLES` aus `lib/observability/roles.ts`.
-- Kundenrollen separat von internen Rollen modellieren.
+- Kein separates Kundenmodell: Stellen, Suchgruppen, Markierungen und Importstatus
+  gehören direkt zu einem Benutzer (`userId`).
+- Stellen, Suchgruppen, Markierungen, CSV-Abgleiche und Importstatus immer auf die
+  Benutzer-ID aus der serverseitig geprüften Session begrenzen. Eine vom Client
+  gesendete Benutzer-ID darf diese Zuordnung nicht bestimmen. Auch `SUPER_ADMIN`
+  sieht in der Stellenverwaltung nur die eigenen Daten.
+- `USER` darf alle Benutzerfunktionen verwenden. Grafana und Observability bleiben
+  ausschließlich `SUPER_ADMIN` vorbehalten.
 - Zugriffsrechte serverseitig prüfen; ausgeblendete UI ersetzt keine Autorisierung.
 - API-Zugriffsrechte zentral mit `requireRole` aus `lib/auth/api-guard.ts` prüfen.
   Das Ergebnis als `apiGate` verwenden und bei `!apiGate.ok` dessen `response`

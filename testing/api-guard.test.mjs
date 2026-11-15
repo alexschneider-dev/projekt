@@ -71,11 +71,11 @@ test("API-Zugriff liefert 401 für fehlende oder unvollständige Sessions", asyn
   for (const value of [
     null,
     {},
-    { user: { role: "ADMIN" } },
+    { user: { role: "SUPER_ADMIN" } },
   ]) {
     session = value;
 
-    const apiGate = await requireRole("ADMIN");
+    const apiGate = await requireRole("SUPER_ADMIN");
 
     assert.equal(apiGate.ok, false);
     assert.equal(apiGate.response.status, 401);
@@ -101,7 +101,7 @@ test("Geschützte Seiten leiten ohne Anmeldung zum Login und ohne Berechtigung z
   ]) {
     session = value;
 
-    const apiGate = await requireRole("ADMIN");
+    const apiGate = await requireRole("SUPER_ADMIN");
 
     assert.equal(apiGate.ok, false);
     assert.throws(() => redirectAfterAccessDenied(apiGate.response), { destination });
@@ -122,7 +122,7 @@ test("API-Zugriff verweigert unzureichende, fremde und fehlende Rollen", async (
       },
     };
 
-    const apiGate = await requireRole("ADMIN");
+    const apiGate = await requireRole("SUPER_ADMIN");
 
     assert.equal(apiGate.ok, false);
     assert.equal(apiGate.response.status, 403);
@@ -132,7 +132,6 @@ test("API-Zugriff verweigert unzureichende, fremde und fehlende Rollen", async (
 
 test("API-Zugriff berücksichtigt die Rollenhierarchie und gibt den Benutzer zurück", async () => {
   for (const role of [
-    "ADMIN",
     "SUPER_ADMIN",
   ]) {
     session = {
@@ -142,7 +141,7 @@ test("API-Zugriff berücksichtigt die Rollenhierarchie und gibt den Benutzer zur
       },
     };
 
-    const apiGate = await requireRole("ADMIN");
+    const apiGate = await requireRole("SUPER_ADMIN");
 
     assert.equal(apiGate.ok, true);
     assert.equal(apiGate.user, session.user);

@@ -3,7 +3,6 @@ import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../../lib/auth/password.mjs";
 import {
   USER,
-  ADMIN,
   SUPER_ADMIN,
 } from "../../lib/auth/roles.ts";
 import {
@@ -26,7 +25,7 @@ const accounts = [
   {
     email: "admin@example.test",
     name: "Test Administration",
-    role: ADMIN,
+    role: USER,
     active: true,
   },
   {

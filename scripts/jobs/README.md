@@ -28,7 +28,7 @@ hinzufügen. Die Eingabe wird im Browser und in der API mit demselben Schema
 geprüft. Vorhandene Einträge bleiben unverändert. Alternativ per Kommandozeile:
 
 ```bash
-npm run jobs:search:add -- 'https://www.stepstone.de/jobs/typescript'
+npm run jobs:search:add -- 'https://www.stepstone.de/jobs/typescript' 'BENUTZER_ID'
 ```
 
 Der Befehl prüft die Adresse der unterstützten Jobbörse, entfernt `page` und das Fragment und
@@ -106,7 +106,16 @@ Gespeichert werden ausschließlich ID, URL und Fundzeitpunkt. Bestehende
 Einträge bleiben unverändert. Bereits gespeicherte Seiten bleiben bei einem
 späteren Fehler erhalten; ein erneuter Durchlauf ergänzt fehlende Links.
 
+In der Tabelle „Such-URLs“ schaltet „Deaktivieren“ eine Suchgruppe auf inaktiv;
+„Aktivieren“ nimmt sie wieder in künftige Importe auf. Der Zustand bleibt beim
+Neuladen erhalten. Gespeicherte Stellen und die Werte des letzten erfolgreichen
+Abrufs bleiben unverändert. Ein bereits gestarteter Abruf wird nicht abgebrochen.
+
 Nach Anmeldung ist die Liste über „Stellen“ im internen Bereich erreichbar.
+Alle Stellen, Suchgruppen, Markierungen und Importzustände gehören direkt einem
+Benutzer. Auch Super-Admins sehen nur ihre eigenen Daten. Der automatische Import
+verarbeitet alle aktiven Benutzer nacheinander; ein manueller Auftrag betrifft
+ausschließlich den anfordernden Benutzer.
 Die TanStack-Tabelle zeigt Stellenlinks absteigend nach Fundzeitpunkt und ID,
 mit höchstens 100 Einträgen pro Seite. Die Datenbank liefert nur die jeweilige
 Seite; `?page=2` hält die Auswahl beim Neuladen und in der Browserhistorie fest. PostgreSQL selbst
@@ -173,3 +182,19 @@ Pagination, unveränderte Duplikate, Sortierung und die Sperre zwischen zwei
 Datenbankverbindungen; ihre Datenänderungen werden zurückgerollt. Browsertests
 prüfen Zugriffsschutz und die Reihenfolge der Links. Diese automatischen Tests
 senden keine Anfragen an die Jobbörse.
+
+## Migration auf Benutzerzuordnung
+
+Vor dem Start der neuen Anwendung und des neuen Importdienstes die Migrationen
+anwenden. `20261115210000_user_ownership` ersetzt das Zwischenmodell `Customer`
+durch direkte Benutzerzuordnung und erhält die Bestandsdaten. Next.js und
+Importdienst müssen gemeinsam auf die neue Version aktualisiert werden. Vor der
+Migration den alten Importdienst beenden. Weitere Benutzer erst anlegen, wenn
+alle alten Anwendungsinstanzen ersetzt sind. Für Next.js bleibt `start-first`
+unverändert.
+
+Das CLI zum Hinzufügen einer Suche verlangt die Benutzer-ID:
+
+```sh
+npm run jobs:search:add -- 'SUCH_URL' 'BENUTZER_ID'
+```

@@ -15,5 +15,5 @@ export const POST = apiHandler(async (request) => {
   const body = await checkApiRequest(request, jobCsvSchema, true);
   if (!body.ok) return body.response;
 
-  return successResponse(await markJobsFromCsv(await body.data.file.text()));
+  return successResponse(await markJobsFromCsv(apiGate.user.id, await body.data.file.text()));
 });

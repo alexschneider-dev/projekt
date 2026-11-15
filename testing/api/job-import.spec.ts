@@ -16,11 +16,11 @@ test("Manueller Import ist geschützt und fasst gleichzeitige Anfragen zusammen"
   expect((await request.post(ROUTES.jobsImportApi)).status()).toBe(HTTP_STATUS.UNAUTHORIZED);
   const account = await createAccount();
   await login(request, account.email);
-  const before = await database.jobImportState.findUniqueOrThrow({ where: { id: 1 } });
+  const before = await database.jobImportState.findUniqueOrThrow({ where: { userId: account.id } });
 
   try {
     await database.jobImportState.update({
-      where: { id: 1 },
+      where: { userId: account.id },
       data: {
         requested: false,
         running: false,
@@ -34,7 +34,7 @@ test("Manueller Import ist geschützt und fasst gleichzeitige Anfragen zusammen"
     expect(state.running).toBe(false);
     expect(state.requestedAt).not.toBeNull();
     await database.jobImportState.update({
-      where: { id: 1 },
+      where: { userId: account.id },
       data: {
         requested: false,
         running: true,
@@ -43,7 +43,7 @@ test("Manueller Import ist geschützt und fasst gleichzeitige Anfragen zusammen"
     expect(await (await request.post(ROUTES.jobsImportApi)).json()).toEqual({ requested: false });
   } finally {
     await database.jobImportState.update({
-      where: { id: 1 },
+      where: { userId: account.id },
       data: before,
     });
   }

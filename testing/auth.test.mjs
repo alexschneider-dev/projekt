@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hashPassword, verifyPassword, dummyHash } from "../lib/auth/password.mjs";
+import {
+  hashPassword,
+  verifyPassword,
+  dummyHash
+} from "../lib/auth/password.mjs";
 import { hasRole } from "../lib/auth/roles.ts";
 
 
@@ -29,12 +33,42 @@ test("password creation enforces bounds without silently trimming", async () => 
 
 test("internal role matrix denies escalation and unknown/customer roles", () => {
   for (const [role, user, admin, superAdmin] of [
-    ["USER", true, false, false],
-    ["ADMIN", true, true, false],
-    ["SUPER_ADMIN", true, true, true],
-    ["customer_admin", false, false, false],
-    ["owner", false, false, false],
-    ["", false, false, false],
+    [
+      "USER",
+      true,
+      false,
+      false
+    ],
+    [
+      "ADMIN",
+      false,
+      false,
+      false
+    ],
+    [
+      "SUPER_ADMIN",
+      true,
+      false,
+      true
+    ],
+    [
+      "customer_admin",
+      false,
+      false,
+      false
+    ],
+    [
+      "owner",
+      false,
+      false,
+      false
+    ],
+    [
+      "",
+      false,
+      false,
+      false
+    ],
   ]) {
     assert.equal(hasRole(role, "USER"), user);
     assert.equal(hasRole(role, "ADMIN"), admin);
@@ -57,10 +91,22 @@ test("shared login schema normalizes only email and strips unexpected fields", a
 
   for (const credentials of [
     undefined,
-    { email: "invalid", password: "password" },
-    { email: "user@example.com", password: "" },
-    { email: "user@example.com", password: "x".repeat(129) },
-    { email: "user@example.com", password: 123 },
+    {
+      email: "invalid",
+      password: "password"
+    },
+    {
+      email: "user@example.com",
+      password: ""
+    },
+    {
+      email: "user@example.com",
+      password: "x".repeat(129)
+    },
+    {
+      email: "user@example.com",
+      password: 123
+    },
   ]) {
     assert.equal(loginSchema.safeParse(credentials).success, false);
   }
@@ -70,8 +116,14 @@ test("React Hook Form resolver exposes field errors and normalized submit values
   const { zodResolver } = await import("@hookform/resolvers/zod");
   const { loginSchema } = await import("../lib/schemas/auth/login.schema.ts");
   const resolver = zodResolver(loginSchema);
-  const options = { fields: {}, shouldUseNativeValidation: false };
-  const invalid = await resolver({ email: "", password: "" }, undefined, options);
+  const options = {
+    fields: {},
+    shouldUseNativeValidation: false
+  };
+  const invalid = await resolver({
+    email: "",
+    password: ""
+  }, undefined, options);
 
   assert.equal(invalid.errors.email.message, "Bitte gib deine E-Mail-Adresse ein.");
   assert.equal(invalid.errors.password.message, "Bitte gib dein Passwort ein.");
