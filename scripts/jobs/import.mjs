@@ -22,28 +22,49 @@ export function retryDelay(value, attempt, now = Date.now()) {
   return 60_000 * 2 ** attempt;
 }
 
-export async function fetchPage(url) {
+export async function fetchPage(url, context = {}, wait = sleep) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    await sleep(5000 + Math.floor(Math.random() * 5001));
-    const response = await fetch(url, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(60_000),
-      headers: { Accept: "text/html" },
-    });
-    if (response.ok) return response.text();
+    await wait(5000 + Math.floor(Math.random() * 5001));
+    const signal = AbortSignal.timeout(60_000);
+    let response;
+    let delay;
+    try {
+      response = await fetch(url, {
+        redirect: "manual",
+        signal,
+        headers: { Accept: "text/html" },
+      });
+      // Auch das vollständige Lesen der Antwort unterliegt dem Zeitlimit.
+      if (response.ok) return await response.text();
+    } catch (error) {
+      if (!signal.aborted && error?.name !== "TimeoutError") throw error;
 
-    await response.body?.cancel();
-    const fail = (message) => Object.assign(new Error(message), { httpStatus: response.status });
-    if (response.status >= 300 && response.status < 400) throw fail(JOB_ERRORS.redirect);
-    if (response.status === HTTP_STATUS.FORBIDDEN) throw fail(JOB_ERRORS.blocked);
-    const retryable = response.status === HTTP_STATUS.TOO_MANY_REQUESTS
-      || response.status >= HTTP_STATUS.INTERNAL_SERVER_ERROR;
-    if (!retryable || attempt === 2) throw fail(JOB_ERRORS.response);
+      const timeout = Object.assign(new Error(JOB_ERRORS.timeout, { cause: error }), { name: "TimeoutError" });
+      if (attempt === 2) throw timeout;
 
-    const delay = retryDelay(response.headers.get("retry-after"), attempt);
+      delay = retryDelay(null, attempt);
+      console.warn(jobErrorLog(timeout, {
+        ...context,
+        attempt: attempt + 1,
+        retryInMs: delay,
+      }));
+    }
+
+    if (response && delay === undefined) {
+      await response.body?.cancel();
+      const fail = (message) => Object.assign(new Error(message), { httpStatus: response.status });
+      if (response.status >= 300 && response.status < 400) throw fail(JOB_ERRORS.redirect);
+      if (response.status === HTTP_STATUS.FORBIDDEN) throw fail(JOB_ERRORS.blocked);
+      const retryable = response.status === HTTP_STATUS.TOO_MANY_REQUESTS
+        || response.status >= HTTP_STATUS.INTERNAL_SERVER_ERROR;
+      if (!retryable || attempt === 2) throw fail(JOB_ERRORS.response);
+
+      delay = retryDelay(response.headers.get("retry-after"), attempt);
+    }
+
     // Lange Retry-After-Werte in sichere Timer-Abschnitte teilen.
     for (let remaining = delay; remaining > 0; remaining -= 60_000) {
-      await sleep(Math.min(remaining, 60_000));
+      await wait(Math.min(remaining, 60_000));
     }
   }
 }
@@ -72,6 +93,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
 
   let inserted = 0;
   let succeeded = false;
+  let failedSearches = 0;
   let context = { phase: "Startstatus speichern" };
   try {
     await database.jobImportState.update({
@@ -84,7 +106,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
     });
     context = { phase: "Suchgruppen laden" };
     const searches = await loadSearches(database);
-    for (const search of searches) {
+    searchesLoop: for (const search of searches) {
       console.log(JSON.stringify({
         message: "Suchgruppe gestartet.",
         searchId: search.id,
@@ -100,7 +122,19 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
           searchId: search.id,
           page,
         };
-        const html = await loadPage(url);
+        let html;
+        try {
+          html = await loadPage(url, context);
+        } catch (error) {
+          if (error?.name !== "TimeoutError") throw error;
+
+          failedSearches += 1;
+          console.error(jobErrorLog(error, {
+            ...context,
+            nextSearch: true,
+          }));
+          continue searchesLoop;
+        }
         context.phase = "Suchseite auswerten";
         const result = parseSearchPage(html, page);
         if (page === 1) {
@@ -136,6 +170,14 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
         totalPages,
         total,
       }));
+    }
+
+    if (failedSearches > 0) {
+      context = {
+        phase: "Durchlauf abschließen",
+        failedSearches,
+      };
+      throw new Error(JOB_ERRORS.partial);
     }
 
     succeeded = true;

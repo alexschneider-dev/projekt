@@ -80,8 +80,16 @@ Der erste Durchlauf startet sofort. Alle Anfragen laufen nacheinander mit
 5–10 Sekunden Abstand. Bei HTTP 429 und Serverfehlern folgen höchstens zwei
 Wiederholungen. `Retry-After` wird beachtet; ohne verwertbare Angabe wird
 zunehmend länger gewartet. HTTP 403 bricht den Durchlauf ab. Weiterleitungen
-werden nicht automatisch verfolgt. Nach einem Fehler versucht der laufende
-Prozess es erst im nächsten Intervall wieder. Beenden mit Strg+C.
+werden nicht automatisch verfolgt. Bei Zeitüberschreitungen (60 Sekunden je
+Abruf einschließlich Antwortinhalt) folgen ebenfalls höchstens zwei Wiederholungen
+mit zusätzlichen Pausen von 60 und 120 Sekunden. Die Logs enthalten Suchgruppen-ID,
+Seite, Versuch und Wartezeit. Scheitert auch der dritte Versuch, bleibt die
+Trefferzahl dieser Gruppe unverändert und der Import fährt mit der nächsten Gruppe
+fort. Bereits gespeicherte Stellen bleiben erhalten. Der gesamte Durchlauf wird
+in diesem Fall weiterhin als fehlgeschlagen gekennzeichnet; das Abschlussprotokoll
+enthält die Zahl der fehlgeschlagenen Gruppen. Andere Fehler beenden den Durchlauf.
+Ein neuer Durchlauf erfolgt im nächsten Intervall oder auf manuelle Anforderung.
+Beenden mit Strg+C.
 
 Suchaufträge und Stellenanzeigen werden über Prisma verwaltet, mit demselben
 Schema wie in Next.js. Der Container erzeugt seinen Prisma Client beim Build.

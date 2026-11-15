@@ -16,7 +16,15 @@ const columns: ColumnDef<JobSearchesResult[number]>[] = [
   {
     accessorKey: "title",
     header: "Titel",
-    cell: ({ row }) => <AppLink href={jobSearchHref(row.original.id)}>{row.original.title}</AppLink>,
+    cell: ({ row }) => (
+      <AppLink
+        href={jobSearchHref(row.original.id)}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {row.original.title}
+      </AppLink>
+    ),
   },
   {
     accessorKey: "url",
@@ -25,6 +33,8 @@ const columns: ColumnDef<JobSearchesResult[number]>[] = [
       <AppLink
         href={row.original.url}
         navigationMode="document"
+        target="_blank"
+        rel="noopener noreferrer"
       >
         {row.original.url}
       </AppLink>

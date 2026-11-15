@@ -23,6 +23,8 @@ const columns: ColumnDef<JobLink>[] = [
       <AppLink
         href={row.original.url}
         navigationMode="document"
+        target="_blank"
+        rel="noopener noreferrer"
       >
         {row.original.url}
       </AppLink>
