@@ -144,6 +144,12 @@ Compose; `runtime.json` ergänzt nur Laufzeitwerte und Secret-/Config-Einbindung
 
 ## Prüfung
 
+Importfehler und der Start sowie Abschluss jeder Suchgruppe erscheinen im
+Containerprotokoll. Fehler enthalten die Arbeitsphase, Suchgruppen-ID und Seite,
+soweit diese bekannt sind, sowie HTTP-Status oder Netzwerk-/Prisma-Fehlercodes.
+Ungefilterte Fehlermeldungen und Verbindungsadressen werden nicht ausgegeben.
+In Produktion: `docker service logs projekt_jobs --since 1h --tail 100 --timestamps`.
+
 ```bash
 node --test testing/jobs.test.mjs
 npm run test:db

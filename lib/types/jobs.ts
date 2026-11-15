@@ -20,6 +20,7 @@ export type JobsPageResult = {
   page: number;
   pageSize: number;
   total: number;
+  unmarkedTotal: number;
   pageCount: number;
 };
 

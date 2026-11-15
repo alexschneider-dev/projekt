@@ -82,6 +82,7 @@ test("Stellen werden dauerhaft und wiederholt ohne Umschalten markiert", async (
   try {
     expect(job.isMarkiert).toBe(false);
     const unmarked = await (await request.get(`${ROUTES.jobsApi}?isMarkiert=false`)).json();
+    expect(unmarked.unmarkedTotal).toBe(unmarked.total);
     expect(unmarked.items).toContainEqual({
       id: job.id,
       url: job.url,
@@ -101,6 +102,8 @@ test("Stellen werden dauerhaft und wiederholt ohne Umschalten markiert", async (
     }
     expect((await database.jobListing.findUniqueOrThrow({ where: { id: job.id } })).isMarkiert).toBe(true);
     const marked = await (await request.get(`${ROUTES.jobsApi}?isMarkiert=true`)).json();
+    expect(Number.isInteger(marked.unmarkedTotal)).toBe(true);
+    expect(marked.unmarkedTotal).toBeGreaterThanOrEqual(0);
     expect(marked.items).toContainEqual({
       id: job.id,
       url: job.url,

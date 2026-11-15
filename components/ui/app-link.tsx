@@ -8,6 +8,7 @@ const variants = {
   navigation: "underline underline-offset-4",
   brand: "font-semibold",
   authBrand: "mb-8 inline-block text-sm font-semibold tracking-wide text-primary",
+  pagination: "inline-flex size-9 items-center justify-center rounded-lg text-sm hover:bg-accent aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground sm:size-11",
 };
 
 type AppLinkProps = {

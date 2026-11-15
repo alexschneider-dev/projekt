@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { JOB_ERRORS } from "./errors/index.mjs";
+import { jobErrorLog } from "./errors/log.mjs";
 import { loadSearches } from "./searches.mjs";
 import { parseSearchPage } from "./parser.mjs";
 
@@ -25,17 +26,19 @@ export async function fetchPage(url) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await sleep(5000 + Math.floor(Math.random() * 5001));
     const response = await fetch(url, {
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(60_000),
       headers: { Accept: "text/html" },
     });
     if (response.ok) return response.text();
 
     await response.body?.cancel();
-    if (response.status === HTTP_STATUS.FORBIDDEN) throw new Error(JOB_ERRORS.blocked);
+    const fail = (message) => Object.assign(new Error(message), { httpStatus: response.status });
+    if (response.status >= 300 && response.status < 400) throw fail(JOB_ERRORS.redirect);
+    if (response.status === HTTP_STATUS.FORBIDDEN) throw fail(JOB_ERRORS.blocked);
     const retryable = response.status === HTTP_STATUS.TOO_MANY_REQUESTS
       || response.status >= HTTP_STATUS.INTERNAL_SERVER_ERROR;
-    if (!retryable || attempt === 2) throw new Error(JOB_ERRORS.response);
+    if (!retryable || attempt === 2) throw fail(JOB_ERRORS.response);
 
     const delay = retryDelay(response.headers.get("retry-after"), attempt);
     // Lange Retry-After-Werte in sichere Timer-Abschnitte teilen.
@@ -69,6 +72,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
 
   let inserted = 0;
   let succeeded = false;
+  let context = { phase: "Startstatus speichern" };
   try {
     await database.jobImportState.update({
       where: { id: 1 },
@@ -78,15 +82,27 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
         startedAt: new Date(),
       },
     });
+    context = { phase: "Suchgruppen laden" };
     const searches = await loadSearches(database);
     for (const search of searches) {
+      console.log(JSON.stringify({
+        message: "Suchgruppe gestartet.",
+        searchId: search.id,
+      }));
       let totalPages = 1;
       let total = 0;
       const seen = new Set();
       for (let page = 1; page <= totalPages; page += 1) {
         const url = new URL(search.requestUrl);
         url.searchParams.set("page", String(page));
-        const result = parseSearchPage(await loadPage(url), page);
+        context = {
+          phase: "Suchseite abrufen",
+          searchId: search.id,
+          page,
+        };
+        const html = await loadPage(url);
+        context.phase = "Suchseite auswerten";
+        const result = parseSearchPage(html, page);
         if (page === 1) {
           totalPages = result.totalPages;
           total = result.total;
@@ -96,11 +112,13 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
           throw new Error(JOB_ERRORS.pagination);
         }
 
+        context.phase = "Stellen speichern";
         inserted += await saveNewUrls(database, result.urls);
         result.urls.forEach((entry) => seen.add(entry));
       }
 
       // Nur vollständige Abrufe speichern; eine inzwischen geänderte Suche nicht überschreiben.
+      context.phase = "Trefferzahl speichern";
       await database.jobSearch.updateMany({
         where: {
           id: search.id,
@@ -112,6 +130,12 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
           lastFetchedAt: new Date(),
         },
       });
+      console.log(JSON.stringify({
+        message: "Suchgruppe abgeschlossen.",
+        searchId: search.id,
+        totalPages,
+        total,
+      }));
     }
 
     succeeded = true;
@@ -119,6 +143,10 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
       skipped: false,
       inserted,
     };
+  } catch (error) {
+    // Den ursprünglichen Fehler festhalten, auch wenn das Speichern des Fehlerstatus anschließend scheitert.
+    console.error(jobErrorLog(error, context));
+    throw error;
   } finally {
     try {
       await database.jobImportState.update({

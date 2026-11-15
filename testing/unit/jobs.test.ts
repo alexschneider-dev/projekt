@@ -12,9 +12,34 @@ import {
   createQueryHref,
   createJobsQueryString,
 } from "@/lib/shared/search-params/query-state";
+import { paginationPages } from "@/lib/shared/pagination";
 
 
 describe("Stellen: Validierung und URL-Zustand", () => {
+  it("zeigt erste, letzte und benachbarte Seiten mit Auslassungszeichen", () => {
+    expect(paginationPages(1, 1)).toEqual([1]);
+    expect(paginationPages(1, 3)).toEqual([
+      1,
+      2,
+      3,
+    ]);
+    expect(paginationPages(5, 10)).toEqual([
+      1,
+      "ellipsis",
+      4,
+      5,
+      6,
+      "ellipsis",
+      10,
+    ]);
+    expect(paginationPages(1_000_000, 1_000_000)).toEqual([
+      1,
+      "ellipsis",
+      999_999,
+      1_000_000,
+    ]);
+  });
+
   it("unterscheidet true, false und einen fehlenden Markierungsfilter", () => {
     expect(jobsQuerySchema.parse({ isMarkiert: "true" }).isMarkiert).toBe(true);
     expect(jobsQuerySchema.parse({ isMarkiert: "false" }).isMarkiert).toBe(false);

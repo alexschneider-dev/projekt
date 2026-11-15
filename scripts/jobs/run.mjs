@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import pg from "pg";
 import { PrismaClient } from "@prisma/client";
 import { JOB_ERRORS } from "./errors/index.mjs";
+import { jobErrorLog } from "./errors/log.mjs";
 import { importJobs } from "./import.mjs";
 import { waitForNextImport } from "./schedule.mjs";
 
@@ -22,19 +23,20 @@ async function run() {
         query_timeout: 60_000,
       });
       // Bei Verlust der Sperrverbindung sofort beenden; kein ungesperrter Import.
-      lockClient.on("error", () => {
-        console.error(JOB_ERRORS.failed);
+      lockClient.on("error", (error) => {
+        console.error(jobErrorLog(error, { phase: "Sperrverbindung verloren" }));
         process.exit(1);
       });
+      let phase = "Sperrverbindung aufbauen";
       try {
         await lockClient.connect();
+        phase = "Import ausführen";
         const result = await importJobs(database, lockClient);
         console.log(result.skipped
           ? "Stellenimport übersprungen: Ein Durchlauf läuft bereits."
           : `Stellenimport abgeschlossen: ${result.inserted} neue Links.`);
       } catch (error) {
-        const message = Object.values(JOB_ERRORS).includes(error.message) ? error.message : JOB_ERRORS.failed;
-        console.error(message);
+        console.error(jobErrorLog(error, { phase }));
         if (process.argv.includes("--once")) process.exitCode = 1;
       } finally {
         await lockClient.end();
@@ -49,6 +51,6 @@ async function run() {
 }
 
 run().catch((error) => {
-  console.error(Object.values(JOB_ERRORS).includes(error.message) ? error.message : JOB_ERRORS.failed);
+  console.error(jobErrorLog(error, { phase: "Importdienst" }));
   process.exitCode = 1;
 });

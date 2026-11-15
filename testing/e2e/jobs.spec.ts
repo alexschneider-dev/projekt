@@ -177,18 +177,22 @@ test("Tabellenpagination bleibt nach Neuladen und Browser-Zurück erhalten", asy
   try {
     await page.goto(`${ROUTES.jobs}?quelle=test`);
     await expect(page.locator("tbody tr")).toHaveCount(100);
-    await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await page.getByRole("link", { name: "Seite 2", exact: true }).click();
     await expect(page).toHaveURL(/quelle=test&page=2/);
     await expect(page.getByText(/Seite 2 von/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Seite 2", exact: true })).toHaveAttribute("aria-current", "page");
     await page.reload();
     await expect(page.getByText(/Seite 2 von/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Seite 2", exact: true })).toHaveAttribute("aria-current", "page");
     await page.goBack();
     await expect(page).toHaveURL(`${ROUTES.jobs}?quelle=test`);
     await expect(page.getByText(/Seite 1 von/)).toBeVisible();
-    await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await expect(page.getByText(/Noch nicht markiert: [\d.]+/)).toBeVisible();
+    await page.getByRole("link", { name: "Weiter", exact: true }).click();
     await page.getByRole("combobox", { name: "Markierung" }).selectOption("false");
     await expect(page).toHaveURL(`${ROUTES.jobs}?quelle=test&isMarkiert=false`);
     await expect(page.getByText(/Seite 1 von/)).toBeVisible();
+    await expect(page.getByText(/Noch nicht markiert: [\d.]+/)).toBeVisible();
   } finally {
     await database.jobListing.deleteMany({ where: { url: { in: urls } } });
   }

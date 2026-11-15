@@ -11,6 +11,7 @@ export async function listJobs(requestedPage: number, isMarkiert?: boolean): Pro
 
   return prisma.$transaction(async (database) => {
     const total = await database.jobListing.count({ where });
+    const unmarkedTotal = await database.jobListing.count({ where: { isMarkiert: false } });
     const pageCount = Math.max(1, Math.ceil(total / JOBS_PAGE_SIZE));
     const page = Math.min(requestedPage, pageCount);
     const items = await database.jobListing.findMany({
@@ -29,6 +30,7 @@ export async function listJobs(requestedPage: number, isMarkiert?: boolean): Pro
       page,
       pageSize: JOBS_PAGE_SIZE,
       total,
+      unmarkedTotal,
       pageCount,
     };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });

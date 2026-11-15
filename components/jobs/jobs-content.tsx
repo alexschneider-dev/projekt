@@ -37,6 +37,14 @@ export function JobsContent() {
   return (
     <SectionWrapper>
       <h1>Stellen</h1>
+      {query.data && (
+        <Text
+          variant="meta"
+          role="status"
+        >
+          Noch nicht markiert: {query.data.unmarkedTotal.toLocaleString("de-DE")}
+        </Text>
+      )}
       <Text variant="intro">
         Neueste Funde zuerst. Pro Seite werden bis zu 100 Stellen angezeigt.
       </Text>

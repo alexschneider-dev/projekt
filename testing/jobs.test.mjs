@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parseSearchPage } from "../scripts/jobs/parser.mjs";
 import { waitForNextImport } from "../scripts/jobs/schedule.mjs";
+import { jobErrorLog } from "../scripts/jobs/errors/log.mjs";
+import { JOB_ERRORS } from "../scripts/jobs/errors/index.mjs";
 import {
   importJobs,
+  fetchPage,
   retryDelay,
   saveNewUrls,
 } from "../scripts/jobs/import.mjs";
@@ -28,6 +31,42 @@ test("Seitenzahl aufrunden, Links bereinigen und Duplikate entfernen", () => {
   ]), 2);
   assert.equal(result.totalPages, 3);
   assert.deepEqual(result.urls, ["https://www.stepstone.de/stellenangebote--Test--123-inline.html"]);
+});
+
+test("Fehlerprotokoll zeigt Netzwerkursache und Kontext ohne sensible Meldungen", () => {
+  const cause = Object.assign(new Error("postgres://user:geheim@host/db"), { code: "ECONNRESET" });
+  const error = new TypeError("fetch failed", { cause });
+  const log = jobErrorLog(error, {
+    searchId: 7,
+    page: 2,
+    phase: "Suchseite abrufen",
+  });
+  const parsed = JSON.parse(log);
+  assert.equal(parsed.searchId, 7);
+  assert.equal(parsed.page, 2);
+  assert.equal(parsed.causes[1].code, "ECONNRESET");
+  assert.ok(!log.includes("geheim"));
+  assert.equal(JSON.parse(jobErrorLog({
+    name: "PrismaClientInitializationError",
+    errorCode: "P1001",
+  })).causes[0].code, "P1001");
+});
+
+test("HTTP-Weiterleitungen werden mit Status protokollierbar abgelehnt", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const mockedFetch = context.mock.method(globalThis, "fetch", async (_url, options) => {
+    assert.equal(options.redirect, "manual");
+    return new Response(null, { status: 302 });
+  });
+  const result = fetchPage(new URL("https://example.test/jobs"));
+  const rejection = assert.rejects(result, (error) => {
+    assert.equal(error.message, JOB_ERRORS.redirect);
+    assert.equal(JSON.parse(jobErrorLog(error)).httpStatus, 302);
+    return true;
+  });
+  context.mock.timers.tick(10_000);
+  await rejection;
+  assert.equal(mockedFetch.mock.callCount(), 1);
 });
 
 test("Leere Suche zulassen, unlesbare Antworten und falsche Seiten ablehnen", () => {
