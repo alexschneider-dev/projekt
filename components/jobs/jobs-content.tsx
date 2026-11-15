@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { JobsTable } from "./jobs-table";
 import { JobsFilter } from "./jobs-filter";
+import { JobCsvUpload } from "./job-csv-upload";
 import { useJobsQuery } from "@/hooks/jobs/use-jobs-query";
 import { useJobsSearchParams } from "@/hooks/jobs/use-jobs-search-params";
 import { ERROR_JOBS } from "@/lib/http/errors/jobs";
@@ -40,6 +41,7 @@ export function JobsContent() {
         Neueste Funde zuerst. Pro Seite werden bis zu 100 Stellen angezeigt.
       </Text>
       <div className="space-y-8">
+        <JobCsvUpload />
         <JobsFilter
           isMarkiert={isMarkiert}
           onChange={setIsMarkiert}

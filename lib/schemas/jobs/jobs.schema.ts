@@ -38,6 +38,7 @@ export const jobsQuerySchema = z.object({
 });
 
 export const markJobSchema = z.object({
+  isMarkiert: z.boolean({ error: ERROR_JOBS.INVALID_MARK_FILTER.message }).default(true),
   id: z.number({ error: ERROR_JOBS.INVALID_ID.message })
     .int(ERROR_JOBS.INVALID_ID.message)
     .min(1, ERROR_JOBS.INVALID_ID.message)

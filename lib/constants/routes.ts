@@ -14,6 +14,8 @@ export const ROUTES = {
   jobs: "/stellen",
   jobSearches: "/such-urls",
   jobsApi: "/api/jobs",
+  jobsImportApi: "/api/jobs/import",
+  jobsCsvApi: "/api/jobs/mark-csv",
   jobSearchesApi: "/api/jobs/searches",
   admin: "/admin",
   superAdmin: "/super-admin",

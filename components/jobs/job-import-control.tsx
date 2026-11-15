@@ -1,0 +1,42 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { FieldError } from "@/components/ui/field";
+import { useJobImport } from "@/hooks/jobs/use-job-import";
+import { ERROR_JOBS } from "@/lib/http/errors/jobs";
+
+
+export function JobImportControl() {
+  const {
+    query,
+    mutation,
+  } = useJobImport();
+  const state = query.data;
+  const busy = mutation.isPending || state?.requested || state?.running;
+
+  return (
+    <div className="space-y-3">
+      <Button
+        onClick={() => mutation.mutate()}
+        disabled={query.isPending || query.isError || busy}
+      >
+        {state?.running ? "Suche läuft …" : state?.requested ? "Suche angefordert …" : "Alle Suchgruppen jetzt durchsuchen"}
+      </Button>
+      <Text
+        role="status"
+        variant="meta"
+      >
+        {state?.running
+          ? "Alle aktiven Suchgruppen werden nacheinander mit Pausen durchsucht."
+          : state?.requested
+            ? "Angefordert – der Importdienst übernimmt den Auftrag, sobald er bereit ist."
+            : state?.finishedAt && state.succeeded
+              ? `Letzter Durchlauf abgeschlossen: ${state.inserted} neue Stellen.`
+              : "Zusätzlich zum stündlichen Import kannst du hier einen Durchlauf anfordern."}
+      </Text>
+      {!busy && state?.succeeded === false && <FieldError>{ERROR_JOBS.IMPORT_FAILED.message}</FieldError>}
+      {query.isError && <FieldError>{ERROR_JOBS.IMPORT_STATUS_FAILED.message}</FieldError>}
+    </div>
+  );
+}

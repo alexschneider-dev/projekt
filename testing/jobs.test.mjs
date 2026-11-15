@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { parseSearchPage } from "../scripts/jobs/parser.mjs";
+import { waitForNextImport } from "../scripts/jobs/schedule.mjs";
 import {
   importJobs,
   retryDelay,
@@ -38,6 +39,7 @@ test("Leere Suche zulassen, unlesbare Antworten und falsche Seiten ablehnen", ()
 
 function databaseStub() {
   return {
+    jobImportState: { update: async () => ({}) },
     jobSearch: {
       findMany: async () => [{
         id: 1,
@@ -69,6 +71,27 @@ test("Vorhandene Links bleiben unverändert; nur neue Links einfügen", async ()
     data: [{ url: "neu" }],
     skipDuplicates: true,
   });
+});
+
+test("Manuelle Aufträge beenden die Wartezeit innerhalb von fünf Sekunden", async () => {
+  let now = 0;
+  const database = {
+    jobImportState: { findUniqueOrThrow: async () => ({ requested: now >= 5000 }) },
+  };
+  await waitForNextImport(database, 0, async (delay) => { now += delay; }, () => now);
+  assert.equal(now, 5000);
+});
+
+test("Ohne Auftrag bleibt der stündliche Zeitplan erhalten", async () => {
+  let now = 0;
+  const database = {
+    jobImportState: { findUniqueOrThrow: async () => ({ requested: false }) },
+  };
+  await waitForNextImport(database, 0, async (delay) => {
+    assert.ok(delay <= 5000);
+    now += delay;
+  }, () => now);
+  assert.equal(now, 3_600_000);
 });
 
 test("Alle drei Seiten nacheinander importieren und Sperre freigeben", async () => {

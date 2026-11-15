@@ -50,12 +50,23 @@ test("PostgreSQL: Suchliste, Pagination, Duplikate, Reihenfolge und Importsperre
       assert.deepEqual(await loadSearchUrls(database), [search]);
 
       const pages = [];
+      await database.jobImportState.update({
+        where: { id: 1 },
+        data: { requested: true },
+      });
       const loadPage = async (url) => {
+        const state = await database.jobImportState.findUniqueOrThrow({ where: { id: 1 } });
+        assert.equal(state.running, true);
+        assert.equal(state.requested, false);
         const page = Number(url.searchParams.get("page"));
         pages.push(page);
         return pageHtml(page, page);
       };
       assert.equal((await importJobs(database, client, loadPage)).inserted, 3);
+      const importState = await database.jobImportState.findUniqueOrThrow({ where: { id: 1 } });
+      assert.equal(importState.running, false);
+      assert.equal(importState.succeeded, true);
+      assert.equal(importState.inserted, 3);
       const recorded = await database.jobSearch.findUniqueOrThrow({ where: { url: search } });
       assert.equal(recorded.lastResultCount, 55);
       assert.ok(recorded.lastFetchedAt instanceof Date);
@@ -100,6 +111,7 @@ test("PostgreSQL: Suchliste, Pagination, Duplikate, Reihenfolge und Importsperre
         return url.searchParams.get("page") === "1" ? pageHtml(1, 1) : "ungültige Antwort";
       }));
       assert.deepEqual(await database.jobSearch.findUniqueOrThrow({ where: { url: search } }), beforeFailure);
+      assert.equal((await database.jobImportState.findUniqueOrThrow({ where: { id: 1 } })).succeeded, false);
       await importJobs(database, client, async () => JSON.stringify({
         searchResultsDisplayedPageNumber: 1,
         searchResultsTotalJobCount: 0,

@@ -108,6 +108,17 @@ test("Stellen werden dauerhaft und wiederholt ohne Umschalten markiert", async (
     });
     expect(marked.items.every((item: { isMarkiert: boolean }) => item.isMarkiert)).toBe(true);
     expect(marked.pageCount).toBe(Math.max(1, Math.ceil(marked.total / marked.pageSize)));
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await request.patch(ROUTES.jobsApi, {
+        data: {
+          id: job.id,
+          isMarkiert: false,
+        },
+      });
+      expect(response.status()).toBe(HTTP_STATUS.OK);
+      expect((await response.json()).isMarkiert).toBe(false);
+    }
+    expect((await database.jobListing.findUniqueOrThrow({ where: { id: job.id } })).isMarkiert).toBe(false);
   } finally {
     await database.jobListing.delete({ where: { id: job.id } });
   }

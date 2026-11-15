@@ -52,3 +52,14 @@ model JobSearch {
   lastResultCount Int?
   lastFetchedAt   DateTime?
 }
+
+model JobImportState {
+  id             Int       @id @default(1)
+  requested      Boolean   @default(false)
+  running        Boolean   @default(false)
+  requestedAt    DateTime?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  succeeded      Boolean?
+  inserted       Int       @default(0)
+}

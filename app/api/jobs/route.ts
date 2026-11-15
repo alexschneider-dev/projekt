@@ -36,7 +36,7 @@ export const PATCH = apiHandler(async (request) => {
 
   const result = await prisma.jobListing.update({
     where: { id: body.data.id },
-    data: { isMarkiert: true },
+    data: { isMarkiert: body.data.isMarkiert },
     select: JOB_LINK_SELECT,
   });
   return successResponse(result);

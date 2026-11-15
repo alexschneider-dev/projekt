@@ -67,6 +67,15 @@ Fortlaufender Import mit stündlichem Start, solange dieser Prozess läuft:
 npm run jobs:watch
 ```
 
+Auf „Such-URLs“ fordert „Alle Suchgruppen jetzt durchsuchen“ zusätzlich einen
+Durchlauf an. Die API speichert den Auftrag in `JobImportState`; der laufende
+Importdienst prüft im Leerlauf alle fünf Sekunden auf neue Aufträge. Wiederholte
+Anfragen während eines angeforderten oder laufenden Imports werden zusammengefasst.
+Die Oberfläche zeigt den Status und lädt nach Abschluss die Trefferzahlen neu.
+Ohne laufenden Importdienst bleibt der Auftrag vorgemerkt. Nach einem Neustart
+übernimmt der Importdienst auch einen zuvor unterbrochenen Durchlauf.
+Die neue Tabelle muss vor dem Update von Next.js und Importdienst migriert werden.
+
 Der erste Durchlauf startet sofort. Alle Anfragen laufen nacheinander mit
 5–10 Sekunden Abstand. Bei HTTP 429 und Serverfehlern folgen höchstens zwei
 Wiederholungen. `Retry-After` wird beachtet; ohne verwertbare Angabe wird

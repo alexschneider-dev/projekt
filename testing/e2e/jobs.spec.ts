@@ -48,17 +48,20 @@ test("Stellen sind geschützt und neue Links stehen zuerst", async ({
 
   try {
     await page.goto(ROUTES.jobs);
-    await expect(page.getByRole("heading", { name: "Stellen" })).toBeVisible();
+    await expect(page.getByRole("heading", {
+      name: "Stellen",
+      exact: true,
+    })).toBeVisible();
     const links = page.locator(`td a[href*="${marker}"]`);
     await expect(links).toHaveCount(2);
     await expect(links.nth(0)).toHaveAttribute("href", newer);
     await expect(links.nth(1)).toHaveAttribute("href", older);
     const row = page.getByRole("row").filter({ has: page.locator(`a[href="${newer}"]`) });
     await row.getByRole("button", { name: "Markieren", exact: true }).click();
-    await expect(row.getByRole("button", { name: "Markiert", exact: true })).toBeDisabled();
+    await expect(row.getByRole("button", { name: "Markierung aufheben", exact: true })).toBeEnabled();
     expect((await database.jobListing.findUniqueOrThrow({ where: { url: newer } })).isMarkiert).toBe(true);
     await page.reload();
-    await expect(row.getByRole("button", { name: "Markiert", exact: true })).toBeDisabled();
+    await expect(row.getByRole("button", { name: "Markierung aufheben", exact: true })).toBeEnabled();
     const filter = page.getByRole("combobox", { name: "Markierung" });
     await filter.selectOption("false");
     await expect(page).toHaveURL(/isMarkiert=false/);
@@ -75,6 +78,11 @@ test("Stellen sind geschützt und neue Links stehen zuerst", async ({
     await filter.selectOption("all");
     await expect(page).toHaveURL(ROUTES.jobs);
     await expect(row).toBeVisible();
+    await row.getByRole("button", { name: "Markierung aufheben", exact: true }).click();
+    await expect(row.getByRole("button", { name: "Markieren", exact: true })).toBeEnabled();
+    await page.reload();
+    await expect(row.getByRole("button", { name: "Markieren", exact: true })).toBeEnabled();
+    expect((await database.jobListing.findUniqueOrThrow({ where: { url: newer } })).isMarkiert).toBe(false);
     await page.screenshot({ path: testInfo.outputPath("stellen.png") });
   } finally {
     await database.jobListing.deleteMany({ where: { url: { in: urls } } });
@@ -239,4 +247,92 @@ test("API-Fehler erscheinen als schließbare Benachrichtigung", async ({
   await expect(toast).toContainText(ERROR_JOBS.SAVE_FAILED.message);
   await toast.getByLabel("Meldung schließen").click();
   await expect(toast).not.toBeVisible();
+});
+
+test("CSV-Upload markiert bekannte Links und aktualisiert die gefilterte Tabelle", async ({
+  page,
+  database,
+  createAccount,
+}) => {
+  const account = await createAccount();
+  await login(page.request, account.email);
+  const marker = randomUUID();
+  const url = `https://www.stepstone.de/stellenangebote--${marker}-inline.html`;
+  const job = await database.jobListing.create({
+    data: {
+      url,
+      createdAt: new Date("2400-01-01T00:00:00Z"),
+    },
+  });
+
+  try {
+    await page.goto(`${ROUTES.jobs}?isMarkiert=false`);
+    await expect(page.getByRole("link", { name: url, exact: true })).toBeVisible();
+    await page.getByLabel("CSV-Datei").setInputFiles({
+      name: "stellen.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(`URL\n${url}\nhttps://example.test/${marker}`),
+    });
+    await page.getByRole("button", { name: "CSV abgleichen und markieren" }).click();
+    await expect(page.getByText(/1 neu markiert · 0 bereits markiert · 1 nicht gefunden/)).toBeVisible();
+    await expect(page.getByRole("link", { name: url, exact: true })).toHaveCount(0);
+    expect((await database.jobListing.findUniqueOrThrow({ where: { id: job.id } })).isMarkiert).toBe(true);
+    await page.getByRole("combobox", { name: "Markierung" }).selectOption("true");
+    const row = page.getByRole("row").filter({ has: page.locator(`a[href="${url}"]`) });
+    await expect(row.getByRole("button", { name: "Markierung aufheben", exact: true })).toBeEnabled();
+  } finally {
+    await database.jobListing.delete({ where: { id: job.id } });
+  }
+});
+
+test("Manueller Suchlauf zeigt Anforderung, Fortschritt und Abschluss", async ({
+  page,
+  createAccount,
+}) => {
+  const account = await createAccount();
+  await login(page.request, account.email);
+  let requests = 0;
+  let state = {
+    id: 1,
+    requested: false,
+    running: false,
+    requestedAt: null as string | null,
+    startedAt: null as string | null,
+    finishedAt: null as string | null,
+    succeeded: null as boolean | null,
+    inserted: 0,
+  };
+  await page.route(`**${ROUTES.jobsImportApi}`, async (route) => {
+    if (route.request().method() === "POST") {
+      requests += 1;
+      state = {
+        ...state,
+        requested: true,
+        requestedAt: new Date().toISOString(),
+      };
+      await route.fulfill({ json: { requested: true } });
+    } else {
+      await route.fulfill({ json: state });
+    }
+  });
+  await page.goto(ROUTES.jobSearches);
+  await page.getByRole("button", { name: "Alle Suchgruppen jetzt durchsuchen" }).click();
+  await expect(page.getByRole("button", { name: "Suche angefordert …" })).toBeDisabled();
+  expect(requests).toBe(1);
+  state = {
+    ...state,
+    requested: false,
+    running: true,
+    startedAt: new Date().toISOString(),
+  };
+  await expect(page.getByRole("button", { name: "Suche läuft …" })).toBeDisabled();
+  state = {
+    ...state,
+    running: false,
+    succeeded: true,
+    finishedAt: new Date().toISOString(),
+    inserted: 2,
+  };
+  await expect(page.getByText("Letzter Durchlauf abgeschlossen: 2 neue Stellen.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Alle Suchgruppen jetzt durchsuchen" })).toBeEnabled();
 });

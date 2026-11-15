@@ -68,7 +68,16 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
   if (!lock.rows[0].locked) return { skipped: true };
 
   let inserted = 0;
+  let succeeded = false;
   try {
+    await database.jobImportState.update({
+      where: { id: 1 },
+      data: {
+        requested: false,
+        running: true,
+        startedAt: new Date(),
+      },
+    });
     const searches = await loadSearches(database);
     for (const search of searches) {
       let totalPages = 1;
@@ -105,11 +114,24 @@ export async function importJobs(database, lockClient, loadPage = fetchPage) {
       });
     }
 
+    succeeded = true;
     return {
       skipped: false,
       inserted,
     };
   } finally {
-    await lockClient.query("SELECT pg_advisory_unlock($1)", [LOCK_ID]);
+    try {
+      await database.jobImportState.update({
+        where: { id: 1 },
+        data: {
+          running: false,
+          finishedAt: new Date(),
+          succeeded,
+          inserted,
+        },
+      });
+    } finally {
+      await lockClient.query("SELECT pg_advisory_unlock($1)", [LOCK_ID]);
+    }
   }
 }

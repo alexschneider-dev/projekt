@@ -7,15 +7,19 @@ import type { JobLink } from "@/lib/types/jobs";
 
 export function MarkJobButton({ job }: { job: JobLink }) {
   const mutation = useMarkJob();
-  const marked = job.isMarkiert || mutation.data?.isMarkiert;
+  const marked = job.isMarkiert;
 
   return (
     <Button
       variant="outline"
-      disabled={marked || mutation.isPending}
-      onClick={() => mutation.mutate({ id: job.id })}
+      disabled={mutation.isPending}
+      aria-pressed={marked}
+      onClick={() => mutation.mutate({
+        id: job.id,
+        isMarkiert: !marked,
+      })}
     >
-      {marked ? "Markiert" : mutation.isPending ? "Wird markiert …" : "Markieren"}
+      {mutation.isPending ? "Wird gespeichert …" : marked ? "Markierung aufheben" : "Markieren"}
     </Button>
   );
 }

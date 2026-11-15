@@ -5,6 +5,7 @@ import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { JobSearchForm } from "./job-search-form";
+import { JobImportControl } from "./job-import-control";
 import { JobSearchesTable } from "./job-searches-table";
 import { useJobSearchesQuery } from "@/hooks/jobs/use-jobs-query";
 import { ERROR_JOBS } from "@/lib/http/errors/jobs";
@@ -20,6 +21,7 @@ export function JobSearchesContent() {
         Klicke auf einen Titel, um die Suche zu verwalten. Die Trefferzahl stammt vom letzten erfolgreichen Abruf.
       </Text>
       <div className="space-y-8">
+        <JobImportControl />
         <JobSearchForm />
         {query.isPending ? (
           <Text role="status">Such-URLs werden geladen …</Text>

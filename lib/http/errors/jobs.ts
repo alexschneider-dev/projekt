@@ -3,6 +3,31 @@ import type { ApiErrorDefinition } from "./types";
 
 
 export const ERROR_JOBS = {
+  IMPORT_STATUS_FAILED: {
+    status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+    code: "JOB_IMPORT_STATUS_FAILED",
+    message: "Der Importstatus konnte nicht geladen werden.",
+  },
+  IMPORT_FAILED: {
+    status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+    code: "JOB_IMPORT_FAILED",
+    message: "Der letzte Import ist fehlgeschlagen. Bereits gespeicherte Stellen bleiben erhalten.",
+  },
+  CSV_FILE: {
+    status: HTTP_STATUS.BAD_REQUEST,
+    code: "INVALID_JOBS_CSV_FILE",
+    message: "Bitte wähle eine nicht leere CSV-Datei mit höchstens 2 MB aus.",
+  },
+  CSV_CONTENT: {
+    status: HTTP_STATUS.BAD_REQUEST,
+    code: "INVALID_JOBS_CSV_CONTENT",
+    message: "Die CSV muss pro Zeile genau einen gültigen Stellenlink enthalten. Eine Kopfzeile URL oder Link ist erlaubt.",
+  },
+  CSV_LIMIT: {
+    status: HTTP_STATUS.BAD_REQUEST,
+    code: "JOBS_CSV_LIMIT",
+    message: "Die CSV darf höchstens 10.000 Stellenlinks enthalten.",
+  },
   INVALID_TITLE: {
     status: HTTP_STATUS.BAD_REQUEST,
     code: "INVALID_SEARCH_TITLE",
