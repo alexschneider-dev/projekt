@@ -72,6 +72,14 @@ Durchlauf an. Die API speichert den Auftrag in `JobImportState`; der laufende
 Importdienst prüft im Leerlauf alle fünf Sekunden auf neue Aufträge. Wiederholte
 Anfragen während eines angeforderten oder laufenden Imports werden zusammengefasst.
 Die Oberfläche zeigt den Status und lädt nach Abschluss die Trefferzahlen neu.
+Während eines laufenden Imports beendet „Suche stoppen“ den gesamten aktuellen
+Durchlauf dieses Benutzers. Der Dienst prüft den Auftrag jede Sekunde und bricht
+auch laufende HTTP-Abrufe sowie Wartepausen ab. Bereits gespeicherte Stellen bleiben
+erhalten; die aktuelle Suchgruppe erhält einen unvollständigen Teilstand. Die
+Oberfläche bestätigt den Stopp nach ihrer nächsten Statusabfrage (alle fünf Sekunden).
+Der stündliche Zeitplan bleibt aktiv; der Button deaktiviert keine Suchgruppen.
+Dafür ist die Migration `20261115230000_import_stop` erforderlich.
+
 Ohne laufenden Importdienst bleibt der Auftrag vorgemerkt. Nach einem Neustart
 übernimmt der Importdienst auch einen zuvor unterbrochenen Durchlauf.
 Die neue Tabelle muss vor dem Update von Next.js und Importdienst migriert werden.

@@ -26,8 +26,21 @@ export async function requestJobImport(userId: string) {
     },
     data: {
       requested: true,
+      stopRequested: false,
+      stopped: false,
       requestedAt: new Date(),
     },
   });
   return { requested: result.count > 0 };
+}
+
+export async function stopJobImport(userId: string) {
+  const result = await prisma.jobImportState.updateMany({
+    where: {
+      userId,
+      running: true,
+    },
+    data: { stopRequested: true },
+  });
+  return { stopRequested: result.count > 0 };
 }

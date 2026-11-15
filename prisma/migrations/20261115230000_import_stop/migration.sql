@@ -1,0 +1,3 @@
+ALTER TABLE "JobImportState"
+  ADD COLUMN "stopRequested" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "stopped" BOOLEAN NOT NULL DEFAULT false;

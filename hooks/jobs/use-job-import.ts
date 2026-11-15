@@ -11,6 +11,7 @@ import { useAppMutation } from "@/lib/query/use-app-mutation";
 import type {
   JobImportStateResult,
   RequestJobImportResult,
+  StopJobImportResult,
 } from "@/lib/types/jobs";
 
 
@@ -28,6 +29,10 @@ export function useJobImport() {
     mutationFn: () => fetchJson(ROUTES.jobsImportApi, { method: "POST" }),
     invalidateKeys: [["job-import"]],
   });
+  const stopMutation = useAppMutation<StopJobImportResult, void>({
+    mutationFn: () => fetchJson(ROUTES.jobsImportApi, { method: "DELETE" }),
+    invalidateKeys: [["job-import"]],
+  });
   const finishedAt = query.data?.finishedAt;
 
   useEffect(() => {
@@ -42,5 +47,6 @@ export function useJobImport() {
   return {
     query,
     mutation,
+    stopMutation,
   };
 }

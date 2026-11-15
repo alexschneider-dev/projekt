@@ -79,6 +79,7 @@ function databaseStub() {
     jobImportState: {
       update: async () => ({}),
       upsert: async () => ({}),
+      findUniqueOrThrow: async () => ({ stopRequested: false }),
     },
     jobSearch: {
       findMany: async () => [{
@@ -324,4 +325,77 @@ test("Timeout auf der ersten Seite speichert unbekannte Gesamtzahlen statt null 
   assert.equal(progress.lastScannedPages, 0);
   assert.equal(progress.lastScannedCount, 0);
   assert.equal(progress.lastScanComplete, false);
+});
+
+test("Stopp beendet einen laufenden Abruf und alle weiteren Suchgruppen", { timeout: 5000 }, async () => {
+  const database = databaseStub();
+  let stopRequested = false;
+  let finalState;
+  let progress;
+  const pages = [];
+  const queries = [];
+  database.jobImportState.findUniqueOrThrow = async () => ({ stopRequested });
+  database.jobImportState.update = async ({ data }) => { finalState = data; };
+  database.jobSearch.findMany = async () => [
+    {
+      id: 1,
+      url: "https://www.stepstone.de/jobs/erste"
+    },
+    {
+      id: 2,
+      url: "https://www.stepstone.de/jobs/zweite"
+    },
+  ];
+  database.jobSearch.updateMany = async ({ data }) => { progress = data; };
+  const lock = {
+    query: async (sql) => {
+      queries.push(sql);
+      return { rows: [{ locked: true }] };
+    },
+  };
+  const result = await importJobs(database, lock, async (url, _wait, signal) => {
+    const page = Number(url.searchParams.get("page"));
+    pages.push(page);
+    if (page === 1) return fixture(1, 55, [1]);
+    stopRequested = true;
+    return new Promise((resolve, reject) => {
+      signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+    });
+  }, "test-user");
+  assert.deepEqual(pages, [
+    1,
+    2
+  ]);
+  assert.equal(result.stopped, true);
+  assert.equal(result.inserted, 1);
+  assert.equal(progress.lastScannedPages, 1);
+  assert.equal(progress.lastScannedCount, 1);
+  assert.equal(progress.lastScanComplete, false);
+  assert.equal(finalState.stopped, true);
+  assert.equal(finalState.running, false);
+  assert.equal(finalState.stopRequested, false);
+  assert.match(queries.at(-1), /pg_advisory_unlock/);
+});
+
+test("Ein Stopp unterbricht die Pause vor einem HTTP-Abruf", async (context) => {
+  const controller = new AbortController();
+  const request = context.mock.method(globalThis, "fetch", async () => new Response(""));
+  const result = fetchPage("https://example.test/jobs", undefined, controller.signal);
+  controller.abort(new Error(JOB_ERRORS.stopped));
+  await assert.rejects(result, { name: "AbortError" });
+  assert.equal(request.mock.callCount(), 0);
+});
+
+test("Ein Stopp bricht fetch mit dem Stoppsignal ab statt als Timeout zu gelten", async (context) => {
+  const controller = new AbortController();
+  const reason = Object.assign(new Error(JOB_ERRORS.stopped), { code: "IMPORT_STOPPED" });
+  context.mock.method(globalThis, "fetch", async (_url, { signal }) => {
+    setImmediate(() => controller.abort(reason));
+    return new Promise((resolve, reject) => {
+      signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+    });
+  });
+  await assert.rejects(fetchPage("https://example.test/jobs", async () => { }, controller.signal), {
+    code: "IMPORT_STOPPED",
+  });
 });

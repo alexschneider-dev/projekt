@@ -9,7 +9,10 @@ export const JOB_ERRORS = {
   response: "Die Suchseite konnte nicht abgerufen werden.",
   redirect: "Die Suchseite antwortet mit einer Weiterleitung. Der Import folgt ihr nicht automatisch.",
   blocked: "Der Zugriff wurde gesperrt. Der Durchlauf wird abgebrochen.",
+  stopped: "Der Stellenimport wurde auf Benutzerwunsch gestoppt.",
   timeout: "Das Zeitlimit beim Abrufen der Suchseite wurde überschritten.",
   partial: "Nicht alle Suchgruppen konnten abgeschlossen werden. Bereits gespeicherte Stellen bleiben erhalten.",
   failed: "Der Stellenimport ist fehlgeschlagen.",
 };
+
+export const JOB_STOPPED_CODE = "IMPORT_STOPPED";

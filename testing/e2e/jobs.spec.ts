@@ -492,3 +492,38 @@ test("Unvollständige Suchgruppe zeigt erfasste Seiten und Treffer nach Neuladen
   await expect(row).toContainText("6 von 11 Seiten erfasst");
   await expect(row).toContainText("Unvollständig");
 });
+
+test("Laufende Hauptsuche stoppen und den bestätigten Stopp anzeigen", async ({
+  page,
+  database,
+  createAccount,
+}) => {
+  const account = await createAccount();
+  await database.jobImportState.update({
+    where: { userId: account.id },
+    data: { running: true },
+  });
+  await login(page.request, account.email);
+  await page.goto(ROUTES.jobSearches);
+  await page.getByRole("button", {
+    name: "Suche stoppen",
+    exact: true
+  }).click();
+  await expect(page.getByRole("button", { name: "Wird gestoppt …" })).toBeDisabled();
+  expect((await database.jobImportState.findUniqueOrThrow({ where: { userId: account.id } })).stopRequested).toBe(true);
+  await database.jobImportState.update({
+    where: { userId: account.id },
+    data: {
+      running: false,
+      stopRequested: false,
+      stopped: true,
+      succeeded: false,
+      finishedAt: new Date(),
+      inserted: 3,
+    },
+  });
+  await expect(page.getByText("Suche gestoppt. 3 neue Stellen wurden bis dahin gespeichert.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Alle Suchgruppen jetzt durchsuchen" })).toBeEnabled();
+  await page.reload();
+  await expect(page.getByText("Suche gestoppt. 3 neue Stellen wurden bis dahin gespeichert.")).toBeVisible();
+});

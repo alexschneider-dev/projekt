@@ -1,7 +1,11 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { JOB_ERRORS } from "./errors/index.mjs";
+import {
+  JOB_ERRORS,
+  JOB_STOPPED_CODE,
+} from "./errors/index.mjs";
 import { jobErrorLog } from "./errors/log.mjs";
 import { loadSearches } from "./searches.mjs";
+import { createImportControl } from "./control.mjs";
 import { parseSearchPage } from "./parser.mjs";
 
 
@@ -22,10 +26,15 @@ export function retryDelay(value, attempt, now = Date.now()) {
   return 60_000 * 2 ** attempt;
 }
 
-export async function fetchPage(url, wait = sleep) {
+export async function fetchPage(url, wait = sleep, stopSignal) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    await wait(5000 + Math.floor(Math.random() * 5001));
-    const signal = AbortSignal.timeout(60_000);
+    stopSignal?.throwIfAborted();
+    await wait(5000 + Math.floor(Math.random() * 5001), undefined, { signal: stopSignal });
+    const timeoutSignal = AbortSignal.timeout(60_000);
+    const signal = stopSignal ? AbortSignal.any([
+      timeoutSignal,
+      stopSignal
+    ]) : timeoutSignal;
     let response;
     try {
       response = await fetch(url, {
@@ -36,6 +45,7 @@ export async function fetchPage(url, wait = sleep) {
       // Auch das vollständige Lesen der Antwort unterliegt dem Zeitlimit.
       if (response.ok) return await response.text();
     } catch (error) {
+      stopSignal?.throwIfAborted();
       if (!signal.aborted && error?.name !== "TimeoutError") throw error;
 
       // Bei Zeitüberschreitungen keine weiteren Abrufe dieser Suchgruppe versuchen.
@@ -54,7 +64,7 @@ export async function fetchPage(url, wait = sleep) {
 
     // Lange Retry-After-Werte in sichere Timer-Abschnitte teilen.
     for (let remaining = delay; remaining > 0; remaining -= 60_000) {
-      await wait(Math.min(remaining, 60_000));
+      await wait(Math.min(remaining, 60_000), undefined, { signal: stopSignal });
     }
   }
 }
@@ -108,6 +118,8 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
 
   let inserted = 0;
   let succeeded = false;
+  let stopped = false;
+  let control;
   let failedSearches = 0;
   let context = {
     phase: "Startstatus speichern",
@@ -119,15 +131,19 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
         userId,
         requested: false,
         running: true,
+        stopped: false,
         startedAt: new Date(),
       },
       where: { userId },
       update: {
         requested: false,
         running: true,
+        stopped: false,
         startedAt: new Date(),
       },
     });
+    control = createImportControl(database, userId);
+    await control.check();
     context = {
       phase: "Suchgruppen laden",
       userId,
@@ -154,9 +170,12 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
         };
         let html;
         try {
-          html = await loadPage(url);
+          await control.check();
+          html = await loadPage(url, undefined, control.signal);
+          control.signal.throwIfAborted();
         } catch (error) {
-          if (error?.name !== "TimeoutError") throw error;
+          if (control.signal.aborted) error = control.signal.reason;
+          if (error?.name !== "TimeoutError" && error?.code !== JOB_STOPPED_CODE) throw error;
 
           context.phase = "Teilstand speichern";
           await saveSearchProgress(database, search, userId, {
@@ -167,6 +186,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
             lastScanComplete: false,
           });
           context.phase = "Suchseite abrufen";
+          if (error?.code === JOB_STOPPED_CODE) throw error;
           failedSearches += 1;
           console.error(jobErrorLog(error, {
             ...context,
@@ -221,21 +241,35 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
       throw new Error(JOB_ERRORS.partial);
     }
 
+    await control.check();
     succeeded = true;
     return {
       skipped: false,
       inserted,
     };
   } catch (error) {
+    if (error?.name === "AbortError" && control?.signal.aborted) error = control.signal.reason;
+    if (error?.code === JOB_STOPPED_CODE) {
+      stopped = true;
+      console.log(jobErrorLog(error, context));
+      return {
+        skipped: false,
+        stopped: true,
+        inserted,
+      };
+    }
     // Den ursprünglichen Fehler festhalten, auch wenn das Speichern des Fehlerstatus anschließend scheitert.
     console.error(jobErrorLog(error, context));
     throw error;
   } finally {
+    await control?.close();
     try {
       await database.jobImportState.update({
         where: { userId },
         data: {
           running: false,
+          stopRequested: false,
+          stopped,
           finishedAt: new Date(),
           succeeded,
           inserted,

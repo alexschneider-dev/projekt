@@ -5,6 +5,7 @@ import type { markJobsFromCsv } from "@/lib/jobs/mark-csv";
 import type {
   getJobImportState,
   requestJobImport,
+  stopJobImport,
 } from "@/lib/jobs/import-state";
 
 
@@ -13,6 +14,7 @@ export type JobLink = Prisma.JobListingGetPayload<{ select: typeof JOB_LINK_SELE
 export type JobSearchesResult = Awaited<ReturnType<typeof listJobSearches>>;
 export type MarkJobsCsvResult = Awaited<ReturnType<typeof markJobsFromCsv>>;
 export type JobImportStateResult = Awaited<ReturnType<typeof getJobImportState>>;
+export type StopJobImportResult = Awaited<ReturnType<typeof stopJobImport>>;
 export type RequestJobImportResult = Awaited<ReturnType<typeof requestJobImport>>;
 
 export type JobsPageResult = {

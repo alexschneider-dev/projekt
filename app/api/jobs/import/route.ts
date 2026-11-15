@@ -6,6 +6,7 @@ import {
 import {
   getJobImportState,
   requestJobImport,
+  stopJobImport,
 } from "@/lib/jobs/import-state";
 
 
@@ -21,4 +22,11 @@ export const POST = apiHandler(async () => {
   if (!apiGate.ok) return apiGate.response;
 
   return successResponse(await requestJobImport(apiGate.user.id));
+});
+
+export const DELETE = apiHandler(async () => {
+  const apiGate = await requireRole();
+  if (!apiGate.ok) return apiGate.response;
+
+  return successResponse(await stopJobImport(apiGate.user.id));
 });

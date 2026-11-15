@@ -11,31 +11,47 @@ export function JobImportControl() {
   const {
     query,
     mutation,
+    stopMutation,
   } = useJobImport();
   const state = query.data;
   const busy = mutation.isPending || state?.requested || state?.running;
 
   return (
     <div className="space-y-3">
-      <Button
-        onClick={() => mutation.mutate()}
-        disabled={query.isPending || query.isError || busy}
-      >
-        {state?.running ? "Suche läuft …" : state?.requested ? "Suche angefordert …" : "Alle Suchgruppen jetzt durchsuchen"}
-      </Button>
+      <div className="flex flex-wrap gap-3">
+        <Button
+          onClick={() => mutation.mutate()}
+          disabled={query.isPending || query.isError || busy}
+        >
+          {state?.running ? "Suche läuft …" : state?.requested ? "Suche angefordert …" : "Alle Suchgruppen jetzt durchsuchen"}
+        </Button>
+        {state?.running && (
+          <Button
+            variant="outline"
+            disabled={stopMutation.isPending || state.stopRequested}
+            onClick={() => stopMutation.mutate()}
+          >
+            {stopMutation.isPending || state.stopRequested ? "Wird gestoppt …" : "Suche stoppen"}
+          </Button>
+        )}
+      </div>
       <Text
         role="status"
         variant="meta"
       >
-        {state?.running
-          ? "Alle aktiven Suchgruppen werden nacheinander mit Pausen durchsucht."
-          : state?.requested
-            ? "Angefordert – der Importdienst übernimmt den Auftrag, sobald er bereit ist."
-            : state?.finishedAt && state.succeeded
-              ? `Letzter Durchlauf abgeschlossen: ${state.inserted} neue Stellen.`
-              : "Zusätzlich zum stündlichen Import kannst du hier einen Durchlauf anfordern."}
+        {state?.stopRequested
+          ? "Der Importdienst beendet den laufenden Durchlauf. Bereits gespeicherte Stellen bleiben erhalten."
+          : state?.running
+            ? "Alle aktiven Suchgruppen werden nacheinander mit Pausen durchsucht."
+            : state?.requested
+              ? "Angefordert – der Importdienst übernimmt den Auftrag, sobald er bereit ist."
+              : state?.stopped
+                ? `Suche gestoppt. ${state.inserted} neue Stellen wurden bis dahin gespeichert.`
+                : state?.finishedAt && state.succeeded
+                  ? `Letzter Durchlauf abgeschlossen: ${state.inserted} neue Stellen.`
+                  : "Zusätzlich zum stündlichen Import kannst du hier einen Durchlauf anfordern."}
       </Text>
-      {!busy && state?.succeeded === false && <FieldError>{ERROR_JOBS.IMPORT_FAILED.message}</FieldError>}
+      {!busy && !state?.stopped && state?.succeeded === false && <FieldError>{ERROR_JOBS.IMPORT_FAILED.message}</FieldError>}
       {query.isError && <FieldError>{ERROR_JOBS.IMPORT_STATUS_FAILED.message}</FieldError>}
     </div>
   );

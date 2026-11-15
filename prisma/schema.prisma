@@ -66,14 +66,16 @@ model JobSearch {
 }
 
 model JobImportState {
-  id          Int       @id @default(autoincrement())
-  userId      String    @unique
-  user        User      @relation(fields: [userId], references: [id])
-  requested   Boolean   @default(false)
-  running     Boolean   @default(false)
-  requestedAt DateTime?
-  startedAt   DateTime?
-  finishedAt  DateTime?
-  succeeded   Boolean?
-  inserted    Int       @default(0)
+  id            Int       @id @default(autoincrement())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  requested     Boolean   @default(false)
+  running       Boolean   @default(false)
+  stopRequested Boolean   @default(false)
+  stopped       Boolean   @default(false)
+  requestedAt   DateTime?
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  succeeded     Boolean?
+  inserted      Int       @default(0)
 }

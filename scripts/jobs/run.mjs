@@ -43,7 +43,9 @@ async function run() {
           const result = await importJobs(database, lockClient, undefined, user.id);
           console.log(result.skipped
             ? "Stellenimport übersprungen: Ein Durchlauf läuft bereits."
-            : `Stellenimport abgeschlossen: ${result.inserted} neue Links.`);
+            : result.stopped
+              ? `Stellenimport gestoppt: ${result.inserted} neue Links.`
+              : `Stellenimport abgeschlossen: ${result.inserted} neue Links.`);
         } catch (error) {
           console.error(jobErrorLog(error, {
             phase,
