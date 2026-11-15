@@ -40,6 +40,7 @@ export function useJobSearchForm() {
     form,
     submit,
     message,
+    ready: form.formState.isReady,
     busy: form.formState.isSubmitting,
   };
 }

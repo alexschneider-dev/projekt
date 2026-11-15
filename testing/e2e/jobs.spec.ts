@@ -126,12 +126,31 @@ test("API-Fehler erscheinen als schließbare Benachrichtigung", async ({
       error: ERROR_JOBS.SAVE_FAILED.message,
     }),
   }));
-  await page.goto(ROUTES.jobs);
-  await page.getByLabel("Neue Such-URL").fill("https://www.stepstone.de/jobs/typescript");
+  // Verzögertes JavaScript darf keine Eingabe vor der Formularinitialisierung zulassen.
+  let releaseScripts!: () => void;
+  const scriptsReady = new Promise<void>((resolve) => { releaseScripts = resolve; });
+  await page.route("**/_next/static/**/*.js", async (route) => {
+    await scriptsReady;
+    await route.continue();
+  });
+  const input = page.getByLabel("Neue Such-URL");
+  const submit = page.getByRole("button", { name: "Such-URL hinzufügen" });
+
+  try {
+    await page.goto(ROUTES.jobs, { waitUntil: "commit" });
+    await expect(input).toBeVisible();
+    await expect(input).toBeDisabled();
+    await expect(submit).toBeDisabled();
+  } finally {
+    releaseScripts();
+  }
+
+  await input.fill("https://www.stepstone.de/jobs/typescript");
+  await expect(input).toHaveValue("https://www.stepstone.de/jobs/typescript");
   const failureResponse = page.waitForResponse((response) =>
     new URL(response.url()).pathname === ROUTES.jobSearchesApi && response.request().method() === "POST"
   );
-  await page.getByRole("button", { name: "Such-URL hinzufügen" }).click();
+  await submit.click();
   expect((await failureResponse).status()).toBe(ERROR_JOBS.SAVE_FAILED.status);
 
   const toast = page.locator('[role="alertdialog"]');

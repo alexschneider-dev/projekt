@@ -23,6 +23,7 @@ export function JobSearchForm() {
     form,
     submit,
     message,
+    ready,
     busy,
   } = useJobSearchForm();
   const serverError = form.formState.errors.root?.server?.message;
@@ -48,7 +49,7 @@ export function JobSearchForm() {
                     autoComplete="off"
                     required
                     maxLength={4096}
-                    disabled={busy}
+                    disabled={!ready || busy}
                   />
                 </FormControl>
                 <FormMessage />
@@ -58,7 +59,7 @@ export function JobSearchForm() {
           {serverError && <FieldError>{serverError}</FieldError>}
           <Button
             type="submit"
-            disabled={busy}
+            disabled={!ready || busy}
           >
             {busy ? "Wird gespeichert …" : "Such-URL hinzufügen"}
           </Button>
