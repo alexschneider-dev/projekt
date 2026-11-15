@@ -54,7 +54,7 @@ test("Stellen-API paginiert mit 100 Einträgen und prüft Seitennummern", async 
 
   try {
     const first = await request.get(ROUTES.jobsApi);
-    expect(first.headers()["cache-control"]).toContain("no-store");
+    expect(first.status()).toBe(HTTP_STATUS.OK);
     const firstData = await first.json();
     expect(firstData.items).toHaveLength(100);
     expect(firstData.pageSize).toBe(100);

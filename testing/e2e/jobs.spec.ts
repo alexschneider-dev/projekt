@@ -8,6 +8,9 @@ import { ERROR_JOBS } from "@/lib/http/errors/jobs";
 import { randomUUID } from "node:crypto";
 
 
+// Fachtests mit Netzwerk-Mocks dürfen nicht vom Service Worker umgangen werden.
+test.use({ serviceWorkers: "block" });
+
 test("Stellen sind geschützt und neue Links stehen zuerst", async ({
   page,
   database,
@@ -125,7 +128,12 @@ test("API-Fehler erscheinen als schließbare Benachrichtigung", async ({
   }));
   await page.goto(ROUTES.jobs);
   await page.getByLabel("Neue Such-URL").fill("https://www.stepstone.de/jobs/typescript");
+  const failureResponse = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === ROUTES.jobSearchesApi && response.request().method() === "POST"
+  );
   await page.getByRole("button", { name: "Such-URL hinzufügen" }).click();
+  expect((await failureResponse).status()).toBe(ERROR_JOBS.SAVE_FAILED.status);
+
   const toast = page.locator('[role="alertdialog"]');
   await expect(toast).toBeVisible();
   await expect(toast).toContainText(ERROR_JOBS.SAVE_FAILED.message);
