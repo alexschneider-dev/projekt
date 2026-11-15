@@ -12,6 +12,8 @@ export const ROUTES = {
   login: "/login",
   dashboard: "/dashboard",
   jobs: "/stellen",
+  jobsApi: "/api/jobs",
+  jobSearchesApi: "/api/jobs/searches",
   admin: "/admin",
   superAdmin: "/super-admin",
 } as const;

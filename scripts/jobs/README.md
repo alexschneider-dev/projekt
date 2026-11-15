@@ -5,7 +5,7 @@ in PostgreSQL in `JobSearch`. Die Migration legt die erste Such-URL an.
 Vor jedem Durchlauf werden alle aktiven Einträge neu gelesen; Änderungen wirken
 beim nächsten Durchlauf ohne Container-Neubau oder Neustart. Eine leere aktive
 Suchliste ist zulässig und verursacht keine HTTP-Anfragen.
-Es gibt keine Verwaltungsoberfläche. Suchparameter bleiben erhalten, nur `page`
+Neue Such-URLs können auf der geschützten Stellenseite über das Formular hinzugefügt werden. Suchparameter bleiben erhalten, nur `page`
 wird gesetzt. Die Seitenzahl ist die aufgerundete Trefferzahl geteilt durch die
 Ergebnisse pro Seite. Fehlende Metadaten, falsche Seiten oder wiederholte
 Ergebnisse brechen den Durchlauf ab; maximal 1.000 Seiten pro Suche sind erlaubt.
@@ -23,7 +23,9 @@ npx prisma generate
 
 ## Such-URLs verwalten
 
-Eine weitere URL hinzufügen (vorhandene Einträge bleiben unverändert):
+Neue Such-URLs lassen sich nach der Anmeldung direkt auf der Seite „Stellen“
+hinzufügen. Die Eingabe wird im Browser und in der API mit demselben Schema
+geprüft. Vorhandene Einträge bleiben unverändert. Alternativ per Kommandozeile:
 
 ```bash
 npm run jobs:search:add -- 'https://www.stepstone.de/jobs/typescript'
@@ -88,7 +90,9 @@ Einträge bleiben unverändert. Bereits gespeicherte Seiten bleiben bei einem
 späteren Fehler erhalten; ein erneuter Durchlauf ergänzt fehlende Links.
 
 Nach Anmeldung ist die Liste über „Stellen“ im internen Bereich erreichbar.
-Sie zeigt nur Links, absteigend nach Fundzeitpunkt und ID. PostgreSQL selbst
+Die TanStack-Tabelle zeigt Stellenlinks absteigend nach Fundzeitpunkt und ID,
+mit höchstens 100 Einträgen pro Seite. Die Datenbank liefert nur die jeweilige
+Seite; `?page=2` hält die Auswahl beim Neuladen und in der Browserhistorie fest. PostgreSQL selbst
 hat keine feste Zeilenreihenfolge; die Abfrage sorgt für neue Funde oben.
 Die Liste aktualisiert sich beim erneuten Laden der Seite.
 

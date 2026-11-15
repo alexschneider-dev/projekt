@@ -10,6 +10,7 @@ import {
 import BodyWrapper from "@/components/ui/page/body-wrapper";
 import { cn } from "@/lib/utils";
 import { BrowserTelemetry } from "@/components/observability/browser-telemetry";
+import { Toaster } from "@/components/ui/toaster";
 import { PwaSupport } from "@/components/pwa/pwa-support";
 import "./globals.css";
 
@@ -53,6 +54,7 @@ export default function RootLayout({
       <body className={cn(geistSans.variable, geistMono.variable, inter.variable)}>
         <BrowserTelemetry />
         <PwaSupport />
+        <Toaster />
         <BodyWrapper variant="document">{children}</BodyWrapper>
       </body>
     </html>

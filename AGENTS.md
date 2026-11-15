@@ -71,6 +71,25 @@ Anweisungen des Nutzers haben Vorrang.
 - Feldfehler am jeweiligen Eingabefeld anzeigen und barrierefrei verknüpfen.
 - Formularzustand und Absende-Status über React Hook Form verwalten.
 
+## Datenbank- und Antworttypen
+
+- Datenbankbezogene TypeScript-Typen soweit möglich aus den generierten
+  Prisma-Typen oder den tatsächlichen Prisma-Abfrageergebnissen ableiten.
+  Datenbankfelder und ihre Typen nicht manuell in parallelen Typdefinitionen
+  wiederholen.
+- API-Antworttypen möglichst aus den Rückgabewerten der zuständigen Funktionen
+  ableiten, etwa mit `Awaited<ReturnType<typeof listJobs>>`. Teiltypen daraus
+  über indizierte Zugriffe ableiten, etwa `JobsPageResult["items"][number]`.
+  Reine Typimporte verwenden, damit kein Servercode in Client-Bundles gelangt.
+- Zirkuläre Typableitungen vermeiden: Eine Funktion darf ihren Rückgabetyp
+  nicht aus einem Typ beziehen, der wiederum per `ReturnType` aus dieser
+  Funktion abgeleitet wird. Bei expliziten Rückgabetypen Datenbankanteile über
+  eine gemeinsam verwendete Prisma-Select-Definition und `Prisma.*GetPayload`
+  ableiten; zusätzliche Antwortmetadaten separat typisieren.
+- Eigene Typen nur für zusätzliche Informationen definieren, die sich nicht
+  sinnvoll aus Prisma oder vorhandenen Rückgabewerten ableiten lassen, etwa
+  das Aktionsergebnis `created`. Eingabetypen weiterhin aus Zod-Schemas ableiten.
+
 ## Abhängigkeiten und Sicherheitsprüfung
 
 - Die shadcn-Komponenten liegen als Quellcode im Projekt. Die `shadcn`-CLI nicht

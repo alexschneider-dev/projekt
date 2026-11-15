@@ -28,12 +28,6 @@ docker compose \
   --env-file "$ENV_FILE" \
   -f "$COMPOSE_FILE" \
   --profile dev \
-  up -d --build
-
-docker compose \
-  --env-file "$ENV_FILE" \
-  -f "$COMPOSE_FILE" \
-  --profile dev \
   ps
 
 echo "✅ Container gestartet; Next.js wird im Protokollfenster vorbereitet."
@@ -47,34 +41,3 @@ STATS_CMD="cd '$PROJECT_DIR' && docker stats --all --format 'table {{.Name}}\t{{
 export LOGS_CMD STATS_CMD
 TERM_MARKER="PROJEKT_MONITOR"
 export TERM_MARKER
-
-osascript <<EOF
-set projectDir to "$PROJECT_DIR"
-
-tell application "Visual Studio Code"
-  activate
-  open POSIX file projectDir
-end tell
-EOF
-
-
-osascript <<'EOF'
-set urlToOpen to "https://localhost/"
-
-tell application "Google Chrome"
-  if not (it is running) then
-    launch
-    delay 0.5
-  end if
-  activate
-
-  if (count of windows) = 0 then
-    make new window
-  end if
-
-  tell front window
-    -- Aktuellen Tab wiederverwenden.
-    set URL of active tab to urlToOpen
-  end tell
-end tell
-EOF
