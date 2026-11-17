@@ -27,7 +27,7 @@ der serverseitig geprüften Anmeldung. Ein separates Kundenmodell gibt es nicht.
   in der Stellenverwaltung ausschließlich die eigenen Daten.
 
 Der Importdienst verarbeitet aktive Benutzer und ihre Suchgruppen nacheinander.
-Manuelle Anforderungen gelten nur für den angemeldeten Benutzer. Der automatische 24-Stunden-Durchlauf berücksichtigt alle aktiven Benutzer.
+Manuelle Anforderungen gelten nur für den angemeldeten Benutzer. Automatische Suchen starten nur für aktive Benutzer mit gespeicherter täglicher Suchzeit (Europe/Berlin). Ohne Uhrzeit bleibt die Automatik aus, auch für SUPER_ADMIN.
 
 Details: [Stellenimport](scripts/jobs/README.md) und [Benutzerkonten](docs/auth.md).
 

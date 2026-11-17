@@ -70,7 +70,7 @@ Einmaliger Import:
 npm run jobs:import
 ```
 
-Fortlaufender Import mit einem Start alle 24 Stunden, solange dieser Prozess läuft:
+Fortlaufender Import zu den pro Benutzer gespeicherten täglichen Suchzeiten:
 
 ```bash
 npm run jobs:watch
@@ -86,14 +86,14 @@ Durchlauf dieses Benutzers. Der Dienst prüft den Auftrag jede Sekunde und brich
 auch laufende HTTP-Abrufe sowie Wartepausen ab. Bereits gespeicherte Stellen bleiben
 erhalten; die aktuelle Suchgruppe erhält einen unvollständigen Teilstand. Die
 Oberfläche bestätigt den Stopp nach ihrer nächsten Statusabfrage (alle fünf Sekunden).
-Der automatische 24-Stunden-Zeitplan bleibt aktiv; der Button deaktiviert keine Suchgruppen.
+Die gespeicherte tägliche Suchzeit bleibt aktiv; der Stopp-Button deaktiviert keine Suchgruppen.
 Dafür ist die Migration `20261115230000_import_stop` erforderlich.
 
 Ohne laufenden Importdienst bleibt der Auftrag vorgemerkt. Nach einem Neustart
-übernimmt der Importdienst auch einen zuvor unterbrochenen Durchlauf.
+übernimmt der Importdienst vorgemerkte Aufträge und fällige Termine. Ein bereits begonnener automatischer Lauf wird nicht erneut gestartet.
 Die neue Tabelle muss vor dem Update von Next.js und Importdienst migriert werden.
 
-Der erste Durchlauf startet sofort. Alle Anfragen laufen nacheinander mit
+Ohne gespeicherte Suchzeit oder manuellen Auftrag startet kein Durchlauf. Alle Anfragen laufen nacheinander mit
 5–10 Sekunden Abstand. Bei HTTP 429 und Serverfehlern folgen höchstens zwei
 Wiederholungen. `Retry-After` wird beachtet; ohne verwertbare Angabe wird
 zunehmend länger gewartet. HTTP 403 bricht den Durchlauf ab. Weiterleitungen
@@ -171,7 +171,7 @@ PostgreSQL-Sperre bleibt als zusätzliche Absicherung aktiv.
 
 Der bestehende Next.js-Workflow baut auch `projekt-jobs` mit derselben Version.
 Nach erfolgreicher Migration und Next.js-Bereitstellung wird der Importservice
-bereitgestellt. Sein erster Start beginnt sofort mit einem Import.
+bereitgestellt. Beim Start prüft er gespeicherte Termine und manuelle Aufträge.
 Der Laufzeit-Resolver übernimmt automatisch das aktuelle Datenbank-Secret und
 die Startscript-Config von Next.js, sofern kein eigener `jobs`-Eintrag existiert.
 Login- und Redis-Secrets werden nicht in den Importcontainer eingebunden.
@@ -224,7 +224,22 @@ Das CLI zum Hinzufügen einer Suche verlangt die Benutzer-ID:
 npm run jobs:search:add -- 'SUCH_URL' 'BENUTZER_ID'
 ```
 
-Der Importdienst startet beim Prozessstart einen Durchlauf. Weitere automatische
-Durchläufe beginnen im Abstand von 24 Stunden, gerechnet ab dem letzten geplanten
-Start. Manuelle Aufträge verschieben diesen Zeitplan nicht. Ein Neustart des
-Dienstes startet den Zeitplan neu.
+Auf „Dashboard“ legt jeder Benutzer seine tägliche Suchzeit fest. Sie gilt in
+Europe/Berlin einschließlich Sommer- und Winterzeit. Ohne Uhrzeit gibt es keinen
+automatischen Import – für USER und SUPER_ADMIN gleichermaßen. Leeren und Speichern
+deaktiviert die Automatik; ein laufender Import wird über „Suche stoppen“ beendet.
+Die Migration `20261117110000_user_import_schedule` lässt alle bisherigen Konten
+zunächst ohne Suchzeit. Next.js und Jobs erst nach der Migration bereitstellen.
+
+`nextScheduledAt` wird in PostgreSQL gespeichert. Der Dienst prüft alle fünf Sekunden
+auf fällige Termine und manuelle Aufträge. Ein Neustart setzt den Zeitplan nicht zurück.
+Nach Ausfall wird ein überfälliger Termin einmal nachgeholt, keine Serie verpasster Tage.
+Bei anderen laufenden Importen verschiebt sich der tatsächliche Start. Ein begonnener
+Termin wird auch bei Fehler oder Stopp erst am nächsten lokalen Kalendertag wiederholt.
+Manuelle Läufe verschieben zukünftige Termine nicht; ein gleichzeitig fälliger Termin
+wird mit dem manuellen Auftrag zusammengefasst. `jobs:import` verarbeitet einmal die
+aktuell fälligen Termine und manuellen Aufträge.
+
+Bei der Zeitumstellung wird eine fehlende Uhrzeit (etwa 02:30 Uhr) zur nächsten gültigen
+Minute ausgeführt (03:00 Uhr). Eine doppelt vorkommende Uhrzeit läuft nur einmal.
+Bei HTTP 403/429 pausiert der Dienst weiterhin 24 Stunden.

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { parseSearchPage } from "../scripts/jobs/parser.mjs";
-import { waitForNextImport } from "../scripts/jobs/schedule.mjs";
+import { nextScheduledRun } from "../scripts/jobs/schedule.mjs";
 import { jobErrorLog } from "../scripts/jobs/errors/log.mjs";
 import { JOB_ERRORS } from "../scripts/jobs/errors/index.mjs";
 import {
@@ -119,25 +119,17 @@ test("Vorhandene Links bleiben unverändert; nur neue Links einfügen", async ()
   });
 });
 
-test("Manuelle Aufträge beenden die Wartezeit innerhalb von fünf Sekunden", async () => {
-  let now = 0;
-  const database = {
-    jobImportState: { findFirst: async () => now >= 5000 ? { requested: true } : null },
-  };
-  await waitForNextImport(database, 0, async (delay) => { now += delay; }, () => now);
-  assert.equal(now, 5000);
+test("Suchzeit gilt in Berlin und startet nach Ablauf erst am nächsten Tag", () => {
+  assert.equal(nextScheduledRun("10:00", new Date("2026-11-17T08:00:00Z")).toISOString(), "2026-11-17T09:00:00.000Z");
+  assert.equal(nextScheduledRun("10:00", new Date("2026-11-17T09:00:00Z")).toISOString(), "2026-11-18T09:00:00.000Z");
+  assert.equal(nextScheduledRun("10:00", new Date("2026-07-17T07:00:00Z")).toISOString(), "2026-07-17T08:00:00.000Z");
 });
 
-test("Ohne Auftrag startet der nächste geplante Import erst nach 24 Stunden", async () => {
-  let now = 0;
-  const database = {
-    jobImportState: { findFirst: async () => null },
-  };
-  await waitForNextImport(database, 0, async (delay) => {
-    assert.ok(delay <= 5000);
-    now += delay;
-  }, () => now);
-  assert.equal(now, 86_400_000);
+test("Sommerzeit überspringt fehlende Uhrzeit und Winterzeit führt nicht doppelt aus", () => {
+  assert.equal(nextScheduledRun("02:30", new Date("2026-03-28T12:00:00Z")).toISOString(), "2026-03-29T01:00:00.000Z");
+  assert.equal(nextScheduledRun("02:30", new Date("2026-10-24T12:00:00Z")).toISOString(), "2026-10-25T00:30:00.000Z");
+  assert.equal(nextScheduledRun("02:30", new Date("2026-10-25T00:30:00Z"), true).toISOString(), "2026-10-26T01:30:00.000Z");
+  assert.throws(() => nextScheduledRun("25:00"), { message: JOB_ERRORS.schedule });
 });
 
 test("Alle drei Seiten nacheinander importieren und Sperre freigeben", async () => {

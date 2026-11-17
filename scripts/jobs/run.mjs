@@ -7,7 +7,6 @@ import { jobErrorLog } from "./errors/log.mjs";
 import { importJobs } from "./import.mjs";
 import {
   IMPORT_INTERVAL_MS,
-  waitForNextImport,
   loadImportUsers,
 } from "./schedule.mjs";
 
@@ -20,11 +19,8 @@ async function run() {
 
   const database = new PrismaClient();
   try {
-    let scheduledAt = 0;
     do {
-      const scheduled = Date.now() >= scheduledAt + IMPORT_INTERVAL_MS;
-      if (scheduled) scheduledAt = Date.now();
-      const users = await loadImportUsers(database, scheduled);
+      const users = await loadImportUsers(database);
       let blocked = false;
       for (const user of users) {
         const lockClient = new pg.Client({
@@ -41,7 +37,7 @@ async function run() {
         try {
           await lockClient.connect();
           phase = "Import ausführen";
-          const result = await importJobs(database, lockClient, undefined, user.id);
+          const result = await importJobs(database, lockClient, undefined, user.id, user.scheduledAt);
           console.log(result.skipped
             ? "Stellenimport übersprungen: Ein Durchlauf läuft bereits."
             : result.stopped
@@ -65,11 +61,10 @@ async function run() {
       if (process.argv.includes("--once")) break;
       if (blocked) {
         // Eine Sperre gilt für den Dienst, nicht nur für den aktuellen Benutzer.
-        await sleep(Math.max(60_000, scheduledAt + IMPORT_INTERVAL_MS - Date.now()));
+        await sleep(IMPORT_INTERVAL_MS);
       } else {
         // Keine schnelle Schleife bei belegter Sperre oder lang laufenden Importen.
-        await sleep(Date.now() >= scheduledAt + IMPORT_INTERVAL_MS ? 60_000 : 5000);
-        await waitForNextImport(database, scheduledAt);
+        await sleep(5000);
       }
     } while (true);
   } finally {

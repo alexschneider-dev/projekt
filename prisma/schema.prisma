@@ -85,6 +85,8 @@ model JobImportState {
   id            Int       @id @default(autoincrement())
   userId        String    @unique
   user          User      @relation(fields: [userId], references: [id])
+  scheduleTime  String?
+  nextScheduledAt DateTime?
   requested     Boolean   @default(false)
   running       Boolean   @default(false)
   stopRequested Boolean   @default(false)

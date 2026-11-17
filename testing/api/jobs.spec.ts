@@ -8,6 +8,10 @@ import {
   jobSearchApiHref,
 } from "@/lib/constants/routes";
 import { HTTP_STATUS } from "@/lib/http/status";
+import {
+  USER,
+  SUPER_ADMIN,
+} from "@/lib/auth/roles";
 import { randomUUID } from "node:crypto";
 
 
@@ -293,3 +297,45 @@ test("Suchgruppen lassen sich ohne Verlust der Abrufdaten deaktivieren und wiede
     expect((await database.jobSearch.findUniqueOrThrow({ where: { id: search.id } })).active).toBe(active);
   }
 });
+
+for (const role of [
+  USER,
+  SUPER_ADMIN,
+]) {
+  test(`Suchzeit für ${role}: standardmäßig aus, validiert und benutzerbezogen`, async ({
+    request,
+    database,
+    createAccount,
+  }) => {
+    const account = await createAccount({ role });
+    const other = await createAccount();
+    expect((await request.patch(ROUTES.jobsImportApi, { data: { scheduleTime: "10:00" } })).status())
+      .toBe(HTTP_STATUS.UNAUTHORIZED);
+    await login(request, account.email);
+    expect(await (await request.get(ROUTES.jobsImportApi)).json()).toMatchObject({
+      scheduleTime: null,
+      nextScheduledAt: null,
+    });
+    expect((await request.patch(ROUTES.jobsImportApi, { data: { scheduleTime: "25:00" } })).status())
+      .toBe(HTTP_STATUS.BAD_REQUEST);
+    expect((await request.patch(ROUTES.jobsImportApi, { data: {
+      scheduleTime: "10:00",
+      userId: other.id,
+    } })).status()).toBe(HTTP_STATUS.BAD_REQUEST);
+    const saved = await request.patch(ROUTES.jobsImportApi, { data: { scheduleTime: "10:00" } });
+    expect(saved.status()).toBe(HTTP_STATUS.OK);
+    const state = await saved.json();
+    expect(state.scheduleTime).toBe("10:00");
+    expect(new Date(state.nextScheduledAt).getTime()).toBeGreaterThan(Date.now());
+    expect(await database.jobImportState.findUnique({ where: { userId: other.id } })).toMatchObject({
+      scheduleTime: null,
+      nextScheduledAt: null,
+    });
+    const disabled = await request.patch(ROUTES.jobsImportApi, { data: { scheduleTime: null } });
+    expect(await disabled.json()).toMatchObject({
+      scheduleTime: null,
+      nextScheduledAt: null,
+    });
+    expect((await request.post(ROUTES.jobsImportApi)).status()).toBe(HTTP_STATUS.OK);
+  });
+}

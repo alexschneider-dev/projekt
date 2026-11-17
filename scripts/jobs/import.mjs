@@ -10,6 +10,7 @@ import {
   withUserLock,
   remainingJobCapacity
 } from "./limits.mjs";
+import { claimScheduledImport } from "./schedule.mjs";
 import { parseSearchPage } from "./parser.mjs";
 
 
@@ -118,12 +119,13 @@ async function saveSearchProgress(database, search, userId, progress) {
   });
 }
 
-export async function importJobs(database, lockClient, loadPage = fetchPage, userId) {
+export async function importJobs(database, lockClient, loadPage = fetchPage, userId, scheduledAt) {
   if (!userId) throw new Error(JOB_ERRORS.user);
 
   const lock = await lockClient.query("SELECT pg_try_advisory_lock($1) AS locked", [LOCK_ID]);
   if (!lock.rows[0].locked) return { skipped: true };
 
+  let started = false;
   let inserted = 0;
   let succeeded = false;
   let stopped = false;
@@ -134,6 +136,8 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
     userId,
   };
   try {
+    if (scheduledAt && !await claimScheduledImport(database, userId, scheduledAt)) return { skipped: true };
+    started = true;
     await database.jobImportState.upsert({
       create: {
         userId,
@@ -280,7 +284,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
   } finally {
     await control?.close();
     try {
-      await database.jobImportState.update({
+      if (started) await database.jobImportState.update({
         where: { userId },
         data: {
           running: false,

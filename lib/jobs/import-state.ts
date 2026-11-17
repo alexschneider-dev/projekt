@@ -1,3 +1,4 @@
+import { nextScheduledRun } from "@/scripts/jobs/schedule.mjs";
 import { prisma } from "@/lib/prisma";
 
 
@@ -9,6 +10,7 @@ export async function getJobImportState(userId: string) {
   });
   return {
     ...state,
+    nextScheduledAt: state.nextScheduledAt?.toISOString() ?? null,
     requestedAt: state.requestedAt?.toISOString() ?? null,
     startedAt: state.startedAt?.toISOString() ?? null,
     finishedAt: state.finishedAt?.toISOString() ?? null,
@@ -43,4 +45,20 @@ export async function stopJobImport(userId: string) {
     data: { stopRequested: true },
   });
   return { stopRequested: result.count > 0 };
+}
+
+export async function updateJobSchedule(userId: string, scheduleTime: string | null) {
+  const data = {
+    scheduleTime,
+    nextScheduledAt: scheduleTime ? nextScheduledRun(scheduleTime) : null,
+  };
+  await prisma.jobImportState.upsert({
+    where: { userId },
+    create: {
+      userId,
+      ...data,
+    },
+    update: data,
+  });
+  return getJobImportState(userId);
 }

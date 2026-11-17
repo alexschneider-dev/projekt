@@ -1,4 +1,5 @@
 export const JOB_ERRORS = {
+  schedule: "Die Uhrzeit für die automatische Suche ist ungültig.",
   searchLimit: "Dein Konto erlaubt höchstens eine Suchgruppe. Du kannst die vorhandene Suche bearbeiten.",
   configuration: "Die Such-URL muss eine gültige HTTPS-Suchseite der unterstützten Jobbörse sein.",
   searchArgument: "Verwendung: npm run jobs:search:add -- SUCH_URL BENUTZER_ID",

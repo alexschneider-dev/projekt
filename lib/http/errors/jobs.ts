@@ -3,6 +3,16 @@ import type { ApiErrorDefinition } from "./types";
 
 
 export const ERROR_JOBS = {
+  INVALID_SCHEDULE: {
+    status: HTTP_STATUS.BAD_REQUEST,
+    code: "INVALID_JOB_SCHEDULE",
+    message: "Bitte gib eine gültige Uhrzeit im Format HH:MM ein.",
+  },
+  SCHEDULE_FAILED: {
+    status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+    code: "JOB_SCHEDULE_FAILED",
+    message: "Die Uhrzeit konnte nicht gespeichert werden.",
+  },
   SEARCH_LIMIT: {
     status: HTTP_STATUS.CONFLICT,
     code: "SEARCH_LIMIT",

@@ -235,3 +235,10 @@ Anweisungen des Nutzers haben Vorrang.
   diese Trennung durchsetzen.
 - Für Next.js `start-first` beibehalten; keine Umstellung auf `stop-first` ohne
   ausdrücklichen Auftrag des Nutzers.
+
+## Automatische Stellensuche
+
+- Eine tägliche Suchzeit pro Benutzer in Europe/Berlin speichern. Ohne gespeicherte
+  Uhrzeit keine automatische Suche, auch nicht für SUPER_ADMIN. Manuelle Aufträge
+  bleiben möglich. Termine persistent speichern; Neustarts dürfen keinen zusätzlichen
+  automatischen Lauf auslösen. Sommer- und Winterzeit berücksichtigen.

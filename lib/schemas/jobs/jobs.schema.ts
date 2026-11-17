@@ -58,3 +58,10 @@ export type JobSearchValues = z.output<typeof jobSearchSchema>;
 export type JobsQuery = z.output<typeof jobsQuerySchema>;
 
 export type UpdateJobSearchValues = z.output<typeof updateJobSearchSchema>;
+
+export const jobScheduleSchema = z.object({
+  scheduleTime: z.string({ error: ERROR_JOBS.INVALID_SCHEDULE.message })
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, ERROR_JOBS.INVALID_SCHEDULE.message).nullable(),
+}).strict();
+
+export type JobScheduleValues = z.infer<typeof jobScheduleSchema>;

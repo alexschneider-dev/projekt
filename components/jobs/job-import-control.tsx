@@ -49,7 +49,7 @@ export function JobImportControl() {
                 ? `Suche gestoppt. ${state.inserted} neue Stellen wurden bis dahin gespeichert.`
                 : state?.finishedAt && state.succeeded
                   ? `Letzter Durchlauf abgeschlossen: ${state.inserted} neue Stellen.`
-                  : "Zusätzlich zum automatischen Import alle 24 Stunden kannst du hier einen Durchlauf anfordern."}
+                  : "Hier kannst du unabhängig von deiner täglichen Suchzeit einen Durchlauf anfordern."}
       </Text>
       {!busy && !state?.stopped && state?.succeeded === false && <FieldError>{ERROR_JOBS.IMPORT_FAILED.message}</FieldError>}
       {query.isError && <FieldError>{ERROR_JOBS.IMPORT_STATUS_FAILED.message}</FieldError>}

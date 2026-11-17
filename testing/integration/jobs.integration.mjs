@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import pg from "pg";
 import { PrismaClient } from "@prisma/client";
-import { loadImportUsers } from "../../scripts/jobs/schedule.mjs";
+import {
+  loadImportUsers,
+  claimScheduledImport,
+} from "../../scripts/jobs/schedule.mjs";
 import { importJobs } from "../../scripts/jobs/import.mjs";
 import {
   addSearchUrl,
@@ -232,10 +235,25 @@ test("PostgreSQL: Suchliste, Pagination, Duplikate, Reihenfolge und Importsperre
         where: { userId },
         data: { requested: true }
       });
-      assert.deepEqual(await loadImportUsers(database, false), [{ id: userId }]);
-      const scheduledUsers = await loadImportUsers(database, true);
-      assert.ok(scheduledUsers.some((user) => user.id === userId));
-      assert.ok(scheduledUsers.some((user) => user.id === other.id));
+      assert.deepEqual((await loadImportUsers(database)).map(user => user.id), [userId]);
+      await database.jobImportState.update({
+        where: { userId },
+        data: { requested: false },
+      });
+      assert.deepEqual(await loadImportUsers(database), []);
+      const due = new Date("2026-11-17T09:00:00Z");
+      await database.jobImportState.update({
+        where: { userId },
+        data: {
+          scheduleTime: "10:00",
+          nextScheduledAt: due,
+        },
+      });
+      assert.deepEqual(await loadImportUsers(database, new Date("2026-11-17T08:59:00Z")), []);
+      assert.deepEqual((await loadImportUsers(database, due)).map(user => user.id), [userId]);
+      assert.equal(await claimScheduledImport(database, userId, due, due), true);
+      assert.equal(await claimScheduledImport(database, userId, due, due), false);
+      assert.deepEqual(await loadImportUsers(database, due), []);
       throw rollback;
     }, { timeout: 30_000 });
   } catch (error) {

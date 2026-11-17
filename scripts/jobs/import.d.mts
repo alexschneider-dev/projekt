@@ -18,5 +18,6 @@ export function importJobs(
   database: Database,
   lockClient: LockClient,
   loadPage: ((url: URL, wait?: unknown, signal?: AbortSignal) => Promise<string>) | undefined,
-  userId: string
+  userId: string,
+  scheduledAt?: Date
 ): Promise<ImportResult>;

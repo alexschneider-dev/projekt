@@ -11,7 +11,10 @@ import { Text } from "@/components/ui/text";
 import { AppLink } from "@/components/ui/app-link";
 import { Navigation } from "@/components/ui/navigation";
 import { Button } from "@/components/ui/button";
-import { FieldError } from "@/components/ui/field";
+import {
+  FieldError,
+  FieldGroup
+} from "@/components/ui/field";
 import { ROUTES } from "@/lib/constants/routes";
 import { fetchJson } from "@/lib/http/fetch-json";
 import { useAppMutation } from "@/lib/query/use-app-mutation";
@@ -37,19 +40,25 @@ function VerifyEmailContent() {
     <PageWrapper variant="auth">
       <SectionWrapper variant="card">
         <h1>E-Mail-Adresse bestätigen</h1>
-        {mutation.isSuccess ? <Text role="status">
+        {mutation.isSuccess ? <Text
+          variant="description"
+          role="status"
+        >
           Dein Konto wurde bestätigt. Du kannst dich jetzt anmelden.
         </Text> : <>
-          <Text>
+          <Text variant="intro">
             Bestätige die Registrierung mit dem folgenden Button.
           </Text>
-          {mutation.isError && <FieldError>{mutation.error.message || ERROR_REGISTRATION.FAILED.message}</FieldError>}
-          <Button
-            disabled={mutation.isPending}
-            onClick={() => mutation.mutate(undefined)}
-          >
-            {mutation.isPending ? "Wird bestätigt …" : "E-Mail bestätigen"}
-          </Button>
+          <FieldGroup>
+            {mutation.isError && <FieldError>{mutation.error.message || ERROR_REGISTRATION.FAILED.message}</FieldError>}
+            <Button
+              fullWidth
+              disabled={mutation.isPending}
+              onClick={() => mutation.mutate(undefined)}
+            >
+              {mutation.isPending ? "Wird bestätigt …" : "E-Mail bestätigen"}
+            </Button>
+          </FieldGroup>
         </>}
         <Navigation
           variant="auth"
