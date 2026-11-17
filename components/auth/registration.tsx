@@ -6,6 +6,7 @@ import PageWrapper from "@/components/ui/page/page-wrapper";
 import SectionWrapper from "@/components/ui/page/section-wrapper";
 import { Text } from "@/components/ui/text";
 import { AppLink } from "@/components/ui/app-link";
+import { Navigation } from "@/components/ui/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -111,15 +112,20 @@ function RegistrationContent() {
           key={String(resend)}
           resend={resend}
         />
-        <Button
-          variant="outline"
-          onClick={() => setResend(!resend)}
+        <Navigation
+          variant="auth"
+          aria-label="Registrierung und Anmeldung"
         >
-          {resend ? "Zur Registrierung" : "Keine Bestätigungs-E-Mail erhalten?"}
-        </Button>
-        <AppLink href={ROUTES.login}>
-          Zur Anmeldung
-        </AppLink>
+          <Button
+            variant="outline"
+            onClick={() => setResend(!resend)}
+          >
+            {resend ? "Zur Registrierung" : "Keine Bestätigungs-E-Mail erhalten?"}
+          </Button>
+          <AppLink href={ROUTES.login}>
+            Zur Anmeldung
+          </AppLink>
+        </Navigation>
       </SectionWrapper>
     </PageWrapper>
   );

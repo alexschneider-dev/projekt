@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 const variants = {
   centered: "justify-center gap-6",
   dashboard: "mb-10 gap-5 text-sm",
+  auth: "mt-6 flex-col items-stretch gap-4 text-center text-sm",
 };
 
 type NavigationProps = ComponentProps<"nav"> & {

@@ -9,6 +9,7 @@ import PageWrapper from "@/components/ui/page/page-wrapper";
 import SectionWrapper from "@/components/ui/page/section-wrapper";
 import { Text } from "@/components/ui/text";
 import { AppLink } from "@/components/ui/app-link";
+import { Navigation } from "@/components/ui/navigation";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { ROUTES } from "@/lib/constants/routes";
@@ -49,13 +50,20 @@ function VerifyEmailContent() {
           >
             {mutation.isPending ? "Wird bestätigt …" : "E-Mail bestätigen"}
           </Button>
-          <AppLink href={ROUTES.register}>
-            Neuen Bestätigungslink anfordern
-          </AppLink>
         </>}
-        <AppLink href={ROUTES.login}>
-          Zur Anmeldung
-        </AppLink>
+        <Navigation
+          variant="auth"
+          aria-label="Registrierung und Anmeldung"
+        >
+          {!mutation.isSuccess && (
+            <AppLink href={ROUTES.register}>
+              Neuen Bestätigungslink anfordern
+            </AppLink>
+          )}
+          <AppLink href={ROUTES.login}>
+            Zur Anmeldung
+          </AppLink>
+        </Navigation>
       </SectionWrapper>
     </PageWrapper>
   );
