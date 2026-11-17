@@ -177,6 +177,7 @@ for (const role of [
     }
     await page.goto(ROUTES.dashboard);
     await page.getByRole("button", { name: "Abmelden" }).click();
+    await expect(page).toHaveURL(ROUTES.login);
     await page.goto(ROUTES.home);
     await expect(page.getByRole("link", {
       name: "Anmelden",
