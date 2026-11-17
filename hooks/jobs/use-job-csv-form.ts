@@ -9,14 +9,14 @@ import {
 import { useAppMutation } from "@/lib/query/use-app-mutation";
 import { fetchJson } from "@/lib/http/fetch-json";
 import { ROUTES } from "@/lib/constants/routes";
-import type { MarkJobsCsvResult } from "@/lib/types/jobs";
+import type { ApplyJobsCsvResult } from "@/lib/types/jobs";
 import { ApiError } from "@/lib/http/api-error";
 import { ERROR_API } from "@/lib/http/errors";
 
 
 export function useJobCsvForm() {
   const form = useForm<JobCsvInput>({ resolver: zodResolver(jobCsvSchema) });
-  const mutation = useAppMutation<MarkJobsCsvResult, JobCsvInput>({
+  const mutation = useAppMutation<ApplyJobsCsvResult, JobCsvInput>({
     mutationFn: ({ file }) => {
       const body = new FormData();
       body.append("file", file);

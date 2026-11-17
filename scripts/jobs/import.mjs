@@ -6,6 +6,10 @@ import {
 import { jobErrorLog } from "./errors/log.mjs";
 import { loadSearches } from "./searches.mjs";
 import { createImportControl } from "./control.mjs";
+import {
+  withUserLock,
+  remainingJobCapacity
+} from "./limits.mjs";
 import { parseSearchPage } from "./parser.mjs";
 
 
@@ -73,25 +77,29 @@ export async function saveNewUrls(database, urls, userId) {
   if (!userId) throw new Error(JOB_ERRORS.user);
   if (urls.length === 0) return 0;
 
-  const existing = await database.jobListing.findMany({
-    where: {
-      userId,
-      url: { in: urls },
-    },
-    select: { url: true },
-  });
-  const known = new Set(existing.map((row) => row.url));
-  const fresh = [...new Set(urls)].filter((url) => !known.has(url));
-  if (fresh.length === 0) return 0;
+  return withUserLock(database, userId, async (transaction, limits) => {
+    const existing = await transaction.jobListing.findMany({
+      where: {
+        userId,
+        url: { in: urls }
+      },
+      select: { url: true },
+    });
+    const known = new Set(existing.map((row) => row.url));
+    const count = Number.isFinite(limits.jobs) ? await transaction.jobListing.count({ where: { userId } }) : 0;
+    const available = Math.max(0, limits.jobs - count);
+    const fresh = [...new Set(urls)].filter((url) => !known.has(url)).slice(0, available);
+    if (fresh.length === 0) return 0;
 
-  const result = await database.jobListing.createMany({
-    data: fresh.map((url) => ({
-      userId,
-      url,
-    })),
-    skipDuplicates: true,
+    const result = await transaction.jobListing.createMany({
+      data: fresh.map((url) => ({
+        userId,
+        url
+      })),
+      skipDuplicates: true,
+    });
+    return result.count;
   });
-  return result.count;
 }
 
 async function saveSearchProgress(database, search, userId, progress) {
@@ -150,10 +158,17 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
     };
     const searches = await loadSearches(database, userId);
     searchesLoop: for (const search of searches) {
+      if (await remainingJobCapacity(database, userId) === 0) {
+        console.log(JSON.stringify({
+          message: "Stellenlimit erreicht. Kein weiterer Abruf erforderlich.",
+          userId
+        }));
+        break;
+      }
       console.log(JSON.stringify({
         message: "Suchgruppe gestartet.",
         userId,
-        searchId: search.id,
+        searchTitle: search.title,
       }));
       let totalPages = null;
       let total = null;
@@ -165,7 +180,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
         context = {
           phase: "Suchseite abrufen",
           userId,
-          searchId: search.id,
+          searchTitle: search.title,
           page,
         };
         let html;
@@ -213,6 +228,7 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
         inserted += await saveNewUrls(database, result.urls, userId);
         result.urls.forEach((entry) => seen.add(entry));
         scannedPages += 1;
+        if (await remainingJobCapacity(database, userId) === 0) break;
       }
 
       context.phase = "Abrufstand speichern";
@@ -221,12 +237,12 @@ export async function importJobs(database, lockClient, loadPage = fetchPage, use
         lastTotalPages: totalPages,
         lastScannedPages: scannedPages,
         lastScannedCount: seen.size,
-        lastScanComplete: true,
+        lastScanComplete: scannedPages === totalPages,
       });
       console.log(JSON.stringify({
         message: "Suchgruppe abgeschlossen.",
         userId,
-        searchId: search.id,
+        searchTitle: search.title,
         totalPages,
         total,
       }));

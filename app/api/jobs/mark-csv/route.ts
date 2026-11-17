@@ -5,7 +5,7 @@ import {
 } from "@/lib/http";
 import { checkApiRequest } from "@/lib/http/check-api-request";
 import { jobCsvSchema } from "@/lib/schemas/jobs/csv.schema";
-import { markJobsFromCsv } from "@/lib/jobs/mark-csv";
+import { applyJobsFromCsv } from "@/lib/jobs/apply-csv";
 
 
 export const POST = apiHandler(async (request) => {
@@ -15,5 +15,5 @@ export const POST = apiHandler(async (request) => {
   const body = await checkApiRequest(request, jobCsvSchema, true);
   if (!body.ok) return body.response;
 
-  return successResponse(await markJobsFromCsv(apiGate.user.id, await body.data.file.text()));
+  return successResponse(await applyJobsFromCsv(apiGate.user.id, await body.data.file.text()));
 });

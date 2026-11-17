@@ -163,12 +163,19 @@ Anweisungen des Nutzers haben Vorrang.
   `SUPER_ADMIN` aus `lib/auth/roles.ts` verwenden.
   Rollen externer Dienste separat zentral definieren und importieren, etwa
   `GRAFANA_ROLES` aus `lib/observability/roles.ts`.
-- Kein separates Kundenmodell: Stellen, Suchgruppen, Markierungen und Importstatus
+- Kein separates Kundenmodell: Stellen, Suchgruppen, Stellenstatus und Importstatus
   gehören direkt zu einem Benutzer (`userId`).
-- Stellen, Suchgruppen, Markierungen, CSV-Abgleiche und Importstatus immer auf die
+- Stellen, Suchgruppen, Stellenstatus, CSV-Abgleiche und Importstatus immer auf die
   Benutzer-ID aus der serverseitig geprüften Session begrenzen. Eine vom Client
   gesendete Benutzer-ID darf diese Zuordnung nicht bestimmen. Auch `SUPER_ADMIN`
   sieht in der Stellenverwaltung nur die eigenen Daten.
+- Öffentliche Registrierung über Resend mit E-Mail-Bestätigung; neue Konten erhalten
+  ausschließlich `USER`. Tokens nur gehasht und befristet speichern. Rate Limits
+  serverseitig und instanzübergreifend in PostgreSQL durchsetzen.
+- `USER` darf höchstens eine Suchgruppe und 100 Stellen insgesamt speichern.
+  Deaktivierte Gruppen und Stellen mit jedem Status zählen mit. API, CLI und Import
+  verwenden gemeinsame, gegen parallele Schreibzugriffe abgesicherte Prüfungen.
+  `SUPER_ADMIN` ist von diesen Kontingenten ausgenommen.
 - `USER` darf alle Benutzerfunktionen verwenden. Grafana und Observability bleiben
   ausschließlich `SUPER_ADMIN` vorbehalten.
 - Zugriffsrechte serverseitig prüfen; ausgeblendete UI ersetzt keine Autorisierung.
@@ -179,7 +186,10 @@ Anweisungen des Nutzers haben Vorrang.
   Bei verweigertem Zugriff `redirectAfterAccessDenied(apiGate.response)` aus
   `lib/auth/access.ts` aufrufen: ohne Anmeldung zur Login-Seite, bei fehlenden
   Rechten zur Homepage. Session- und Rollenprüfungen nicht erneut implementieren.
-- Die Homepage bleibt öffentlich und enthält einen Link zur Login-Seite.
+- Die Homepage bleibt öffentlich. Gäste sehen Anmeldung und Registrierung,
+  angemeldete Benutzer ausschließlich den Link zum internen Bereich.
+- Angemeldete Benutzer beim direkten Aufruf von Login und Registrierung
+  serverseitig zur Homepage weiterleiten.
 - Keine automatische Weiterleitung zum Dashboard. Nach erfolgreichem Login zur
   Homepage navigieren; der interne Bereich bleibt über einen Link erreichbar.
 

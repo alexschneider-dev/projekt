@@ -10,6 +10,9 @@ export const TEST_ENV = {
   NEXTAUTH_URL: TEST_BASE_URL,
   NEXTAUTH_SECRET: "ausschliesslich-lokales-testgeheimnis-keine-produktionsdaten",
   OBSERVABILITY_ENABLED: "false",
+  RESEND_API_KEY: "re_nur-fuer-lokale-tests",
+  MAIL_FROM: "Projekt <noreply@example.test>",
+  TRUST_PROXY: "false",
   NEXT_TELEMETRY_DISABLED: "1",
   NEXT_TEST_BUILD: "true",
 };

@@ -27,6 +27,15 @@ model User {
   importState    JobImportState?
 }
 
+model PendingRegistration {
+  email        String   @id
+  passwordHash String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+
+  @@index([expiresAt])
+}
+
 model LoginAttempt {
   key       String   @id
   attempts  Int
@@ -35,13 +44,20 @@ model LoginAttempt {
   @@index([expiresAt])
 }
 
+enum JobStatus {
+  PENDING
+  BEWORBEN
+  NICHT_PASSEND
+  AUSGELAUFEN
+}
+
 model JobListing {
   userId     String
   user       User     @relation(fields: [userId], references: [id])
   id         Int      @id @default(autoincrement())
   url        String
   createdAt  DateTime @default(now())
-  isMarkiert Boolean  @default(false)
+  status     JobStatus @default(PENDING)
 
   @@unique([userId, url])
   @@index([userId, createdAt, id])

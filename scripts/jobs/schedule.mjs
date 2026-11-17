@@ -1,8 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
 
 
+export const IMPORT_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
 export async function waitForNextImport(database, started, wait = sleep, now = Date.now) {
-  const nextRun = started + 3_600_000;
+  const nextRun = started + IMPORT_INTERVAL_MS;
   while (now() < nextRun) {
     const state = await database.jobImportState.findFirst({
       where: {

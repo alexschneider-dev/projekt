@@ -18,7 +18,12 @@ export function JobSearchesContent() {
     <SectionWrapper>
       <h1>Such-URLs</h1>
       <Text variant="intro">
+
         Klicke auf einen Titel, um die Suche zu verwalten. Der letzte Abruf zeigt die erfassten Seiten und Treffer, auch bei einem unvollständigen Import.
+
+      </Text>
+      <Text variant="hint">
+        Reguläre Konten können eine Suchgruppe und höchstens 100 Stellen speichern. Stellen mit jedem Status zählen mit. Ist das Limit erreicht, pausiert der Abruf neuer Stellen.
       </Text>
       <div className="space-y-8">
         <JobImportControl />

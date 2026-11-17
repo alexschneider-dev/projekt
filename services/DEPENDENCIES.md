@@ -26,3 +26,9 @@ E-Mail-Benachrichtigungen zu fehlgeschlagenen Workflow-Läufen erfolgen über Gi
 Geplante Läufe starten erst, wenn der Workflow auf dem Default-Branch liegt und Actions aktiviert ist. Nach dem Push den Audit-Workflow einmal manuell starten und die Benachrichtigungseinstellungen prüfen. Die Repository-Dateien allein aktivieren keine persönlichen E-Mail-Einstellungen.
 
 GitHub-Dokumentation: [Benachrichtigungen für Workflow-Läufe](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs).
+
+## Bestätigungs-E-Mails
+
+Registrierungs-E-Mails werden direkt per HTTPS an Resend gesendet. Dafür ist kein
+zusätzliches SMTP-Paket erforderlich. `RESEND_API_KEY` wird ausschließlich
+serverseitig als Docker-Secret eingebunden.

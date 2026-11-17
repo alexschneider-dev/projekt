@@ -8,7 +8,7 @@ import {
 import { AppLink } from "@/components/ui/app-link";
 import { DataTable } from "@/components/ui/table/data-table";
 import { TablePagination } from "@/components/ui/table/table-pagination";
-import { MarkJobButton } from "./mark-job-button";
+import { JobStatusSelect } from "./job-status-select";
 import type {
   JobLink,
   JobsPageResult,
@@ -31,9 +31,9 @@ const columns: ColumnDef<JobLink>[] = [
     ),
   },
   {
-    accessorKey: "isMarkiert",
-    header: "Markierung",
-    cell: ({ row }) => <MarkJobButton job={row.original} />,
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => <JobStatusSelect job={row.original} />,
   },
 ];
 

@@ -59,14 +59,8 @@ test("Stellen sind geschützt und neue Links stehen zuerst", async ({
     await expect(links.nth(0)).toHaveAttribute("href", newer);
     await expect(links.nth(1)).toHaveAttribute("href", older);
     const row = page.getByRole("row").filter({ has: page.locator(`a[href="${newer}"]`) });
-    await row.getByRole("button", {
-      name: "Markieren",
-      exact: true
-    }).click();
-    await expect(row.getByRole("button", {
-      name: "Markierung aufheben",
-      exact: true
-    })).toBeEnabled();
+    await row.getByRole("combobox", { name: "Stellenstatus" }).selectOption("BEWORBEN");
+    await expect(row.getByRole("combobox", { name: "Stellenstatus" })).toHaveValue("BEWORBEN");
     expect((await database.jobListing.findUniqueOrThrow({
       where: {
         userId_url: {
@@ -74,41 +68,32 @@ test("Stellen sind geschützt und neue Links stehen zuerst", async ({
           url: newer
         }
       }
-    })).isMarkiert).toBe(true);
+    })).status).toBe("BEWORBEN");
     await page.reload();
-    await expect(row.getByRole("button", {
-      name: "Markierung aufheben",
+    await expect(row.getByRole("combobox", { name: "Stellenstatus" })).toHaveValue("BEWORBEN");
+    const filter = page.getByRole("combobox", {
+      name: "Status",
       exact: true
-    })).toBeEnabled();
-    const filter = page.getByRole("combobox", { name: "Markierung" });
-    await filter.selectOption("false");
-    await expect(page).toHaveURL(/isMarkiert=false/);
+    });
+    await filter.selectOption("PENDING");
+    await expect(page).toHaveURL(/status=PENDING/);
     await expect(row).toHaveCount(0);
-    await filter.selectOption("true");
-    await expect(page).toHaveURL(/isMarkiert=true/);
+    await filter.selectOption("BEWORBEN");
+    await expect(page).toHaveURL(/status=BEWORBEN/);
     await expect(row).toBeVisible();
     await page.reload();
-    await expect(filter).toHaveValue("true");
+    await expect(filter).toHaveValue("BEWORBEN");
     await expect(row).toBeVisible();
     await page.goBack();
-    await expect(filter).toHaveValue("false");
+    await expect(filter).toHaveValue("PENDING");
     await expect(row).toHaveCount(0);
     await filter.selectOption("all");
     await expect(page).toHaveURL(ROUTES.jobs);
     await expect(row).toBeVisible();
-    await row.getByRole("button", {
-      name: "Markierung aufheben",
-      exact: true
-    }).click();
-    await expect(row.getByRole("button", {
-      name: "Markieren",
-      exact: true
-    })).toBeEnabled();
+    await row.getByRole("combobox", { name: "Stellenstatus" }).selectOption("PENDING");
+    await expect(row.getByRole("combobox", { name: "Stellenstatus" })).toHaveValue("PENDING");
     await page.reload();
-    await expect(row.getByRole("button", {
-      name: "Markieren",
-      exact: true
-    })).toBeEnabled();
+    await expect(row.getByRole("combobox", { name: "Stellenstatus" })).toHaveValue("PENDING");
     expect((await database.jobListing.findUniqueOrThrow({
       where: {
         userId_url: {
@@ -116,7 +101,7 @@ test("Stellen sind geschützt und neue Links stehen zuerst", async ({
           url: newer
         }
       }
-    })).isMarkiert).toBe(false);
+    })).status).toBe("PENDING");
     await page.screenshot({ path: testInfo.outputPath("stellen.png") });
   } finally {
     await database.jobListing.deleteMany({ where: { url: { in: urls } } });
@@ -254,15 +239,18 @@ test("Tabellenpagination bleibt nach Neuladen und Browser-Zurück erhalten", asy
     await page.goBack();
     await expect(page).toHaveURL(`${ROUTES.jobs}?quelle=test`);
     await expect(page.getByText(/Seite 1 von/)).toBeVisible();
-    await expect(page.getByText(/Noch nicht markiert: [\d.]+/)).toBeVisible();
+    await expect(page.getByText(/Pending: [\d.]+/)).toBeVisible();
     await page.getByRole("link", {
       name: "Weiter",
       exact: true
     }).click();
-    await page.getByRole("combobox", { name: "Markierung" }).selectOption("false");
-    await expect(page).toHaveURL(`${ROUTES.jobs}?quelle=test&isMarkiert=false`);
+    await page.getByRole("combobox", {
+      name: "Status",
+      exact: true
+    }).selectOption("PENDING");
+    await expect(page).toHaveURL(`${ROUTES.jobs}?quelle=test&status=PENDING`);
     await expect(page.getByText(/Seite 1 von/)).toBeVisible();
-    await expect(page.getByText(/Noch nicht markiert: [\d.]+/)).toBeVisible();
+    await expect(page.getByText(/Pending: [\d.]+/)).toBeVisible();
   } finally {
     await database.jobListing.deleteMany({ where: { url: { in: urls } } });
   }
@@ -323,7 +311,7 @@ test("API-Fehler erscheinen als schließbare Benachrichtigung", async ({
   await expect(toast).not.toBeVisible();
 });
 
-test("CSV-Upload markiert bekannte Links und aktualisiert die gefilterte Tabelle", async ({
+test("CSV-Upload setzt bekannte Links auf BEWORBEN und aktualisiert den Filter", async ({
   page,
   database,
   createAccount,
@@ -341,7 +329,7 @@ test("CSV-Upload markiert bekannte Links und aktualisiert die gefilterte Tabelle
   });
 
   try {
-    await page.goto(`${ROUTES.jobs}?isMarkiert=false`);
+    await page.goto(`${ROUTES.jobs}?status=PENDING`);
     await expect(page.getByRole("link", {
       name: url,
       exact: true
@@ -351,19 +339,19 @@ test("CSV-Upload markiert bekannte Links und aktualisiert die gefilterte Tabelle
       mimeType: "text/csv",
       buffer: Buffer.from(`URL\n${url}\nhttps://example.test/${marker}`),
     });
-    await page.getByRole("button", { name: "CSV abgleichen und markieren" }).click();
-    await expect(page.getByText(/1 neu markiert · 0 bereits markiert · 1 nicht gefunden/)).toBeVisible();
+    await page.getByRole("button", { name: "CSV abgleichen" }).click();
+    await expect(page.getByText(/1 neu als beworben gespeichert · 0 bereits beworben · 1 nicht gefunden/)).toBeVisible();
     await expect(page.getByRole("link", {
       name: url,
       exact: true
     })).toHaveCount(0);
-    expect((await database.jobListing.findUniqueOrThrow({ where: { id: job.id } })).isMarkiert).toBe(true);
-    await page.getByRole("combobox", { name: "Markierung" }).selectOption("true");
-    const row = page.getByRole("row").filter({ has: page.locator(`a[href="${url}"]`) });
-    await expect(row.getByRole("button", {
-      name: "Markierung aufheben",
+    expect((await database.jobListing.findUniqueOrThrow({ where: { id: job.id } })).status).toBe("BEWORBEN");
+    await page.getByRole("combobox", {
+      name: "Status",
       exact: true
-    })).toBeEnabled();
+    }).selectOption("BEWORBEN");
+    const row = page.getByRole("row").filter({ has: page.locator(`a[href="${url}"]`) });
+    await expect(row.getByRole("combobox", { name: "Stellenstatus" })).toHaveValue("BEWORBEN");
   } finally {
     await database.jobListing.delete({ where: { id: job.id } });
   }

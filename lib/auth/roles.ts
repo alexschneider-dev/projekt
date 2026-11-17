@@ -1,5 +1,13 @@
-export const USER = "USER";
-export const SUPER_ADMIN = "SUPER_ADMIN";
+import {
+  USER,
+  SUPER_ADMIN
+} from "./role-values.mjs";
+
+
+export {
+  USER,
+  SUPER_ADMIN
+};
 
 export type InternalRole = typeof USER | typeof SUPER_ADMIN;
 

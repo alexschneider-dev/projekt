@@ -76,6 +76,8 @@ test("Leere Suche zulassen, unlesbare Antworten und falsche Seiten ablehnen", ()
 
 function databaseStub() {
   return {
+    $queryRaw: async () => [],
+    user: { findUniqueOrThrow: async () => ({ role: "SUPER_ADMIN" }) },
     jobImportState: {
       update: async () => ({}),
       upsert: async () => ({}),
@@ -126,7 +128,7 @@ test("Manuelle Aufträge beenden die Wartezeit innerhalb von fünf Sekunden", as
   assert.equal(now, 5000);
 });
 
-test("Ohne Auftrag bleibt der stündliche Zeitplan erhalten", async () => {
+test("Ohne Auftrag startet der nächste geplante Import erst nach 24 Stunden", async () => {
   let now = 0;
   const database = {
     jobImportState: { findFirst: async () => null },
@@ -135,7 +137,7 @@ test("Ohne Auftrag bleibt der stündliche Zeitplan erhalten", async () => {
     assert.ok(delay <= 5000);
     now += delay;
   }, () => now);
-  assert.equal(now, 3_600_000);
+  assert.equal(now, 86_400_000);
 });
 
 test("Alle drei Seiten nacheinander importieren und Sperre freigeben", async () => {

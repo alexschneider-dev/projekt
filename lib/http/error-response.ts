@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { HTTP_STATUS } from "./status";
 import { ApiError } from "./api-error";
 import {
   createApiError,
@@ -27,5 +28,8 @@ export function errorResponse(error: unknown): Response {
     error: apiError.message,
     code: apiError.code,
     ...(apiError.details === undefined ? {} : { details: apiError.details }),
-  }, { status: apiError.status });
+  }, {
+    status: apiError.status,
+    ...(apiError.status === HTTP_STATUS.TOO_MANY_REQUESTS ? { headers: { "Retry-After": "3600" } } : {}),
+  });
 }

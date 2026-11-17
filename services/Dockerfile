@@ -29,6 +29,7 @@ ENV NODE_ENV=production
 COPY --from=jobs-deps /app ./
 COPY --chown=node:node scripts/jobs ./scripts/jobs
 COPY --chown=node:node lib/schemas/jobs ./lib/schemas/jobs
+COPY --chown=node:node lib/auth/role-values.mjs ./lib/auth/role-values.mjs
 USER node
 CMD ["node", "scripts/jobs/run.mjs"]
 

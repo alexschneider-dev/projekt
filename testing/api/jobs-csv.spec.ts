@@ -20,11 +20,11 @@ function upload(content: string) {
   };
 }
 
-test("CSV-Markierung benötigt eine Anmeldung", async ({ request }) => {
+test("CSV-Abgleich benötigt eine Anmeldung", async ({ request }) => {
   expect((await request.post(ROUTES.jobsCsvApi, upload("URL"))).status()).toBe(HTTP_STATUS.UNAUTHORIZED);
 });
 
-test("CSV markiert nur vorhandene Stellen und verarbeitet ungültige Dateien ohne Änderungen", async ({
+test("CSV setzt nur vorhandene Stellen auf BEWORBEN und lehnt ungültige Dateien ab", async ({
   request,
   database,
   createAccount,
@@ -34,6 +34,8 @@ test("CSV markiert nur vorhandene Stellen und verarbeitet ungültige Dateien ohn
   const marker = randomUUID();
   const fresh = `https://www.stepstone.de/stellenangebote--${marker}-1-inline.html`;
   const marked = `https://www.stepstone.de/stellenangebote--${marker}-2-inline.html`;
+  const unsuitable = `https://www.stepstone.de/stellenangebote--${marker}-4-inline.html`;
+  const expired = `https://www.stepstone.de/stellenangebote--${marker}-5-inline.html`;
   const unknown = `https://www.stepstone.de/stellenangebote--${marker}-3-inline.html`;
   await database.jobListing.createMany({
     data: [
@@ -44,7 +46,17 @@ test("CSV markiert nur vorhandene Stellen und verarbeitet ungültige Dateien ohn
       {
         userId: account.id,
         url: marked,
-        isMarkiert: true,
+        status: "BEWORBEN",
+      },
+      {
+        userId: account.id,
+        url: unsuitable,
+        status: "NICHT_PASSEND"
+      },
+      {
+        userId: account.id,
+        url: expired,
+        status: "AUSGELAUFEN"
       },
     ],
   });
@@ -59,13 +71,13 @@ test("CSV markiert nur vorhandene Stellen und verarbeitet ungültige Dateien ohn
           url: fresh
         }
       }
-    })).isMarkiert).toBe(false);
-    const csv = `URL\n"${fresh}?tracking=1"\n${fresh}\n${marked}\n${unknown}`;
+    })).status).toBe("PENDING");
+    const csv = `URL\n"${fresh}?tracking=1"\n${fresh}\n${marked}\n${unsuitable}\n${expired}\n${unknown}`;
     const response = await request.post(ROUTES.jobsCsvApi, upload(csv));
     expect(response.status()).toBe(HTTP_STATUS.OK);
     expect(await response.json()).toEqual({
-      marked: 1,
-      alreadyMarked: 1,
+      applied: 3,
+      alreadyApplied: 1,
       notFound: 1,
       duplicates: 1,
     });
@@ -76,7 +88,7 @@ test("CSV markiert nur vorhandene Stellen und verarbeitet ungültige Dateien ohn
           url: fresh
         }
       }
-    })).isMarkiert).toBe(true);
+    })).status).toBe("BEWORBEN");
     expect(await database.jobListing.findUnique({
       where: {
         userId_url: {
@@ -85,10 +97,16 @@ test("CSV markiert nur vorhandene Stellen und verarbeitet ungültige Dateien ohn
         }
       }
     })).toBeNull();
+    expect(await database.jobListing.count({
+      where: {
+        userId: account.id,
+        status: "BEWORBEN"
+      }
+    })).toBe(4);
     const repeated = await request.post(ROUTES.jobsCsvApi, upload(csv));
     expect(await repeated.json()).toMatchObject({
-      marked: 0,
-      alreadyMarked: 2,
+      applied: 0,
+      alreadyApplied: 4,
     });
   } finally {
     await database.jobListing.deleteMany({ where: { url: { contains: marker } } });

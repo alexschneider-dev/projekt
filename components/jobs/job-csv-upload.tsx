@@ -32,10 +32,10 @@ export function JobCsvUpload() {
 
   return (
     <SectionWrapper variant="card">
-      <h2>Stellen aus CSV markieren</h2>
+      <h2>Bewerbungen aus CSV übernehmen</h2>
       <Text variant="intro">
         Eine Spalte mit einem Link pro Zeile, optional mit Kopfzeile URL oder Link.
-        Höchstens 2 MB und 10.000 Links. Nur vorhandene Stellen werden markiert.
+        Höchstens 2 MB und 10.000 Links. Vorhandene Stellen erhalten den Status „Beworben“.
       </Text>
       <Form {...form}>
         <form
@@ -74,11 +74,11 @@ export function JobCsvUpload() {
               type="submit"
               disabled={!ready || busy}
             >
-              {busy ? "Wird abgeglichen …" : "CSV abgleichen und markieren"}
+              {busy ? "Wird abgeglichen …" : "CSV abgleichen"}
             </Button>
             {result && (
               <Text role="status">
-                {result.marked} neu markiert · {result.alreadyMarked} bereits markiert · {result.notFound} nicht gefunden
+                {result.applied} neu als beworben gespeichert · {result.alreadyApplied} bereits beworben · {result.notFound} nicht gefunden
                 {" · "}{result.duplicates} doppelte Links übersprungen
               </Text>
             )}

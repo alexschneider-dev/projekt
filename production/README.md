@@ -417,3 +417,34 @@ Update-Strategien stehen ausschließlich in `compose.swarm.yml`.
 
 Die Suchliste und Befehle für lokalen Betrieb stehen in
 [der Import-Anleitung](../scripts/jobs/README.md).
+
+## Registrierung über Resend bereitstellen
+
+Die Registrierung benötigt zusätzlich das Docker-Secret `RESEND_API_KEY` für
+Next.js sowie die öffentlichen Variablen `MAIL_FROM` und `TRUST_PROXY=true`.
+`NEXTAUTH_URL` muss die öffentliche HTTPS-Adresse enthalten. Die Absenderdomain
+muss bei Resend verifiziert sein. API-Schlüssel weder in Git noch als öffentliche
+Umgebungsvariable hinterlegen. Der Jobs-Dienst benötigt keinen Resend-Schlüssel.
+
+Beim dateibasierten Konfigurationsweg den Schlüssel in der geschützten
+`nextjs.env` ergänzen und die vorhandene Konfigurationsvorbereitung ausführen.
+Beim bestehenden Runtime-Manifest das Secret auf dem Server manuell anlegen:
+
+```bash
+read -rs -p 'Resend API-Key: ' resend_key; echo
+printf '%s' "$resend_key" | sudo docker secret create projekt_nextjs_resend_api_key_v1 -
+unset resend_key
+```
+
+Der Resolver ergänzt die Einbindung als `runtime_RESEND_API_KEY`. In
+`runtime.json` unter `services.nextjs.environment` die Werte `MAIL_FROM` und
+`TRUST_PROXY` ergänzen. Deployment-Einstellungen bleiben in
+`production/compose.swarm.yml`. Der API-Key muss vor dem Deployment als Secret
+vorhanden sein, sonst bricht die Konfigurationsprüfung ab.
+
+Anschließend die neue Migration und Next.js sowie Jobs und Nginx über die
+bestehenden Deployment-Wege ausrollen. Die Migration legt nur die Tabelle für
+unbestätigte Registrierungen an; bestehende Benutzer bleiben erhalten. Nach dem
+Deployment einmal mit einer eigenen E-Mail-Adresse registrieren, den Link
+bestätigen und die Anmeldung prüfen. Eine API-Annahme durch Resend garantiert
+keine Zustellung; Versandstatus und Zustellfehler im Resend-Dashboard prüfen.

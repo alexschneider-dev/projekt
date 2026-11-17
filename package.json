@@ -38,7 +38,9 @@
     "jobs:import": "node scripts/jobs/run.mjs --once",
     "jobs:watch": "node scripts/jobs/run.mjs",
     "jobs:search:add": "node scripts/jobs/add-search.mjs",
-    "test:jobs:db": "node --test testing/integration/jobs.integration.mjs"
+    "test:jobs:db": "node --test testing/integration/jobs.integration.mjs",
+    "test:registration:db": "vitest run --config testing/integration/vitest.config.ts",
+    "predev": "prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.0.0",

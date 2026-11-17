@@ -48,10 +48,13 @@ test("Benutzer sehen und bearbeiten ausschließlich ihre eigenen Daten", async (
   const [search] = await (await request.get(ROUTES.jobSearchesApi)).json();
   const result = await (await request.get(ROUTES.jobsApi)).json();
   expect(result.total).toBe(1);
-  expect(result.unmarkedTotal).toBe(1);
+  expect(result.pendingTotal).toBe(1);
   expect(result.items.map((item: { id: number }) => item.id)).toEqual([firstJob.id]);
   expect((await request.patch(ROUTES.jobsApi, {
-    data: { id: otherJob.id },
+    data: {
+      id: otherJob.id,
+      status: "BEWORBEN"
+    },
   })).status()).toBe(HTTP_STATUS.NOT_FOUND);
   expect((await request.post(ROUTES.jobsCsvApi, {
     multipart: {
@@ -62,8 +65,8 @@ test("Benutzer sehen und bearbeiten ausschließlich ihre eigenen Daten", async (
       },
     },
   })).status()).toBe(HTTP_STATUS.OK);
-  expect((await database.jobListing.findUniqueOrThrow({ where: { id: firstJob.id } })).isMarkiert).toBe(true);
-  expect((await database.jobListing.findUniqueOrThrow({ where: { id: otherJob.id } })).isMarkiert).toBe(false);
+  expect((await database.jobListing.findUniqueOrThrow({ where: { id: firstJob.id } })).status).toBe("BEWORBEN");
+  expect((await database.jobListing.findUniqueOrThrow({ where: { id: otherJob.id } })).status).toBe("PENDING");
   expect((await request.post(ROUTES.jobsImportApi)).status()).toBe(HTTP_STATUS.OK);
   expect((await database.jobImportState.findUniqueOrThrow({ where: { userId: first.id } })).requested)
     .toBe(true);
@@ -80,8 +83,13 @@ test("Benutzer sehen und bearbeiten ausschließlich ihre eigenen Daten", async (
       url: searchUrl,
     },
   })).status()).toBe(HTTP_STATUS.NOT_FOUND);
-  expect((await request.patch(ROUTES.jobsApi, { data: { id: firstJob.id } })).status()).toBe(HTTP_STATUS.NOT_FOUND);
-  expect((await (await request.get(ROUTES.jobsApi)).json()).unmarkedTotal).toBe(1);
+  expect((await request.patch(ROUTES.jobsApi, {
+    data: {
+      id: firstJob.id,
+      status: "BEWORBEN"
+    }
+  })).status()).toBe(HTTP_STATUS.NOT_FOUND);
+  expect((await (await request.get(ROUTES.jobsApi)).json()).pendingTotal).toBe(1);
   expect(await (await request.post(ROUTES.jobSearchesApi, {
     data: {
       title: "Getrennte Suche",

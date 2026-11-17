@@ -88,66 +88,54 @@ test("Suche bearbeiten: Titel erhält Abrufwerte, eine neue URL setzt sie zurüc
   }
 });
 
-test("Stellen werden dauerhaft und wiederholt ohne Umschalten markiert", async ({
+test("Stellenstatus ist PENDING als Standard und lässt sich setzen und filtern", async ({
   request,
   database,
-  createAccount,
+  createAccount
 }) => {
   const account = await createAccount();
   await login(request, account.email);
   const job = await database.jobListing.create({
     data: {
       userId: account.id,
-      url: `https://example.test/jobs/${randomUUID()}`,
-      createdAt: new Date("2300-01-01T00:00:00Z"),
-    },
+      url: `https://example.test/jobs/${randomUUID()}`
+    }
   });
-
-  try {
-    expect(job.isMarkiert).toBe(false);
-    const unmarked = await (await request.get(`${ROUTES.jobsApi}?isMarkiert=false`)).json();
-    expect(unmarked.unmarkedTotal).toBe(unmarked.total);
-    expect(unmarked.items).toContainEqual({
+  expect(job.status).toBe("PENDING");
+  expect((await request.patch(ROUTES.jobsApi, { data: { id: job.id } })).status()).toBe(400);
+  expect((await request.patch(ROUTES.jobsApi, {
+    data: {
       id: job.id,
-      url: job.url,
-      isMarkiert: false,
-    });
-    expect(unmarked.items.every((item: { isMarkiert: boolean }) => !item.isMarkiert)).toBe(true);
-    expect((await request.get(`${ROUTES.jobsApi}?isMarkiert=invalid`)).status()).toBe(HTTP_STATUS.BAD_REQUEST);
-    expect((await request.patch(ROUTES.jobsApi, { data: { id: -1 } })).status()).toBe(HTTP_STATUS.BAD_REQUEST);
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const response = await request.patch(ROUTES.jobsApi, { data: { id: job.id } });
-      expect(response.status()).toBe(HTTP_STATUS.OK);
-      expect(await response.json()).toEqual({
+      status: "invalid"
+    }
+  })).status()).toBe(400);
+  expect((await request.get(`${ROUTES.jobsApi}?status=invalid`)).status()).toBe(400);
+  for (const status of [
+    "BEWORBEN",
+    "NICHT_PASSEND",
+    "AUSGELAUFEN",
+    "PENDING",
+    "PENDING"
+  ]) {
+    const response = await request.patch(ROUTES.jobsApi, {
+      data: {
         id: job.id,
-        url: job.url,
-        isMarkiert: true,
-      });
-    }
-    expect((await database.jobListing.findUniqueOrThrow({ where: { id: job.id } })).isMarkiert).toBe(true);
-    const marked = await (await request.get(`${ROUTES.jobsApi}?isMarkiert=true`)).json();
-    expect(Number.isInteger(marked.unmarkedTotal)).toBe(true);
-    expect(marked.unmarkedTotal).toBeGreaterThanOrEqual(0);
-    expect(marked.items).toContainEqual({
+        status
+      }
+    });
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toEqual({
       id: job.id,
       url: job.url,
-      isMarkiert: true,
+      status
     });
-    expect(marked.items.every((item: { isMarkiert: boolean }) => item.isMarkiert)).toBe(true);
-    expect(marked.pageCount).toBe(Math.max(1, Math.ceil(marked.total / marked.pageSize)));
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const response = await request.patch(ROUTES.jobsApi, {
-        data: {
-          id: job.id,
-          isMarkiert: false,
-        },
-      });
-      expect(response.status()).toBe(HTTP_STATUS.OK);
-      expect((await response.json()).isMarkiert).toBe(false);
-    }
-    expect((await database.jobListing.findUniqueOrThrow({ where: { id: job.id } })).isMarkiert).toBe(false);
-  } finally {
-    await database.jobListing.delete({ where: { id: job.id } });
+    const result = await (await request.get(`${ROUTES.jobsApi}?status=${status}`)).json();
+    expect(result.items).toEqual([{
+      id: job.id,
+      url: job.url,
+      status
+    }]);
+    expect(result.pendingTotal).toBe(status === "PENDING" ? 1 : 0);
   }
 });
 

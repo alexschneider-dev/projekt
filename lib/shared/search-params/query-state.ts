@@ -1,3 +1,6 @@
+import type { JobStatus } from "@prisma/client";
+
+
 export function setOrDelete(params: URLSearchParams, key: string, value?: string) {
   params.delete(key);
   if (value) params.set(key, value);
@@ -13,8 +16,8 @@ export function createQueryHref(pathname: string, query: string) {
   return query ? `${pathname}?${query}` : pathname;
 }
 
-export function createJobsQueryString(current: string, page: number, isMarkiert?: boolean) {
+export function createJobsQueryString(current: string, page: number, status?: JobStatus) {
   const params = new URLSearchParams(createPageQueryString(current, page));
-  setOrDelete(params, "isMarkiert", isMarkiert === undefined ? undefined : String(isMarkiert));
+  setOrDelete(params, "status", status === undefined ? undefined : String(status));
   return params.toString();
 }

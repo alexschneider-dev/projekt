@@ -23,7 +23,7 @@ npx prisma generate
 
 ## Such-URLs verwalten
 
-Neue Such-URLs lassen sich nach der Anmeldung direkt auf der Seite „Stellen“
+Neue Such-URLs lassen sich nach der Anmeldung direkt auf der Seite „Such-URLs“
 hinzufügen. Die Eingabe wird im Browser und in der API mit demselben Schema
 geprüft. Vorhandene Einträge bleiben unverändert. Alternativ per Kommandozeile:
 
@@ -33,8 +33,17 @@ npm run jobs:search:add -- 'https://www.stepstone.de/jobs/typescript' 'BENUTZER_
 
 Der Befehl prüft die Adresse der unterstützten Jobbörse, entfernt `page` und das Fragment und
 speichert die URL mit `active = true`. Eine bereits vorhandene, deaktivierte
-Suche wird nicht automatisch reaktiviert. Es gibt keine feste Grenze von zehn
-Such-URLs. Alle aktiven Suchen werden weiterhin nacheinander abgearbeitet.
+Suche wird nicht automatisch reaktiviert. Reguläre Konten (`USER`) dürfen eine Suchgruppe
+besitzen, auch deaktivierte Gruppen zählen mit. Die vorhandene Gruppe kann bearbeitet
+werden. `SUPER_ADMIN` darf beliebig viele Suchgruppen anlegen.
+
+Reguläre Konten speichern höchstens 100 Stellen insgesamt, unabhängig vom
+Status. Das Limit gilt für manuelle und regelmäßige Importe. Bei ausgeschöpftem Limit
+werden keine weiteren Seiten abgerufen. Bestehende Daten werden nicht gelöscht;
+bei einem Bestandskonto mit mehreren Gruppen wird nur die erste aktive Gruppe nach ID
+verarbeitet. Die Begrenzung gilt auch beim Hinzufügen per CLI. Gleichzeitige Schreibvorgänge
+werden pro Benutzer über eine Datenbanksperre serialisiert. `SUPER_ADMIN` ist von diesen
+Kontingenten ausgenommen. Seine aktiven Gruppen werden nacheinander verarbeitet.
 
 Im lokalen Compose-Container funktioniert derselbe Befehl ohne npm:
 
@@ -61,7 +70,7 @@ Einmaliger Import:
 npm run jobs:import
 ```
 
-Fortlaufender Import mit stündlichem Start, solange dieser Prozess läuft:
+Fortlaufender Import mit einem Start alle 24 Stunden, solange dieser Prozess läuft:
 
 ```bash
 npm run jobs:watch
@@ -77,7 +86,7 @@ Durchlauf dieses Benutzers. Der Dienst prüft den Auftrag jede Sekunde und brich
 auch laufende HTTP-Abrufe sowie Wartepausen ab. Bereits gespeicherte Stellen bleiben
 erhalten; die aktuelle Suchgruppe erhält einen unvollständigen Teilstand. Die
 Oberfläche bestätigt den Stopp nach ihrer nächsten Statusabfrage (alle fünf Sekunden).
-Der stündliche Zeitplan bleibt aktiv; der Button deaktiviert keine Suchgruppen.
+Der automatische 24-Stunden-Zeitplan bleibt aktiv; der Button deaktiviert keine Suchgruppen.
 Dafür ist die Migration `20261115230000_import_stop` erforderlich.
 
 Ohne laufenden Importdienst bleibt der Auftrag vorgemerkt. Nach einem Neustart
@@ -128,7 +137,7 @@ Neuladen erhalten. Gespeicherte Stellen und die Werte des letzten
 Abrufs bleiben unverändert. Ein bereits gestarteter Abruf wird nicht abgebrochen.
 
 Nach Anmeldung ist die Liste über „Stellen“ im internen Bereich erreichbar.
-Alle Stellen, Suchgruppen, Markierungen und Importzustände gehören direkt einem
+Alle Stellen, Suchgruppen, Stellenstatus und Importzustände gehören direkt einem
 Benutzer. Auch Super-Admins sehen nur ihre eigenen Daten. Der automatische Import
 verarbeitet alle aktiven Benutzer nacheinander; ein manueller Auftrag betrifft
 ausschließlich den anfordernden Benutzer.
@@ -178,7 +187,7 @@ Compose; `runtime.json` ergänzt nur Laufzeitwerte und Secret-/Config-Einbindung
 ## Prüfung
 
 Importfehler und der Start sowie Abschluss jeder Suchgruppe erscheinen im
-Containerprotokoll. Fehler enthalten die Arbeitsphase, Suchgruppen-ID und Seite,
+Containerprotokoll. Fehler enthalten die Arbeitsphase, Suchgruppentitel (`searchTitle`) und Seite,
 soweit diese bekannt sind, sowie HTTP-Status oder Netzwerk-/Prisma-Fehlercodes.
 Ungefilterte Fehlermeldungen und Verbindungsadressen werden nicht ausgegeben.
 In Produktion: `docker service logs projekt_jobs --since 1h --tail 100 --timestamps`.
@@ -214,3 +223,8 @@ Das CLI zum Hinzufügen einer Suche verlangt die Benutzer-ID:
 ```sh
 npm run jobs:search:add -- 'SUCH_URL' 'BENUTZER_ID'
 ```
+
+Der Importdienst startet beim Prozessstart einen Durchlauf. Weitere automatische
+Durchläufe beginnen im Abstand von 24 Stunden, gerechnet ab dem letzten geplanten
+Start. Manuelle Aufträge verschieben diesen Zeitplan nicht. Ein Neustart des
+Dienstes startet den Zeitplan neu.

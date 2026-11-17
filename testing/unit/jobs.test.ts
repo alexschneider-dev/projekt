@@ -40,15 +40,17 @@ describe("Stellen: Validierung und URL-Zustand", () => {
     ]);
   });
 
-  it("unterscheidet true, false und einen fehlenden Markierungsfilter", () => {
-    expect(jobsQuerySchema.parse({ isMarkiert: "true" }).isMarkiert).toBe(true);
-    expect(jobsQuerySchema.parse({ isMarkiert: "false" }).isMarkiert).toBe(false);
-    expect(jobsQuerySchema.parse({}).isMarkiert).toBeUndefined();
-    expect(jobsQuerySchema.safeParse({ isMarkiert: "0" }).success).toBe(false);
-    expect(createJobsQueryString("quelle=test&page=3", 1, false)).toBe("quelle=test&isMarkiert=false");
-    expect(createJobsQueryString("quelle=test&isMarkiert=false", 2, false))
-      .toBe("quelle=test&page=2&isMarkiert=false");
-    expect(createJobsQueryString("quelle=test&isMarkiert=true&page=2", 1)).toBe("quelle=test");
+  it("prüft Statuswerte und erhält Filter beim Seitenwechsel", () => {
+    expect(jobsQuerySchema.parse({ status: "BEWORBEN" }).status).toBe("BEWORBEN");
+    expect(jobsQuerySchema.parse({ status: "PENDING" }).status).toBe("PENDING");
+    expect(jobsQuerySchema.parse({ status: "NICHT_PASSEND" }).status).toBe("NICHT_PASSEND");
+    expect(jobsQuerySchema.parse({ status: "AUSGELAUFEN" }).status).toBe("AUSGELAUFEN");
+    expect(jobsQuerySchema.parse({}).status).toBeUndefined();
+    expect(jobsQuerySchema.safeParse({ status: "0" }).success).toBe(false);
+    expect(createJobsQueryString("quelle=test&page=3", 1, "PENDING")).toBe("quelle=test&status=PENDING");
+    expect(createJobsQueryString("quelle=test&status=PENDING", 2, "PENDING"))
+      .toBe("quelle=test&page=2&status=PENDING");
+    expect(createJobsQueryString("quelle=test&status=BEWORBEN&page=2", 1)).toBe("quelle=test");
   });
 
   it("normalisiert Such-URLs und lehnt fremde Hosts ab", () => {

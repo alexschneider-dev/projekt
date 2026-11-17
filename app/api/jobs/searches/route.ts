@@ -6,6 +6,9 @@ import {
 import { checkApiRequest } from "@/lib/http/check-api-request";
 import { jobSearchSchema } from "@/lib/schemas/jobs/jobs.schema";
 import { prisma } from "@/lib/prisma";
+import { createSearch } from "@/scripts/jobs/limits.mjs";
+import { createApiError } from "@/lib/http/errors";
+import { ERROR_JOBS } from "@/lib/http/errors/jobs";
 import { listJobSearches } from "@/lib/jobs/searches";
 
 
@@ -23,12 +26,13 @@ export const POST = apiHandler(async (request) => {
   const body = await checkApiRequest(request, jobSearchSchema);
   if (!body.ok) return body.response;
 
-  const result = await prisma.jobSearch.createMany({
-    data: [{
-      ...body.data,
-      userId: apiGate.user.id,
-    }],
-    skipDuplicates: true,
-  });
-  return successResponse({ created: result.count > 0 });
+  try {
+    const count = await createSearch(prisma, body.data, apiGate.user.id);
+    return successResponse({ created: count > 0 });
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "SEARCH_LIMIT") {
+      throw createApiError(ERROR_JOBS.SEARCH_LIMIT);
+    }
+    throw error;
+  }
 });

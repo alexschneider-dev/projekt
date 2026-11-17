@@ -36,7 +36,8 @@ test("PostgreSQL: Suchliste, Pagination, Duplikate, Reihenfolge und Importsperre
         data: {
           email: `${randomUUID()}@example.test`,
           passwordHash: "",
-          name: "Importtest"
+          name: "Importtest",
+          role: "SUPER_ADMIN"
         }
       });
       await database.jobSearch.deleteMany();
@@ -218,12 +219,12 @@ test("PostgreSQL: Suchliste, Pagination, Duplikate, Reihenfolge und Importsperre
       const own = await database.jobListing.findFirstOrThrow({ where: { userId } });
       await database.jobListing.update({
         where: { id: own.id },
-        data: { isMarkiert: true }
+        data: { status: "BEWORBEN" }
       });
       assert.equal(await database.jobListing.count({
         where: {
           userId: other.id,
-          isMarkiert: true
+          status: "BEWORBEN"
         }
       }), 0);
       await database.jobImportState.updateMany({ data: { requested: false } });

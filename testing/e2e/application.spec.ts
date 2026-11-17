@@ -26,6 +26,11 @@ test("Homepage und Login sind öffentlich und per Tastatur bedienbar", async ({
     name: "Projekt",
     exact: true
   })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Interner Bereich" })).toHaveCount(0);
+  await expect(page.getByRole("link", {
+    name: "Registrieren",
+    exact: true
+  })).toBeVisible();
   // WebKit unter macOS erreicht Links mit der plattformüblichen Wahltaste.
   await page.keyboard.press(tabKey);
   await expect(page.getByRole("link", { name: "Anmelden" })).toBeFocused();
@@ -142,3 +147,45 @@ test("der interne Bereich ist barrierefrei und passt auf den Bildschirm", async 
   expect(results.violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+for (const role of [
+  USER,
+  SUPER_ADMIN
+]) {
+  test(`Angemeldete ${role} sehen nur den internen Link und werden von Gastseiten umgeleitet`, async ({
+    page,
+    createAccount
+  }) => {
+    const account = await createAccount({ role });
+    await login(page.request, account.email);
+    for (const route of [
+      ROUTES.home,
+      ROUTES.login,
+      ROUTES.register
+    ]) {
+      await page.goto(route);
+      await expect(page).toHaveURL(ROUTES.home);
+      await expect(page.getByRole("link", { name: "Interner Bereich" })).toBeVisible();
+      await expect(page.getByRole("link", {
+        name: "Anmelden",
+        exact: true
+      })).toHaveCount(0);
+      await expect(page.getByRole("link", {
+        name: "Registrieren",
+        exact: true
+      })).toHaveCount(0);
+    }
+    await page.goto(ROUTES.dashboard);
+    await page.getByRole("button", { name: "Abmelden" }).click();
+    await page.goto(ROUTES.home);
+    await expect(page.getByRole("link", {
+      name: "Anmelden",
+      exact: true
+    })).toBeVisible();
+    await expect(page.getByRole("link", {
+      name: "Registrieren",
+      exact: true
+    })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Interner Bereich" })).toHaveCount(0);
+  });
+}

@@ -57,7 +57,8 @@ test("Zentrale Deklaration ergänzt Einbindungen und erhält Rotation sowie Date
   assert.deepEqual(inspected, [
     "database_r7",
     "auth_r3",
-    "projekt_nextjs_redis_url_v1"
+    "projekt_nextjs_redis_url_v1",
+    "projekt_nextjs_resend_api_key_v1"
   ]);
   assert.equal(result.secrets.nextjs_DATABASE_URL.name, "database_r7");
   assert.equal(result.secrets.nextjs_NEXTAUTH_SECRET.name, "auth_r3");
@@ -65,7 +66,8 @@ test("Zentrale Deklaration ergänzt Einbindungen und erhält Rotation sowie Date
   assert.deepEqual(result.services.nextjs.secrets.map(secret => secret.target), [
     "runtime_DATABASE_URL",
     "runtime_NEXTAUTH_SECRET",
-    "runtime_REDIS_URL"
+    "runtime_REDIS_URL",
+    "runtime_RESEND_API_KEY"
   ]);
 });
 
@@ -155,20 +157,22 @@ test("Server-Bestand erhält sämtliche konfigurierten und laufenden Secret-Zuor
     services: {},
     secrets: {},
     // Der Export enthält keine Configs; für den Resolver eine Test-Config ergänzen.
-    configs: { entrypoint: {
-      external: true,
-      name: "test_entrypoint"
-    } }
+    configs: {
+      entrypoint: {
+        external: true,
+        name: "test_entrypoint"
+      }
+    }
   };
 
   for (const [
     service,
     configured
   ] of Object.entries(inventory.configured)) {
-    assert.deepEqual(
-      [...runtimeKeys[service].secrets].sort(),
-      configured.secrets.map(secret => secret.target.slice("runtime_".length)).sort()
-    );
+    // Der historische Server-Bestand muss weiterhin unterstützt werden; neue Secrets dürfen hinzukommen.
+    assert.ok(configured.secrets.every(secret =>
+      runtimeKeys[service].secrets.includes(secret.target.slice("runtime_".length))
+    ));
     assert.ok(configured.public.every(key => runtimeKeys[service].public.includes(key)));
 
     input.services[service] = {
@@ -212,12 +216,16 @@ test("Server-Bestand erhält sämtliche konfigurierten und laufenden Secret-Zuor
       secret.name
     ]));
 
+    if (service === "nextjs") expected.runtime_RESEND_API_KEY = "projekt_nextjs_resend_api_key_v1";
     assert.deepEqual(actual, expected, service);
     assert.ok(running.public.every(key => runtimeKeys[service]?.public.includes(key)));
   }
 
-  assert.deepEqual(inspected.sort(), Object.values(inventory.running)
-    .flatMap(service => service.secrets.map(secret => secret.name)).sort());
+  assert.deepEqual(inspected.sort(), [
+    ...Object.values(inventory.running)
+      .flatMap(service => service.secrets.map(secret => secret.name)),
+    "projekt_nextjs_resend_api_key_v1"
+  ].sort());
   assert.equal(output.secrets.nextjs_NEXTAUTH_SECRET.name, "projekt_nextauth_secret_1793284396714");
   assert.equal(output.secrets.nextjs_REDIS_URL.name, "projekt_nextjs_redis_url_r1");
 });

@@ -1,4 +1,7 @@
-import { Prisma } from "@prisma/client";
+import {
+  JobStatus,
+  Prisma
+} from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { JOB_LINK_SELECT } from "./select";
 import type { JobsPageResult } from "@/lib/types/jobs";
@@ -6,18 +9,18 @@ import type { JobsPageResult } from "@/lib/types/jobs";
 
 export const JOBS_PAGE_SIZE = 100;
 
-export async function listJobs(userId: string, requestedPage: number, isMarkiert?: boolean): Promise<JobsPageResult> {
+export async function listJobs(userId: string, requestedPage: number, status?: JobStatus): Promise<JobsPageResult> {
   const where: Prisma.JobListingWhereInput = {
     userId,
-    ...(isMarkiert === undefined ? {} : { isMarkiert }),
+    ...(status === undefined ? {} : { status }),
   };
 
   return prisma.$transaction(async (database) => {
     const total = await database.jobListing.count({ where });
-    const unmarkedTotal = await database.jobListing.count({
+    const pendingTotal = await database.jobListing.count({
       where: {
         userId,
-        isMarkiert: false,
+        status: JobStatus.PENDING,
       },
     });
     const pageCount = Math.max(1, Math.ceil(total / JOBS_PAGE_SIZE));
@@ -38,7 +41,7 @@ export async function listJobs(userId: string, requestedPage: number, isMarkiert
       page,
       pageSize: JOBS_PAGE_SIZE,
       total,
-      unmarkedTotal,
+      pendingTotal,
       pageCount,
     };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });

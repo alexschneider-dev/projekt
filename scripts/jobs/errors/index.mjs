@@ -1,4 +1,5 @@
 export const JOB_ERRORS = {
+  searchLimit: "Dein Konto erlaubt höchstens eine Suchgruppe. Du kannst die vorhandene Suche bearbeiten.",
   configuration: "Die Such-URL muss eine gültige HTTPS-Suchseite der unterstützten Jobbörse sein.",
   searchArgument: "Verwendung: npm run jobs:search:add -- SUCH_URL BENUTZER_ID",
   user: "Für den Stellenimport ist eine Benutzer-ID erforderlich.",

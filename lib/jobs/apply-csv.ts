@@ -1,8 +1,9 @@
+import { JobStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { parseJobCsv } from "./csv";
 
 
-export async function markJobsFromCsv(userId: string, content: string) {
+export async function applyJobsFromCsv(userId: string, content: string) {
   const {
     urls,
     duplicates,
@@ -20,14 +21,14 @@ export async function markJobsFromCsv(userId: string, content: string) {
       where: {
         userId,
         id: { in: existing.map((job) => job.id) },
-        isMarkiert: false,
+        status: { not: JobStatus.BEWORBEN },
       },
-      data: { isMarkiert: true },
+      data: { status: JobStatus.BEWORBEN },
     });
 
     return {
-      marked: updated.count,
-      alreadyMarked: existing.length - updated.count,
+      applied: updated.count,
+      alreadyApplied: existing.length - updated.count,
       notFound: urls.length - existing.length,
       duplicates,
     };

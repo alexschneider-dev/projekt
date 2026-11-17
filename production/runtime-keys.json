@@ -8,12 +8,15 @@
       "OBSERVABILITY_ENABLED",
       "OTEL_EXPORTER_OTLP_ENDPOINT",
       "OTEL_EXPORTER_OTLP_PROTOCOL",
-      "OTEL_SERVICE_VERSION"
+      "OTEL_SERVICE_VERSION",
+      "MAIL_FROM",
+      "TRUST_PROXY"
     ],
     "secrets": [
       "DATABASE_URL",
       "NEXTAUTH_SECRET",
-      "REDIS_URL"
+      "REDIS_URL",
+      "RESEND_API_KEY"
     ]
   },
   "postgres": {

@@ -112,7 +112,7 @@ test("Umstellung hält Zugangsdaten aus dem Manifest heraus; erzeugter Stack ent
     "postgres"
   ]) {
     writeFileSync(join(dir, `${name}.env`), {
-      nextjs: 'DATABASE_URL="postgres://test:$literal@postgres/db"\nNEXTAUTH_SECRET="a $secret"\nREDIS_URL="redis://test:private-redis@redis:6379"\nNEXTAUTH_URL="https://example.test/$literal"\n',
+      nextjs: 'DATABASE_URL="postgres://test:$literal@postgres/db"\nNEXTAUTH_SECRET="a $secret"\nREDIS_URL="redis://test:private-redis@redis:6379"\nRESEND_API_KEY="re_nur-test"\nNEXTAUTH_URL="https://example.test/$literal"\n',
       postgres: 'POSTGRES_PASSWORD="private-password"\n',
     }[name] || "");
   }

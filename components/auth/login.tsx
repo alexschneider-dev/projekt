@@ -21,12 +21,12 @@ export function Login() {
         <h1>Willkommen zurück</h1>
 
         <Text variant="intro">
-          Melde dich mit deinem internen Konto an.
+          Melde dich mit deinem Konto an.
         </Text>
 
         <LoginForm />
         <Text variant="hint">
-          Du benötigst Zugang? Wende dich an deine Administration.
+          Noch kein Konto? <AppLink href={ROUTES.register}>Jetzt registrieren</AppLink>
         </Text>
       </SectionWrapper>
     </PageWrapper>

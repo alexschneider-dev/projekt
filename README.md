@@ -15,20 +15,19 @@ Deployment-Konfiguration. Details zum Betrieb stehen in [production/README.md](p
 Benutzer können Suchgruppen mit Titel und URL verwalten, Stellen automatisch oder
 manuell importieren, markieren und per CSV mit vorhandenen Listen abgleichen.
 Die Stellenliste bietet Filter, Seiten mit 100 Einträgen und einen Zähler für
-noch nicht markierte Stellen.
+Stellen mit Status `PENDING`.
 
-Suchgruppen, Stellen, Markierungen und Importstatus gehören direkt zu einem
+Suchgruppen, Stellen, Stellenstatus und Importstatus gehören direkt zu einem
 Benutzer (`userId`). Andere Benutzer sehen diese Daten nicht. Gleiche URLs sind
 bei verschiedenen Benutzern erlaubt. Die Benutzer-ID stammt ausschließlich aus
 der serverseitig geprüften Anmeldung. Ein separates Kundenmodell gibt es nicht.
 
-- `USER`: alle Funktionen innerhalb der eigenen Daten.
+- `USER`: alle Benutzerfunktionen innerhalb der eigenen Daten, eine Suchgruppe und höchstens 100 Stellen.
 - `SUPER_ADMIN`: zusätzlich Grafana und Observability. Auch diese Rolle sieht
   in der Stellenverwaltung ausschließlich die eigenen Daten.
 
 Der Importdienst verarbeitet aktive Benutzer und ihre Suchgruppen nacheinander.
-Manuelle Anforderungen gelten nur für den angemeldeten Benutzer. Der stündliche
-Durchlauf berücksichtigt alle aktiven Benutzer.
+Manuelle Anforderungen gelten nur für den angemeldeten Benutzer. Der automatische 24-Stunden-Durchlauf berücksichtigt alle aktiven Benutzer.
 
 Details: [Stellenimport](scripts/jobs/README.md) und [Benutzerkonten](docs/auth.md).
 
@@ -103,3 +102,84 @@ npm run test:all
 ```
 
 Voraussetzungen, weitere Befehle und Testkonten: [Testanleitung](testing/README.md).
+
+## Registrierung und Kontingente
+
+Unter `/registrieren` können neue Benutzer ein Konto mit E-Mail und Passwort
+anlegen. Der Versand erfolgt über die [Resend-API](https://resend.com/docs/api-reference/emails/send-email).
+Erst die Bestätigung legt einen aktiven Benutzer mit Rolle `USER` an. Der Link
+ist 24 Stunden gültig und nur einmal verwendbar. Ein erneuter Versand ersetzt
+den alten Link. Abgelaufene Registrierungen müssen neu begonnen werden.
+Vorhandene Konten und die administrative Kontoanlage bleiben nutzbar.
+
+Reguläre Konten dürfen eine Suchgruppe und maximal 100 Stellen insgesamt speichern.
+Deaktivierte Gruppen und Stellen mit jedem Status zählen mit. Die bestehende Suche kann
+bearbeitet werden. API, CLI und Import prüfen die Grenzen serverseitig;
+Datenbanksperren verhindern ein Überschreiten durch parallele Anfragen.
+Bei vollem Kontingent pausiert der Abruf weiterer Stellen. Bestehende Daten werden
+nicht gelöscht. `SUPER_ADMIN` ist von den Kontingenten ausgenommen und hat zusätzlich
+Zugang zu Observability; jeder Benutzer sieht weiterhin nur seine eigenen Stellen.
+
+Lokal benötigt die Anwendung neben ihren bestehenden Variablen:
+
+```dotenv
+RESEND_API_KEY=re_dein_schluessel
+MAIL_FROM="Projekt <konto@deine-verifizierte-domain.de>"
+NEXTAUTH_URL=http://localhost:3000
+TRUST_PROXY=false
+```
+
+Diese Werte gehören in `.env.local`, nicht ins Repository. Für Prisma-Migrationen
+muss `DATABASE_URL` in der Shell oder der von Prisma geladenen `.env` vorhanden sein.
+Nach dem Update `npx prisma migrate deploy` und `npx prisma generate` ausführen.
+Die Anwendung neu starten. Bei Resend muss die Absenderdomain freigegeben sein.
+Ohne gültige Mailkonfiguration bleibt die Registrierung geschlossen; bestehende
+Benutzer können sich weiterhin anmelden.
+
+Registrierung und erneuter Versand teilen Datenbanklimits: drei Versuche pro
+E-Mail-Adresse und zehn pro Quelle innerhalb einer Stunde, zusätzlich maximal
+100 Versuche für die gesamte Anwendung. Bestätigungen sind auf 30 Versuche pro
+Quelle und 500 insgesamt pro Stunde begrenzt. Abgewiesene Anfragen antworten mit
+HTTP 429 und `Retry-After`. Ohne vertrauenswürdigen Proxy teilen Anfragen das
+Quellenlimit. `TRUST_PROXY=true` nur setzen, wenn der vorgeschaltete Proxy
+`X-Real-IP` überschreibt und Next.js nicht direkt aus dem Internet erreichbar ist.
+Die mitgelieferte Produktions-Nginx-Konfiguration erfüllt dies; sie begrenzt
+zusätzlich Anfragen vor der Anwendung.
+
+Lokale Prüfungen ohne Versand echter E-Mails:
+
+```sh
+npm run test:db
+npm run test:registration:db
+npm run test:coverage
+npm run test:e2e
+```
+
+Die Datenbanktests verwenden ausschließlich die isolierte Testdatenbank. Resend
+wird dort simuliert; ein erfolgreicher Test bestätigt keinen echten Versand über
+das Resend-Konto.
+
+### Stellenstatus
+
+Stellen verwenden das Prisma-Enum `JobStatus`: `PENDING` (Standard), `BEWORBEN`,
+`NICHT_PASSEND` und `AUSGELAUFEN`. Der Status ist direkt in der Tabelle änderbar.
+Der URL-Filter lautet beispielsweise `/stellen?status=BEWORBEN`; ohne Statusparameter
+werden alle Stellen angezeigt. Ein Filterwechsel setzt die Seite auf 1 zurück.
+Der Zähler oben zählt alle eigenen Stellen mit Status `PENDING`.
+
+Der CSV-Abgleich setzt ausschließlich bereits vorhandene eigene Stellen auf
+`BEWORBEN`, auch wenn sie zuvor als nicht passend oder ausgelaufen eingestuft waren.
+Die Migration übernimmt bisher markierte Stellen als `BEWORBEN`, alle übrigen als
+`PENDING`. Vor dem Start der neuen Anwendung `prisma migrate deploy` ausführen
+und den Prisma-Client neu generieren.
+
+### Prisma im lokalen Entwicklungsbetrieb
+
+`npm run dev` generiert den Prisma-Client vor dem Start neu. Nach einer
+Schemaänderung im laufenden Betrieb den Entwicklungsserver neu starten und
+vorhandene Migrationen mit `npx prisma migrate deploy` anwenden.
+
+Das lokale Startskript `services/development/scripts/start_local_services.sh`
+baut die Images auch beim Start neu (mit Docker-Build-Cache) und wendet die
+vorhandenen Migrationen in der lokalen Datenbank an. So werden Schemaänderungen,
+die vor dem Start von Compose Watch entstanden sind, ebenfalls übernommen.

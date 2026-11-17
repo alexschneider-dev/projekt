@@ -6,6 +6,7 @@ import { JOB_ERRORS } from "./errors/index.mjs";
 import { jobErrorLog } from "./errors/log.mjs";
 import { importJobs } from "./import.mjs";
 import {
+  IMPORT_INTERVAL_MS,
   waitForNextImport,
   loadImportUsers,
 } from "./schedule.mjs";
@@ -21,7 +22,7 @@ async function run() {
   try {
     let scheduledAt = 0;
     do {
-      const scheduled = Date.now() >= scheduledAt + 3_600_000;
+      const scheduled = Date.now() >= scheduledAt + IMPORT_INTERVAL_MS;
       if (scheduled) scheduledAt = Date.now();
       const users = await loadImportUsers(database, scheduled);
       let blocked = false;
@@ -64,10 +65,10 @@ async function run() {
       if (process.argv.includes("--once")) break;
       if (blocked) {
         // Eine Sperre gilt für den Dienst, nicht nur für den aktuellen Benutzer.
-        await sleep(Math.max(60_000, scheduledAt + 3_600_000 - Date.now()));
+        await sleep(Math.max(60_000, scheduledAt + IMPORT_INTERVAL_MS - Date.now()));
       } else {
         // Keine schnelle Schleife bei belegter Sperre oder lang laufenden Importen.
-        await sleep(Date.now() >= scheduledAt + 3_600_000 ? 60_000 : 5000);
+        await sleep(Date.now() >= scheduledAt + IMPORT_INTERVAL_MS ? 60_000 : 5000);
         await waitForNextImport(database, scheduledAt);
       }
     } while (true);

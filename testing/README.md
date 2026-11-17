@@ -172,3 +172,8 @@ Vor größeren Releases zusätzlich manuell mit Tastatur, Screenreader und echte
 Mobilgeräten prüfen. Lasttests und vertiefte Sicherheitsprüfungen benötigen
 vereinbarte Lastziele und eine geeignete Staging-Umgebung; sie gehören nicht in
 die normalen Browsertests gegen Produktion.
+
+`npm run test:registration:db` prüft nach `npm run test:db` die Registrierung mit
+simulierter Resend-API und echter Testdatenbank: Token-Rotation, Ablauf, einmalige
+Bestätigung, Rate Limiting und konkurrierende Schreibzugriffe auf die
+Benutzerkontingente. Es werden keine echten E-Mails verschickt.

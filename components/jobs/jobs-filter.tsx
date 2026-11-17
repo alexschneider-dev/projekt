@@ -1,30 +1,43 @@
 "use client";
 
 import { useId } from "react";
+import type { JobStatus } from "@prisma/client";
 import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import {
+  JOB_STATUSES,
+  JOB_STATUS_LABELS
+} from "@/lib/jobs/status";
+import { jobStatusSchema } from "@/lib/schemas/jobs/jobs.schema";
 
 
 export function JobsFilter({
-  isMarkiert,
-  onChange,
+  status,
+  onChange
 }: {
-  isMarkiert: boolean | undefined;
-  onChange: (value?: boolean) => void;
+  status: JobStatus | undefined;
+  onChange: (value?: JobStatus) => void;
 }) {
   const id = useId();
-
   return (
     <div className="w-full space-y-2 sm:max-w-xs">
-      <Label htmlFor={id}>Markierung</Label>
+      <Label htmlFor={id}>Status</Label>
       <Select
         id={id}
-        value={isMarkiert === undefined ? "all" : String(isMarkiert)}
-        onChange={(event) => onChange(event.target.value === "all" ? undefined : event.target.value === "true")}
+        value={status ?? "all"}
+        onChange={(event) => {
+          onChange(event.target.value === "all" ? undefined : jobStatusSchema.parse(event.target.value));
+        }}
       >
         <option value="all">Alle Stellen</option>
-        <option value="false">Nicht markiert</option>
-        <option value="true">Markiert</option>
+        {JOB_STATUSES.map(value => (
+          <option
+            key={value}
+            value={value}
+          >
+            {JOB_STATUS_LABELS[value]}
+          </option>
+        ))}
       </Select>
     </div>
   );

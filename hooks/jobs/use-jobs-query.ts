@@ -1,5 +1,7 @@
 "use client";
 
+import type { JobStatus } from "@prisma/client";
+
 import { useQuery } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/http/fetch-json";
 import {
@@ -10,7 +12,7 @@ import { useAppMutation } from "@/lib/query/use-app-mutation";
 import type {
   JobSearchValues,
   UpdateJobSearchValues,
-  MarkJobInput,
+  UpdateJobStatusInput,
 } from "@/lib/schemas/jobs/jobs.schema";
 import type {
   CreateJobSearchResult,
@@ -24,15 +26,15 @@ import {
 } from "@/lib/shared/search-params/query-state";
 
 
-export function useJobsQuery(page: number, isMarkiert?: boolean) {
+export function useJobsQuery(page: number, status?: JobStatus) {
   return useQuery({
     queryKey: [
       "jobs",
       page,
-      isMarkiert ?? "all",
+      status ?? "all",
     ],
     queryFn: ({ signal }) => fetchJson<JobsPageResult>(
-      createQueryHref(ROUTES.jobsApi, createJobsQueryString("", page, isMarkiert)),
+      createQueryHref(ROUTES.jobsApi, createJobsQueryString("", page, status)),
       {
         method: "GET",
         signal,
@@ -61,8 +63,8 @@ export function useCreateJobSearch() {
   });
 }
 
-export function useMarkJob() {
-  return useAppMutation<JobLink, MarkJobInput>({
+export function useUpdateJobStatus() {
+  return useAppMutation<JobLink, UpdateJobStatusInput>({
     mutationFn: (body) => fetchJson(ROUTES.jobsApi, {
       method: "PATCH",
       body,

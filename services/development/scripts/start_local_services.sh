@@ -28,13 +28,20 @@ docker compose \
   --env-file "$ENV_FILE" \
   -f "$COMPOSE_FILE" \
   --profile dev \
-  up -d
+  up -d --build
 
 docker compose \
   --env-file "$ENV_FILE" \
   -f "$COMPOSE_FILE" \
   --profile dev \
   ps
+
+# Schema und Client stammen durch --build aus demselben Quellstand.
+docker compose \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  --profile dev \
+  exec -T nextjs-projekt npx prisma migrate deploy
 
 echo "✅ Container gestartet; Compose Watch läuft anschließend in diesem Terminal."
 echo "Website: https://localhost"

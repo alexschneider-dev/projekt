@@ -3,6 +3,11 @@ import type { ApiErrorDefinition } from "./types";
 
 
 export const ERROR_JOBS = {
+  SEARCH_LIMIT: {
+    status: HTTP_STATUS.CONFLICT,
+    code: "SEARCH_LIMIT",
+    message: "Dein Konto erlaubt höchstens eine Suchgruppe. Du kannst die vorhandene Suche bearbeiten.",
+  },
   IMPORT_STATUS_FAILED: {
     status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
     code: "JOB_IMPORT_STATUS_FAILED",
@@ -43,10 +48,10 @@ export const ERROR_JOBS = {
     code: "INVALID_SEARCH_ID",
     message: "Die Such-ID muss eine gültige positive Ganzzahl sein.",
   },
-  INVALID_MARK_FILTER: {
+  INVALID_STATUS: {
     status: HTTP_STATUS.BAD_REQUEST,
-    code: "INVALID_MARK_FILTER",
-    message: "Der Markierungsfilter muss true oder false sein.",
+    code: "INVALID_STATUS",
+    message: "Bitte wähle einen gültigen Stellenstatus: PENDING, BEWORBEN, NICHT_PASSEND oder AUSGELAUFEN.",
   },
   INVALID_ID: {
     status: HTTP_STATUS.BAD_REQUEST,

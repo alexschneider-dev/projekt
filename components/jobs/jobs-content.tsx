@@ -18,10 +18,10 @@ export function JobsContent() {
     page,
     setPage,
     valid,
-    isMarkiert,
-    setIsMarkiert,
+    status,
+    setStatus,
   } = useJobsSearchParams();
-  const query = useJobsQuery(page, isMarkiert);
+  const query = useJobsQuery(page, status);
 
   useEffect(() => {
     if (!valid || (query.data && query.data.page !== page)) {
@@ -42,7 +42,7 @@ export function JobsContent() {
           variant="meta"
           role="status"
         >
-          Noch nicht markiert: {query.data.unmarkedTotal.toLocaleString("de-DE")}
+          Pending: {query.data.pendingTotal.toLocaleString("de-DE")}
         </Text>
       )}
       <Text variant="intro">
@@ -51,8 +51,8 @@ export function JobsContent() {
       <div className="space-y-8">
         <JobCsvUpload />
         <JobsFilter
-          isMarkiert={isMarkiert}
-          onChange={setIsMarkiert}
+          status={status}
+          onChange={setStatus}
         />
         {query.isPending ? (
           <Text role="status">Stellen werden geladen …</Text>
