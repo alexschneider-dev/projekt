@@ -132,7 +132,19 @@ CASES = [
 ]
 
 
+def dashboard_queries():
+    panels = json.loads(
+        (Path(__file__).with_name("grafana") / "overview.json").read_text()
+    )["panels"]
+    error = next(p for p in panels if p["id"] == 102)["targets"][0]["expr"]
+    diagnostic = next(
+        p for p in panels if p["title"].startswith("Abfrageabbrüche")
+    )["targets"][0]["expr"]
+    return error, diagnostic
+
+
 def main():
+    error, diagnostic = dashboard_queries()
     stack = yaml.safe_load(
         (ROOT / "infrastructure/observability/compose.swarm.yml").read_text()
     )
@@ -279,33 +291,23 @@ def main():
                 assert (
                     stream["values"][0][1] == line
                 ), "Die ursprüngliche Logzeile wurde verändert."
-            for environment in ["production"]:
-                panels = json.loads(
-                    (
-                        ROOT / f"{environment}/observability/grafana/overview.json"
-                    ).read_text()
-                )["panels"]
-                error = next(p for p in panels if p["id"] == 102)["targets"][0]["expr"]
-                diagnostic = next(
-                    p for p in panels if p["title"].startswith("Abfrageabbrüche")
-                )["targets"][0]["expr"]
 
-                def fixtures(expr):
-                    expr = expr.replace(
-                        "${service:regex}",
-                        ".+",
-                    ).replace(
-                        'environment="development"',
-                        'environment="production"',
-                    )
-                    return {int(s["stream"]["fixture"]) for s in query(expr)}
+            def fixtures(expr):
+                expr = expr.replace(
+                    "${service:regex}",
+                    ".+",
+                ).replace(
+                    'environment="development"',
+                    'environment="production"',
+                )
+                return {int(s["stream"]["fixture"]) for s in query(expr)}
 
-                assert fixtures(error) == {
-                    i for i, c in enumerate(CASES) if c[2] is None
-                }
-                assert fixtures(diagnostic) == {
-                    i for i, c in enumerate(CASES) if c[2] is not None
-                }
+            assert fixtures(error) == {
+                i for i, c in enumerate(CASES) if c[2] is None
+            }
+            assert fixtures(diagnostic) == {
+                i for i, c in enumerate(CASES) if c[2] is not None
+            }
             print(
                 "Erfolgreich: Rohlogs erhalten, Abbrüche klassifiziert und echte Fehler sichtbar."
             )
