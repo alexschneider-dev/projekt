@@ -81,6 +81,7 @@ services:
             - production/
             - tools/fast-glob/
             - tools/minimatch-compat/
+            - tools/picomatch-secure/
             - prisma/
             - prisma.config.ts
             - .env
@@ -97,6 +98,8 @@ services:
           path: ../../../tools/fast-glob
         - action: rebuild
           path: ../../../tools/minimatch-compat
+        - action: rebuild
+          path: ../../../tools/picomatch-secure
         - action: rebuild
           path: ../Dockerfile-dev
         - action: rebuild

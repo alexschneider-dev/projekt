@@ -20,6 +20,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Lizenzierter Fremdcode; die lokale Änderung wird durch Regressionstests geprüft.
+    "tools/picomatch-secure/index.js",
+    "tools/picomatch-secure/posix.js",
+    "tools/picomatch-secure/lib/**",
   ]),
 ]);
 

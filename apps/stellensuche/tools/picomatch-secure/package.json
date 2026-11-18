@@ -1,0 +1,12 @@
+{
+  "name": "projekt-picomatch-secure",
+  "version": "4.0.7-projekt.1",
+  "private": true,
+  "description": "Lokale picomatch-Variante mit Schutz vor wiederholten Wildcard-Extglobs",
+  "license": "MIT",
+  "main": "index.js",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.22.2"
+  }
+}

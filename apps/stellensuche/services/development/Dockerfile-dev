@@ -13,6 +13,7 @@ RUN mkdir -p /app/.next/cache/images && chown -R nextjs:node /app/.next/cache
 
 COPY tools/fast-glob ./tools/fast-glob
 COPY tools/minimatch-compat ./tools/minimatch-compat
+COPY tools/picomatch-secure ./tools/picomatch-secure
 COPY package.json package-lock.json ./
 COPY services/migration/package.json ./services/migration/package.json
 

@@ -7,6 +7,7 @@ COPY --from=node /usr/local/bin/node /usr/local/bin/node
 WORKDIR /app
 COPY tools/fast-glob ./tools/fast-glob
 COPY tools/minimatch-compat ./tools/minimatch-compat
+COPY tools/picomatch-secure ./tools/picomatch-secure
 COPY package.json package-lock.json ./
 COPY services/migration/package.json ./services/migration/package.json
 RUN npm ci
