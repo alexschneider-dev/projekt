@@ -64,6 +64,18 @@ async function prepareDatabase() {
   ]);
 }
 
+async function buildTestApplication() {
+  // CI prüft Abhängigkeiten separat und verbindlich; der Testbuild nutzt ausschließlich TEST_ENV.
+  await run("npx", [
+    "prisma",
+    "generate",
+  ]);
+  await run("npx", [
+    "next",
+    "build",
+  ]);
+}
+
 try {
   if (command === "db") {
     await prepareDatabase();
@@ -77,10 +89,7 @@ try {
     ]);
   } else if (command === "server") {
     await prepareDatabase();
-    await run("npm", [
-      "run",
-      "build",
-    ]);
+    await buildTestApplication();
     await run("npx", [
       "next",
       "start",
@@ -90,10 +99,7 @@ try {
       "3100",
     ]);
   } else if (command === "visual-build") {
-    await run("npm", [
-      "run",
-      "build",
-    ]);
+    await buildTestApplication();
   } else if (command === "visual-server") {
     await run("npx", [
       "next",

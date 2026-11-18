@@ -17,6 +17,10 @@ defaults:
     working-directory: apps/stellensuche
 
 jobs:
+  sicherheit:
+    name: Abhängigkeiten auf Sicherheitslücken prüfen
+    uses: ./.github/workflows/security-audit.yml
+
   pruefungen:
     name: Anwendung prüfen
     runs-on: ubuntu-latest

@@ -146,6 +146,13 @@ aktivieren und direkte Änderungen ohne Pull Request einschränken. Diese
 serverseitige Repository-Einstellung ist nicht Bestandteil einer Workflow-Datei.
 Nachts und bei manuellem Start läuft zusätzlich die vollständige Browsermatrix.
 
+Der Testworkflow führt den Sicherheits-Audit als eigenen verpflichtenden Job
+parallel zu den Fach- und Ansichtentests aus. Die isolierten Testbuilds generieren
+Prisma und bauen Next.js direkt mit `TEST_ENV`, ohne den `prebuild`-Audit erneut
+auszuführen. So liefern Tests auch bei einem Sicherheitsbefund eigene Ergebnisse.
+Der Gesamtworkflow bleibt bei einem fehlgeschlagenen Audit rot. Reguläre
+Produktionsbuilds über `npm run build` behalten ihre vorgeschaltete Sicherheitsprüfung.
+
 Der Next.js-Build-/Deployment-Workflow hängt von erfolgreichen Anwendungstests
 und dem Sicherheits-Audit ab. Die Tests prüfen denselben Git-Stand, bevor Images
 gebaut werden. Nach einer Bereitstellung prüfen lesende Smoke-Tests Homepage,

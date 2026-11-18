@@ -70,3 +70,19 @@ test(
     assert.ok(validation > checkout && validation < sync);
   }
 );
+
+test("Sicherheitsprüfung bleibt unabhängig von Testbuilds und blockiert Releases", () => {
+  const tests = read(".github/workflows/tests.yml");
+  const audit = tests.jobs.sicherheit;
+  assert.equal(audit.uses, "./.github/workflows/security-audit.yml");
+  assert.equal(audit.if, undefined);
+  assert.equal(audit["continue-on-error"], undefined);
+  assert.equal(tests.jobs.pruefungen.needs, undefined);
+  assert.equal(tests.jobs.visuell.needs, undefined);
+
+  const release = read(".github/workflows/build-deploy-nextjs-and-migration.yml");
+  assert.ok(release.jobs.build.needs.includes("audit"));
+  assert.ok(release.jobs.build.needs.includes("tests"));
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, "apps/stellensuche/package.json"), "utf8"));
+  assert.equal(manifest.scripts.prebuild, "npm run audit:dependencies");
+});
