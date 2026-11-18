@@ -1,5 +1,10 @@
 # Produktion: CI/CD und Swarm Secrets
 
+Die Stellensuche verwendet den eigenen Datenbankbenutzer `stellensuche_app` und
+das Schema `stellensuche` innerhalb der bestehenden Datenbank. Bestehende
+Installationen benötigen zuerst den manuellen
+[Schemaumzug](../infrastructure/postgres/README.md).
+
 Für einen leeren Server zuerst die [Schritt-für-Schritt-Erstinstallation](../docs/produktion-neuer-server.md)
 verwenden. Die folgenden Umstellungsschritte setzen bereits vorhandene Services voraus.
 
@@ -360,7 +365,7 @@ Docker CLI ohne Daemon. Ein tatsächlicher Swarm-Rollout wird damit nicht durchg
 ## Vollständiges Monitoring
 
 Der separate Observability-Stack mit 15 Diensten ist unter
-[observability/README.md](observability/README.md) beschrieben. Vor dem nächsten
+[Observability-Dokumentation](../infrastructure/observability/README.md) beschrieben. Vor dem nächsten
 Nginx-/Stack-Deployment das dort beschriebene externe Netzwerk
 `projekt_grafana_proxy` erstellen. S3 und SMTP müssen vor
 Inbetriebnahme des Monitorings konfiguriert werden. Das Vorbereiten dieser Dateien
@@ -370,7 +375,7 @@ führt noch keine Installation auf dem Server aus.
 
 Vollständige Sicherungen laufen alle sechs Stunden über den Monitoring-Installer
 und verwenden denselben privaten S3-Bucket wie die Logs. Einrichtung, Aufbewahrung
-und Wiederherstellung sind unter [PostgreSQL-Sicherungen](observability/README.md#postgresql-sicherungen) beschrieben.
+und Wiederherstellung sind unter [PostgreSQL-Sicherungen](../infrastructure/observability/README.md#postgresql-sicherungen) beschrieben.
 
 ### Vorrang der Compose-Datei
 
@@ -401,7 +406,7 @@ sudo /usr/local/lib/projekt-deploy/deploy-stack.sh
 
 Der Service `jobs` führt den HTTP-Import unabhängig von Next.js aus. Es gibt
 keinen zusätzlichen API-Endpunkt und keinen Cron-Daemon. Das Docker-Ziel
-`jobs` in `services/Dockerfile` wird als `projekt-jobs` im bestehenden
+`jobs` in `apps/stellensuche/services/Dockerfile` wird als `projekt-jobs` im bestehenden
 Next.js-Release-Workflow gebaut und nach Migration und Next.js bereitgestellt.
 Der Service kann dabei erstmalig angelegt werden.
 
@@ -416,7 +421,7 @@ diese muss bereits in der Registry liegen. Replikate, Ressourcen und
 Update-Strategien stehen ausschließlich in `compose.swarm.yml`.
 
 Die Suchliste und Befehle für lokalen Betrieb stehen in
-[der Import-Anleitung](../scripts/jobs/README.md).
+[der Import-Anleitung](../apps/stellensuche/scripts/jobs/README.md).
 
 ## Registrierung über Resend bereitstellen
 

@@ -5,13 +5,13 @@ on:
     branches:
       - main
     paths:
-      - production/observability/**
-      - lib/observability/**
-      - app/api/observability/**
-      - components/observability/**
-      - services/nginx/**
-      - services/loki/**
-      - instrumentation.ts
+      - infrastructure/observability/**
+      - apps/stellensuche/lib/observability/**
+      - apps/stellensuche/app/api/observability/**
+      - apps/stellensuche/components/observability/**
+      - apps/stellensuche/services/nginx/**
+      - infrastructure/observability/loki-image/**
+      - apps/stellensuche/instrumentation.ts
       - .github/workflows/observability.yml
   workflow_dispatch:
     inputs:
@@ -21,13 +21,13 @@ on:
         default: false
   pull_request:
     paths:
-      - production/observability/**
-      - lib/observability/**
-      - app/api/observability/**
-      - components/observability/**
-      - services/nginx/**
-      - services/loki/**
-      - instrumentation.ts
+      - infrastructure/observability/**
+      - apps/stellensuche/lib/observability/**
+      - apps/stellensuche/app/api/observability/**
+      - apps/stellensuche/components/observability/**
+      - apps/stellensuche/services/nginx/**
+      - infrastructure/observability/loki-image/**
+      - apps/stellensuche/instrumentation.ts
       - .github/workflows/observability.yml
 
 permissions:
@@ -46,6 +46,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: apps/stellensuche/package-lock.json
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -55,7 +56,7 @@ jobs:
       - name: Loki-Patch bauen und Upstream-Regressionstests ausführen
         uses: docker/build-push-action@v6
         with:
-          context: services/loki
+          context: infrastructure/observability/loki-image
           platforms: linux/amd64
           load: true
           tags: ghcr.io/alexschneider-dev/projekt-loki:3.6.18-projekt.1
@@ -63,9 +64,10 @@ jobs:
           cache-to: type=gha,mode=max,scope=projekt-loki
       - name: Konfiguration und Sicherungslogik prüfen
         run: |
-          bash production/observability/validate.sh
-          python -m unittest discover -s production/observability -p 'test_*.py'
+          bash infrastructure/observability/validate.sh
+          python -m unittest discover -s infrastructure/observability -p 'test_*.py'
       - name: Anwendung prüfen
+        working-directory: apps/stellensuche
         run: |
           npm ci
           npx prisma generate
@@ -73,19 +75,19 @@ jobs:
           node --experimental-strip-types --test testing/observability.test.mjs testing/grafana-access.test.mjs testing/sharp-metrics.test.mjs
       - name: Grafana-Provisionierung und Nginx-Zugriff prüfen
         run: |
-          python production/observability/test-grafana-integration.py
-          docker build -t projekt-observability-nginx-check services/nginx
-          python production/observability/test-nginx-integration.py
-          python production/observability/test-grafana-cancellation-integration.py
-          python -u production/observability/test-grafana-query-timeout-integration.py
+          python infrastructure/observability/test-grafana-integration.py
+          docker build -t projekt-observability-nginx-check apps/stellensuche/services/nginx
+          python infrastructure/observability/test-nginx-integration.py
+          python infrastructure/observability/test-grafana-cancellation-integration.py
+          python -u infrastructure/observability/test-grafana-query-timeout-integration.py
       - name: Logabfragen und Klassifikation prüfen
         run: |
-          python production/observability/test-loki-query-integration.py
-          python production/observability/test-query-classification-integration.py
+          python infrastructure/observability/test-loki-query-integration.py
+          python infrastructure/observability/test-query-classification-integration.py
       - name: PostgreSQL-Wiederherstellung prüfen
-        run: python production/observability/test-postgres-integration.py
+        run: python infrastructure/observability/test-postgres-integration.py
       - name: Wiederherstellung aus S3 prüfen
-        run: python production/observability/test-storage-integration.py
+        run: python infrastructure/observability/test-storage-integration.py
 
       - name: Bei der Image-Registry anmelden
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
@@ -131,6 +133,6 @@ jobs:
           remote_dir=$(ssh "${ssh_opts[@]}" "$target" 'mktemp -d /tmp/projekt-observability.XXXXXXXX')
           [[ "$remote_dir" =~ ^/tmp/projekt-observability\.[a-zA-Z0-9]+$ ]]
           trap 'ssh "${ssh_opts[@]}" "$target" "rm -rf -- ${remote_dir}"' EXIT
-          scp "${ssh_opts[@]}" -r production/observability/. "$target:$remote_dir/"
+          scp "${ssh_opts[@]}" -r infrastructure/observability/. "$target:$remote_dir/"
           ssh "${ssh_opts[@]}" "$target" \
             "sudo -n /usr/local/lib/projekt-deploy/install-observability-release.sh '$remote_dir'"

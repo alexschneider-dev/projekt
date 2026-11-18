@@ -8,11 +8,15 @@ on:
   pull_request:
     paths:
       - "**/package.json"
-      - "package-lock.json"
+      - "**/package-lock.json"
       - ".github/workflows/security-audit.yml"
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    working-directory: apps/stellensuche
 
 jobs:
   audit:

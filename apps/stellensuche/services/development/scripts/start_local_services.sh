@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+COMPOSE_FILE="$SCRIPT_DIR/compose.dev.yml"
+ENV_FILE="$SCRIPT_DIR/.env.development.docker"
+
+cd "$PROJECT_DIR"
+
+COLIMA_MEMORY="${COLIMA_MEMORY:-6}"
+COLIMA_CPU="${COLIMA_CPU:-5}"
+
+if ! colima status >/dev/null 2>&1; then
+  echo "Colima wird gestartet..."
+
+  colima start \
+    --memory "$COLIMA_MEMORY" \
+    --cpu "$COLIMA_CPU"
+fi
+
+echo "Docker-Compose-Dienste werden gestartet..."
+
+# Vor dem Schemaumzug dürfen keine alten Anwendungsprozesse mehr schreiben.
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile dev --profile jobs stop nextjs-projekt jobs nginx
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --wait postgres redis
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T postgres bash /opt/projekt-postgres/init-stellensuche.sh
+
+docker compose \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  --profile dev \
+  up -d --build
+
+docker compose \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  --profile dev \
+  ps
+
+# Schema und Client stammen durch --build aus demselben Quellstand.
+docker compose \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  --profile dev \
+  exec -T nextjs-projekt npx prisma migrate deploy
+
+echo "✅ Container gestartet; Compose Watch läuft anschließend in diesem Terminal."
+echo "Website: https://localhost"
+
+# Compose Watch synchronisiert Quellcode und führt konfigurierte Neubauten aus.
+exec docker compose \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  --profile dev \
+  watch --no-up

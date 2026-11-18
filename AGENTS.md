@@ -3,6 +3,28 @@
 Diese Regeln gelten für Änderungen im gesamten Projekt. Neue ausdrückliche
 Anweisungen des Nutzers haben Vorrang.
 
+## Repository-Struktur
+
+- Anwendungen liegen getrennt unter `apps/`; die bestehende Next.js-Anwendung liegt
+  unter `apps/stellensuche/`. Anwendungspfade wie `app/`, `components/`, `lib/`,
+  `scripts/` und `testing/` in diesen Regeln beziehen sich auf diesen Ordner.
+- Gemeinsam betriebene Infrastruktur liegt unter `infrastructure/`; der
+  Observability-Stack einschließlich Loki-Image unter `infrastructure/observability/`.
+- `production/` und `.github/` liegen weiterhin an der Repository-Wurzel.
+- Anwendungen behalten eigene Paket- und Lockdateien. Direkte npm-/npx-Aufrufe
+  im jeweiligen Anwendungsordner ausführen; die Root-Skripte leiten an die
+  Stellensuche weiter. Neue Anwendungen unabhängig bauen und bereitstellen.
+
+## Datenbanktrennung zwischen Anwendungen
+
+- Eine gemeinsame PostgreSQL-Datenbank verwenden; jede Anwendung erhält ein eigenes
+  Schema und einen eigenen Datenbankbenutzer ohne Rechte auf fremde Anwendungsschemas.
+- Stellensuche: Schema `stellensuche`, Benutzer `stellensuche_app`. Next.js und der
+  zugehörige Importdienst teilen diesen Zugang. Keine Administratorzugänge in Anwendungen.
+- Prisma-Modelle und Migrationen gehören zur jeweiligen Anwendung. Die URL der
+  Stellensuche enthält `schema=stellensuche`; PostgreSQL erzwingt die Zugriffsgrenzen.
+- Einrichtung und Bestandsumzug liegen unter `infrastructure/postgres/`.
+
 ## Sprache
 
 - Im gesamten Projekt Deutsch verwenden: für Benutzeroberflächen, Meldungen,

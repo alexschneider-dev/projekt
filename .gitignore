@@ -1,14 +1,14 @@
-/node_modules
+node_modules/
 /.pnp
 .pnp.js
 .yarn/install-state.gz
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # Produktionsausgabe
-/build
+build/
 
 # Sonstiges
 .DS_Store
@@ -28,7 +28,7 @@ npm-debug.log*
 next-env.d.ts
 
 .env.development.docker
-/app/generated/prisma
+/apps/stellensuche/app/generated/prisma
 system.sh
 devnotes.md
 .vscode

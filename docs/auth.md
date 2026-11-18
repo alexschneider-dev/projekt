@@ -9,7 +9,7 @@ direkt einem Benutzer. Es gibt ausschließlich die Rollen `USER` und `SUPER_ADMI
 In `.env.local` für Next.js bzw. als Umgebungsvariablen im Deployment setzen:
 
 ```dotenv
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
+DATABASE_URL=postgresql://stellensuche_app:PASSWORD@HOST:5432/DATABASE?schema=stellensuche
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=EIN_ZUFAELLIGES_SECRET
 ```

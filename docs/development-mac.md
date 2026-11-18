@@ -1,5 +1,11 @@
 # Entwicklung auf dem Mac: vom Klon bis zur Anmeldung
 
+Alle folgenden Entwicklungsbefehle werden in `apps/stellensuche` ausgeführt:
+
+```bash
+cd apps/stellensuche
+```
+
 Diese Anleitung verwendet die vorhandene Docker-Compose-Umgebung mit Next.js,
 PostgreSQL 17, Redis und Nginx. Die Anwendung läuft unter `https://localhost`.
 Monitoring, S3 und SMTP sind für die lokale Entwicklung nicht erforderlich.
@@ -40,7 +46,7 @@ Compose-Befehle mit dem Docker-Desktop-Kontext verwenden.
 
 ```sh
 git clone REPOSITORY_URL projekt
-cd projekt
+cd projekt/apps/stellensuche
 npm ci
 npx prisma generate
 ```
@@ -60,22 +66,26 @@ cat > services/development/scripts/.env.development.docker <<'EOF'
 PROJEKT_DEV_VERSION=lokal
 NGINX_DEV_VERSION=lokal
 POSTGRES_PASSWORD=lokales-entwicklungspasswort
+STELLENSUCHE_DATABASE_PASSWORD=stellensuche-lokal-passwort-2026
 EOF
 
 cat > .env.local <<'EOF'
-DATABASE_URL=postgresql://postgres:lokales-entwicklungspasswort@localhost:5432/postgres
+DATABASE_URL=postgresql://stellensuche_app:stellensuche-lokal-passwort-2026@localhost:5432/postgres?schema=stellensuche
 NEXTAUTH_URL=https://localhost
 OBSERVABILITY_ENABLED=false
 EOF
 printf 'NEXTAUTH_SECRET=%s\n' "$(openssl rand -hex 32)" >> .env.local
 ```
 
-Das gezeigte Datenbankpasswort gilt ausschließlich lokal. Bei Änderungen muss es
-in beiden Dateien übereinstimmen. Im Next.js-Container setzt Compose automatisch
+Die gezeigten Passwörter gelten ausschließlich lokal. Das Anwendungspasswort muss
+in beiden Dateien übereinstimmen; das PostgreSQL-Administratorkennwort bleibt separat. Im Next.js-Container setzt Compose automatisch
 `DATABASE_URL` mit dem Host `postgres` und `REDIS_URL` mit dem Host `redis`.
 Die URL in `.env.local` dient Werkzeugen, die auf dem Mac laufen.
 Ein geändertes `POSTGRES_PASSWORD` setzt das Passwort in einem vorhandenen
 Datenbankvolume nicht zurück.
+
+Für vorhandene Daten zunächst den [Schemaumzug](../infrastructure/postgres/README.md)
+vorbereiten. Die neue Anwendung darf nicht mehr mit dem Administratorzugang starten.
 
 ## 4. HTTPS-Zertifikate erstellen
 
@@ -141,7 +151,7 @@ npm run test:all
 ```
 
 Die Tests verwenden eine eigene Datenbank auf Port 55432; weitere Details stehen
-in [der Testanleitung](../testing/README.md). Prisma CLI lädt `.env.local` auf dem
+in [der Testanleitung](../apps/stellensuche/testing/README.md). Prisma CLI lädt `.env.local` auf dem
 Mac nicht automatisch. Migrationen deshalb wie oben im Container ausführen.
 
 ```sh

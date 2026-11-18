@@ -51,10 +51,10 @@ einer neuen Domain in einer Env-Datei reicht nicht:
 
 | Datei / Bereich | Anpassung bei eigener Domain oder eigenem GitHub-Namespace |
 | --- | --- |
-| `services/nginx/default.conf` | `server_name`, Weiterleitungen und beide Zertifikatspfade auf die neue Hauptdomain und `www` ändern. |
+| `apps/stellensuche/services/nginx/default.conf` | `server_name`, Weiterleitungen und beide Zertifikatspfade auf die neue Hauptdomain und `www` ändern. |
 | `.github/workflows/build-deploy-*.yml` | GHCR-Namespace und Paketnamen für Anwendung, Migration und Nginx. |
 | `production/deploy.sh`, `production/migrate.sh` | Dieselben Image-Namen wie in den Build-Workflows. |
-| `.github/workflows/observability.yml`, `production/observability/compose.swarm.yml` | Derselbe Namespace für das projektspezifische Loki-Image. |
+| `.github/workflows/observability.yml`, `infrastructure/observability/compose.swarm.yml` | Derselbe Namespace für das projektspezifische Loki-Image. |
 | `.github/workflows/deploy-production-service.yml`, weitere Smoke-Konfiguration | HTTPS- und Smoke-Test-Ziel auf die neue Domain setzen. |
 | Spätere Serverkonfiguration | `NEXTAUTH_URL` und `GRAFANA_ROOT_URL` auf die neue Domain setzen. |
 
@@ -62,7 +62,7 @@ Verbleibende Stellen suchen und bewusst prüfen, einschließlich Tests mit erwar
 Image-Namen; externe Images wie cAdvisor nicht umbenennen:
 
 ```sh
-rg -n 'alex-schneider-dev\.de|ghcr\.io/alexschneider-dev' .github production services testing
+rg -n 'alex-schneider-dev\.de|ghcr\.io/alexschneider-dev' .github production apps/stellensuche/services apps/stellensuche/testing
 ```
 
 Bei Nutzung des bestehenden Repositorys und seiner Images bleibt der Namespace
@@ -214,11 +214,12 @@ import { randomBytes } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 const password = randomBytes(32).toString('hex');
 const secret = randomBytes(32).toString('hex');
+const appPassword = randomBytes(32).toString('hex');
 writeFileSync('/etc/projekt/bootstrap-env/postgres.env',
   `POSTGRES_USER=postgres\nPOSTGRES_DB=postgres\nPOSTGRES_PASSWORD=${password}\n`,
   { mode: 0o600, flag: 'wx' });
 writeFileSync('/etc/projekt/bootstrap-env/nextjs.env',
-  `DATABASE_URL=postgresql://postgres:${password}@projekt_postgres:5432/postgres\nNEXTAUTH_SECRET=${secret}\nREDIS_URL=redis://projekt_redis:6379\n`,
+  `DATABASE_URL=postgresql://stellensuche_app:${appPassword}@projekt_postgres:5432/postgres?schema=stellensuche\nNEXTAUTH_SECRET=${secret}\nREDIS_URL=redis://projekt_redis:6379\n`,
   { mode: 0o600, flag: 'wx' });
 JS
 printf 'NEXTAUTH_URL=https://%s\n' "$PROJEKT_DOMAIN" | sudo tee -a /etc/projekt/bootstrap-env/nextjs.env >/dev/null
@@ -273,7 +274,9 @@ sudo docker stack ps --no-trunc projekt
 
 Für reproduzierbare Installationen können PostgreSQL und Redis vor diesem Schritt
 auf geprüfte Image-Digests festgelegt werden. Spätere Stack-Deployments bewahren die
-laufenden Image-Referenzen. Alle vier Dienste müssen starten; bei Fehlern die
+laufenden Image-Referenzen. Vor Schritt 8 kann die Anwendung noch keine Datenbankverbindung herstellen, da
+ihr eigener Benutzer und das Schema erst dort angelegt werden. Nach diesem Schritt
+müssen alle Dienste bereit sein; bei Fehlern die
 Task-Ausgabe und `sudo docker service logs --tail 100 projekt_SERVICE` prüfen.
 
 ## 8. Datenbank migrieren
@@ -284,6 +287,19 @@ Warten, bis PostgreSQL bereit ist:
 postgres_container=$(sudo docker ps -q --filter label=com.docker.swarm.service.name=projekt_postgres --filter health=healthy)
 test -n "$postgres_container"
 sudo docker exec "$postgres_container" pg_isready -U postgres -d postgres
+sudo docker cp infrastructure/postgres "$postgres_container:/tmp/projekt-postgres"
+export DATABASE_APP_PASSWORD=$(sudo node --input-type=module - <<'JS'
+import { readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
+const values = parseEnv(readFileSync('/etc/projekt/bootstrap-env/nextjs.env', 'utf8'));
+process.stdout.write(decodeURIComponent(new URL(values.DATABASE_URL).password));
+JS
+)
+sudo --preserve-env=DATABASE_APP_PASSWORD docker exec --env DATABASE_APP_PASSWORD \
+  "$postgres_container" psql -X -U postgres -d postgres \
+  -v app_schema=stellensuche -f /tmp/projekt-postgres/provision-app.sql
+unset DATABASE_APP_PASSWORD
+sudo docker exec "$postgres_container" rm -rf -- /tmp/projekt-postgres
 sudo /usr/local/lib/projekt-deploy/migrate.sh "$PROJEKT_APP_VERSION"
 ```
 
@@ -321,7 +337,7 @@ sudo rm -rf -- "$admin_source"
 ## 10. Monitoring und Sicherungen vollständig installieren
 
 ```sh
-sudo install -o root -g root -m 0600 production/observability/settings.env.example /etc/projekt/observability.env
+sudo install -o root -g root -m 0600 infrastructure/observability/settings.env.example /etc/projekt/observability.env
 sudoedit /etc/projekt/observability.env
 sudo install -o root -g root -m 0600 /dev/null /etc/projekt/monitoring-input.json
 sudoedit /etc/projekt/monitoring-input.json
@@ -346,14 +362,14 @@ Backups liegen unter `projekt/production/`; den Namespace nicht mit einer andere
 Installation teilen. Lifecycle-Regeln dürfen die benötigten Daten nicht vorzeitig löschen.
 
 ```sh
-sudo bash -c 'set -a; source /etc/projekt/observability.env; set +a; node production/observability/prepare-secrets.mjs /etc/projekt/monitoring-input.json /etc/projekt/monitoring-initial'
+sudo bash -c 'set -a; source /etc/projekt/observability.env; set +a; node infrastructure/observability/prepare-secrets.mjs /etc/projekt/monitoring-input.json /etc/projekt/monitoring-initial'
 postgres_container=$(sudo docker ps -q --filter label=com.docker.swarm.service.name=projekt_postgres --filter health=healthy)
 test -n "$postgres_container"
 sudo cat /etc/projekt/monitoring-initial/postgres-role.sql | sudo docker exec -i "$postgres_container" psql -v ON_ERROR_STOP=1 -U postgres -d postgres
-sudo bash production/observability/storage-admin.sh prepare
-sudo install -o root -g root -m 0755 production/observability/install-release.sh /usr/local/lib/projekt-deploy/install-observability-release.sh
+sudo bash infrastructure/observability/storage-admin.sh prepare
+sudo install -o root -g root -m 0755 infrastructure/observability/install-release.sh /usr/local/lib/projekt-deploy/install-observability-release.sh
 release_source=$(mktemp -d /tmp/projekt-observability.XXXXXXXX)
-git archive HEAD production/observability | tar -x -C "$release_source" --strip-components=2
+git archive HEAD infrastructure/observability | tar -x -C "$release_source" --strip-components=2
 sudo /usr/local/lib/projekt-deploy/install-observability-release.sh "$release_source"
 ```
 
@@ -373,7 +389,7 @@ sudo systemctl list-timers 'projekt-*'
 
 Alle 15 Monitoring-Dienste müssen laufen. Beide ersten Sicherungen müssen den
 Upload und vollständigen Rücklese-/Prüfsummenvergleich bestehen. Retention und
-isolierten Restore gemäß [Backup-Dokumentation](../production/observability/README.md#postgresql-sicherungen)
+isolierten Restore gemäß [Backup-Dokumentation](../infrastructure/observability/README.md#postgresql-sicherungen)
 prüfen. Secrets und private Konfiguration separat sichern: Sie sind kein Bestandteil
 der Datenbanksicherung. Swarm bietet keinen normalen Export der Secret-Inhalte.
 
@@ -493,7 +509,7 @@ zur Wartung dieses Servers. Ein Service-Rollback stellt keine Datenbank wieder h
 
 Für Updates und Secret-Rotation siehe [Produktionsbetrieb](../production/README.md),
 für Monitoring-Abnahme und Wiederherstellung die
-[Monitoring-Anleitung](../production/observability/README.md).
+[Monitoring-Anleitung](../infrastructure/observability/README.md).
 
 ## Fehler gezielt eingrenzen
 

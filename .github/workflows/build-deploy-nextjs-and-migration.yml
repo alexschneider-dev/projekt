@@ -21,6 +21,10 @@ concurrency:
   group: projekt-nextjs-production
   cancel-in-progress: false
 
+defaults:
+  run:
+    working-directory: apps/stellensuche
+
 jobs:
   audit:
     permissions:
@@ -59,6 +63,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: apps/stellensuche/package-lock.json
 
       - name: Abhängigkeiten installieren
         run: npm ci
@@ -89,8 +94,8 @@ jobs:
       - name: Migrations-Image bauen und pushen
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./services/migration/Dockerfile
+          context: ./apps/stellensuche
+          file: ./apps/stellensuche/services/migration/Dockerfile
           push: true
           platforms: linux/amd64
           tags: |
@@ -102,8 +107,8 @@ jobs:
       - name: Stellenimport-Image bauen und pushen
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./services/Dockerfile
+          context: ./apps/stellensuche
+          file: ./apps/stellensuche/services/Dockerfile
           target: jobs
           push: true
           platforms: linux/amd64
@@ -116,8 +121,8 @@ jobs:
       - name: Next.js-Image bauen und pushen
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./services/Dockerfile
+          context: ./apps/stellensuche
+          file: ./apps/stellensuche/services/Dockerfile
           platforms: linux/amd64
           push: true
           tags: |

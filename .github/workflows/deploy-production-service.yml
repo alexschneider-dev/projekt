@@ -108,10 +108,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: apps/stellensuche/package-lock.json
 
       - name: Öffentliche Seiten nach der Bereitstellung prüfen
         env:
           SMOKE_BASE_URL: https://alex-schneider-dev.de
         run: |
-          npm ci
+          npm --prefix apps/stellensuche ci
           npm run test:smoke

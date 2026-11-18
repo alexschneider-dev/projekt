@@ -1,0 +1,5 @@
+\set error_arguments 'Schema oder Passwort fehlen beziehungsweise sind ungültig. Schema: 3–40 Kleinbuchstaben, Ziffern oder Unterstriche; Passwort: mindestens 24 Zeichen.'
+\set error_admin 'Die Einrichtung benötigt einen PostgreSQL-Administrator.'
+\set error_role 'Der vorhandene Datenbankbenutzer besitzt unerwartete Rechte, Mitgliedschaften oder Eigentum. Einrichtung abgebrochen.'
+\set error_schema 'Das Zielschema gehört einem anderen Benutzer. Einrichtung abgebrochen.'
+\set error_legacy 'Die Bestandsdaten sind unvollständig oder das Zielschema ist nicht leer. Vor dem Umzug alle bisherigen Migrationen anwenden und die Konfiguration prüfen.'

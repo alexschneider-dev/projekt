@@ -1,0 +1,728 @@
+# Vollständiges Monitoring
+
+Der separate Swarm-Stack `observability` enthält 15 Monitoring-Dienste:
+Grafana, Prometheus, Loki, Tempo, Alloy, node_exporter, cAdvisor,
+PostgreSQL-/Redis-/Nginx-Exporter, Swarm-Exporter sowie
+Thanos Sidecar, Store, Query und Compact. Die Anwendung bleibt im Stack `projekt`.
+
+Die Dateien bereiten die Installation vor. Es wird kein Server automatisch umgestellt.
+S3 und SMTP müssen vor der Installation eingerichtet sein.
+
+Alle Monitoring-Container verwenden Docker-Logrotation mit `json-file`,
+`max-size: "20m"` und `max-file: "5"` (ca. 100 MB pro Container).
+Ein Deployment übernimmt diese Einstellungen durch Ersetzen der Container.
+Die Grenze gilt für Docker-stdout/stderr-Logs; Datenvolumes und S3-Aufbewahrung
+bleiben davon unabhängig. Details und Kontrolle:
+[Lokale Docker-Logs](../../production/README.md#lokale-docker-logs).
+
+Elasticsearch und dessen Exporter sind nicht enthalten; `ELASTICSEARCH_URL` wird nicht benötigt. Nicht vorhandene Chat-, Cron- und
+Datenbank-Backup-Dienste werden nicht als scheinbar funktionierende Datenquellen angezeigt.
+
+## Datenfluss und Zugriff
+
+Die Nginx-Dashboard-Panels berechnen Anfragen und Laufzeiten wieder direkt aus
+Loki-Rohlogs. Die am 5. November eingeführten automatischen Fünf-Minuten-
+Auswertungen und der dafür aktivierte Prometheus-Remote-Write-Empfänger sind
+zurückgenommen. Loki begrenzt Abfragen wieder auf 744 Stunden. Bereits archivierte
+Metriken bleiben erhalten, werden in diesen Panels jedoch nicht mehr verwendet.
+
+- Next.js veröffentlicht Prozessmetriken und Request-Histogramme auf dem internen
+  Port 9464. OpenTelemetry sendet Next.js-/Fetch-/Prisma-Traces an Alloy.
+- Alloy liest Docker-Logs pro Node und empfängt OTLP sowie Browser-Telemetrie.
+  Der Browser erfasst Fehler, Web Vitals und Netzwerk-Traces ohne Console-Aufzeichnung
+  oder persistente Benutzersitzung. URLs und sensible Felder werden vor dem Versand bereinigt.
+- Prometheus erfasst Metriken alle 30 Sekunden. Thanos lädt abgeschlossene Blöcke
+  nach S3 und verbindet aktuelle und historische Abfragen.
+- Grafana unter `/grafana/` verwendet die bestehende NextAuth-Anmeldung. Jeder
+  Zugriff wird serverseitig gegen den aktuellen Benutzer geprüft. Nur `SUPER_ADMIN` erhält
+  Zugriff mit der Grafana-Organisationsrolle `Admin`; `USER` wird abgewiesen.
+  Das ist keine globale Grafana-Serveradministratorrolle.
+  Der Monitoring-Link lädt ein vollständiges Dokument ohne Next.js-Prefetch.
+  Die interne Nginx-Auth-Anfrage verwendet GET und ausschließlich explizit gesetzte
+  Header, damit RSC- und Router-Header keine 307-Weiterleitung auslösen.
+- Die Homepage bleibt nach der Anmeldung das Ziel. Monitoring ist über die Navigation
+  im internen Bereich erreichbar. Nicht angemeldete Grafana-Aufrufe führen zum Login.
+- Nur Nginx und Grafana gehören in `projekt_grafana_proxy` mit Subnetz
+  `10.254.0.0/24`. Nginx überschreibt Identitäts-/Rollenheader und entfernt Grafana-Cookies
+  sowie Authorization. Grafana vertraut Auth-Proxy-Headern nur aus diesem Subnetz.
+- Kein Monitoring-Dienst veröffentlicht Host-Ports. `/collect` ist für Browser
+  öffentlich, auf POST, 128 KiB und 5 Anfragen/s pro IP begrenzt.
+  Interne `/metrics`, OTLP und Nginx `stub_status` bleiben im Docker-Netz.
+- Docker-Socket-Mounts bei Alloy und Swarm-Exporter sind privilegierter Zugriff:
+  `:ro` verhindert keine schreibenden Docker-API-Aufrufe. Nur vertrauenswürdige
+  Images und Administratoren dürfen Zugriff auf diese Dienste erhalten.
+
+## 2 GB RAM und Swap
+
+Die Konfiguration ist ein Versuch für geringe Last, keine zugesicherte Kapazität.
+Alle 15 Dienste bleiben aktiv. Kleinere Go-Speicherziele, begrenzte Abfrageparallelität,
+30-Sekunden-Scrapes und `stop-first`-Updates der Monitoring-Dienste reduzieren Spitzen.
+Containerlimits gelten einzeln; ihre Summe ist weder reservierter RAM noch eine
+Garantie für die Nutzung von Swap. Swarm bietet hier kein separat konfiguriertes
+Swap-Budget je Dienst. Docker-/Kernel-Unterstützung auf dem Zielhost prüfen.
+
+Die gemessene Referenz lag bei etwa 1,42 GiB Monitoring-RAM; auf dem Zielhost waren
+vor der Installation etwa 990 MiB RAM verfügbar. Der tatsächliche Bedarf kann mit
+Datenvolumen, Abfragen, S3-Störungen, Verdichtung und Deployments deutlich steigen.
+Bei dauerhaftem Ein-/Auslagern oder OOM-Abbrüchen RAM erhöhen oder Dienste auslagern.
+Builds und umfangreiche Integrationstests auf CI beziehungsweise dem Entwicklungsrechner ausführen.
+
+Das cAdvisor-Limit beträgt 256 MiB. Mit 128 MiB wurden auf dem Zielhost wiederholte
+`memory.events:max`-Ereignisse, Swap-Nutzung und Speicherwartezeiten gemessen.
+Das höhere Limit schafft Spielraum für diesen Container, reserviert jedoch keinen
+zusätzlichen RAM und garantiert keine Entlastung des Hosts. Nach der Änderung
+cAdvisor-Verbrauch, `memory.pressure` und `vmstat` erneut prüfen. Sammelintervall
+(30 Sekunden) und erfasste Metriken bleiben unverändert.
+
+Nach Installation mindestens 24 Stunden einschließlich Dashboard-Abfragen,
+Logsuche, Thanos-Verdichtung, Grafana-Sicherung und Anwendungs-Update beobachten:
+
+```sh
+free -h
+sudo docker stats --no-stream
+vmstat 1 60
+sudo bash infrastructure/observability/stability-report.sh 24
+```
+
+Dashboards und Alarme zeigen freien RAM, Swap-Belegung, Swap-Aktivität und OOMs.
+Belegter Swap allein beweist keine laufende Überlastung; `si`/`so` und Antwortzeiten
+mitbewerten. Reserven für Betriebssystem, Datenbank und überlappende App-Updates behalten.
+
+## Vorbereitung auf dem vorgesehenen Manager
+
+Vor der ersten Installation den Workflow **Monitoring prüfen und bereitstellen**
+auf `main` mit `deploy=false` erfolgreich ausführen. Er veröffentlicht das geprüfte
+projektspezifische Loki-Image. Der Server benötigt Lesezugriff auf das GHCR-Paket
+`projekt-loki`; Details stehen in [der Image-Anleitung](loki-image/README.md).
+
+Benötigt: Docker Swarm, Node.js 22, Python 3, Bash und `flock`. Der gelabelte
+Monitoring-Node ist der lokale Manager; dort liegen persistente Volumes und der
+Backup-Timer. Für mehrere Manager ist eine gesonderte Speicherplanung erforderlich.
+
+1. Eigenen privaten S3-Bucket und SMTP-Zugang bereitstellen. `settings.env.example`
+   nach `/etc/projekt/observability.env` kopieren (`root:root`, Modus `0600`) und
+   alle Platzhalter ersetzen. S3-Endpunkt als HTTPS-Origin ohne Pfad angeben.
+2. Prüfen, dass `10.254.0.0/24` nicht kollidiert. Bei einer Änderung auch
+   Grafanas `GF_AUTH_PROXY_WHITELIST` und die Prüfung in `deploy.sh` anpassen.
+3. Einmalig die Infrastruktur vorbereiten:
+
+```sh
+sudo docker node update --label-add observability=true MANAGER_NODE_NAME
+sudo docker network create --driver overlay --subnet 10.254.0.0/24 projekt_grafana_proxy
+sudo docker volume create projekt_monitoring_backup
+sudo install -d -o root -g root -m 0700 /etc/projekt/monitoring-storage
+```
+
+Bestehende Ressourcen prüfen statt sie zu löschen oder neu anzulegen.
+Das bestehende `projekt_net` wird weiterverwendet.
+
+## Secrets und PostgreSQL-Rolle
+
+Alle Passwörter und S3-Schlüssel werden als versionierte Docker Swarm Secrets
+unter `/run/secrets/` bereitgestellt. Die öffentliche `observability.env` enthält
+nur Endpunkte, Namen und andere nicht geheime Einstellungen. `_FILE`-Variablen
+enthalten Dateipfade, niemals den Secret-Inhalt.
+
+Auch die Grafana-Sicherung verwendet das S3-Secret: Für jeden AWS-CLI-Aufruf
+startet das Werkzeug einen kurzlebigen Swarm-Service auf dem lokalen Manager.
+Dieser erhält das Secret direkt von Docker und wird anschließend entfernt.
+Auf dem Host ist keine dauerhafte AWS-Zugangsdaten-Datei erforderlich.
+Das Verzeichnis `monitoring-storage` enthält ausschließlich temporäre Arbeitsdaten.
+Bei einem hart abgebrochenen Backup eventuell zurückgebliebene Services mit
+Präfix `projekt-monitoring-s3-` prüfen und nach Ende des Laufs entfernen.
+
+
+Eine private JSON-Datei außerhalb des Repositorys mit den Schlüsseln
+`s3AccessKey`, `s3SecretKey` und `smtpPassword` anlegen (`0600`). Keine Schlüssel
+in Git, Shell-Befehlsargumenten oder Chatnachrichten hinterlegen.
+
+Aus einem vertrauenswürdigen Checkout im Repository-Hauptverzeichnis:
+
+```sh
+sudo bash -c 'set -a; source /etc/projekt/observability.env; set +a; node infrastructure/observability/prepare-secrets.mjs /etc/projekt/monitoring-input.json /etc/projekt/monitoring-initial'
+```
+
+Das Werkzeug erstellt fünf versionierte Swarm Secrets und eine SQL-Datei mit
+zufälligem Passwort für einen dedizierten PostgreSQL-Monitoring-Benutzer.
+Es überschreibt kein vorhandenes Ausgabeverzeichnis und keine Secrets.
+Nach einem Teilerfolg vorhandene Secret-Namen prüfen; für einen neuen Versuch
+Revision und Ausgabeverzeichnis ändern. Die private JSON-Datei sicher verwahren
+oder nach gesicherter externer Ablage entfernen.
+
+Die SQL-Datei einmalig auf der bestehenden Datenbank ausführen:
+
+```sh
+postgres_container=$(sudo docker ps -q --filter label=com.docker.swarm.service.name=projekt_postgres)
+sudo cat /etc/projekt/monitoring-initial/postgres-role.sql | sudo docker exec -i "$postgres_container" psql -v ON_ERROR_STOP=1 -U postgres -d postgres
+sudo bash infrastructure/observability/storage-admin.sh prepare
+```
+
+Die Rolle hat `pg_monitor` und höchstens fünf Verbindungen. Ein vorhandener Benutzer
+wird absichtlich nicht überschrieben. Bei Secret-Rotation das Datenbankpasswort
+kontrolliert zusammen mit dem Secret aktualisieren.
+Redis wird entsprechend dem bestehenden privaten Anwendungsdienst ohne Passwort
+abgefragt. Bei Einführung von Redis-ACLs zuerst Exporter und Secret-Zuweisung anpassen.
+
+`storage-admin.sh prepare` prüft Schreiben, Lesen und Löschen mit ausschließlich
+neuen Testobjekten in den Monitoring-Präfixen. Es migriert oder verändert keine
+bestehenden Tempo-Daten; diese Installation beginnt direkt mit S3.
+
+Bei fehlgeschlagenen temporären S3-Tasks sichert das Werkzeug den Task-Status
+und die letzten Logzeilen vor der Bereinigung in
+`/etc/projekt/monitoring-storage/s3-failure-*.json` (Modus `0600`).
+Die Terminalmeldung nennt einen erkannten S3-Fehlercode und den Dateipfad.
+Die private Diagnose lokal prüfen und nach Behebung löschen; Rohlogs nicht
+ungeprüft weitergeben. Für einen erneuten Speichertest keine Secrets neu erzeugen.
+
+## S3-Zugangsdaten vor der ersten Bereitstellung korrigieren
+
+Wenn noch kein Service die S3-Secrets verwendet, die Schlüssel in der privaten
+JSON-Datei und Endpunkt, Bucket sowie Region in `observability.env` korrigieren.
+Dann ausschließlich die beiden S3-Secrets ersetzen:
+
+```sh
+sudo bash -c 'set -a; source /etc/projekt/observability.env; set +a; node infrastructure/observability/replace-s3-secrets.mjs /etc/projekt/monitoring-input.json'
+sudo bash infrastructure/observability/storage-admin.sh prepare
+```
+
+Das Werkzeug prüft Service-Referenzen vor Änderungen und verweigert den Austausch
+verwendeter Secrets. Es ersetzt ungenutzte S3-Secrets unter den bisherigen Namen;
+PostgreSQL, Grafana und SMTP bleiben unverändert. Der Austausch beider Secrets ist
+nicht atomar. Nach einem Teilerfolg kann derselbe Befehl erneut ausgeführt werden.
+Für eine bereits laufende Installation ist eine versionierte Rotation erforderlich.
+
+## S3-Anfragen und R2-Klasse A begrenzen
+
+Für den kleinen Einzelserver werden Hintergrundabfragen gebündelt. R2 zählt
+auch `ListObjects` zur Klasse A; häufige Verzeichnisprüfungen können daher trotz
+kleiner Datenmenge teuer werden. Die Konfiguration reduziert diese Aufrufe:
+
+| Dienst | Einstellung | Vorher | Jetzt |
+| --- | --- | --- | --- |
+| Thanos Store und Compactor | Blocksuche | Einzelabfrage je Verzeichnis | Rekursive, paginierte Gesamtliste innerhalb des Metrik-Präfixes |
+| Thanos Store | Synchronisierung | 15 Minuten | 30 Minuten |
+| Thanos Compactor | Kompaktierung | 5 Minuten | 30 Minuten |
+| Thanos Compactor | Globale Blockübersicht | 1 Minute | 1 Stunde |
+| Thanos Compactor | Fortschrittsberechnung | 5 Minuten | 1 Stunde |
+| Thanos Compactor | Zusätzliche Bereinigung | Alle 5 Minuten | Am Ende der Kompaktierung |
+| Loki | Indexsynchronisierung | 5 Minuten | 15 Minuten |
+| Loki | Ungenutzte heruntergeladene Indexeinträge | 24 Stunden | 1 Stunde |
+| Loki | Kompaktierung | 10 Minuten | 30 Minuten |
+| Tempo | Maximale Blockdauer | 5 Minuten | 30 Minuten |
+| Tempo | Blocklistenprüfung | 5 Minuten | 15 Minuten |
+| Tempo | Parallele Listenbereiche | 3 | 1 |
+
+Die vorherigen impliziten Werte stammen aus den eingesetzten Programmversionen.
+Größenlimits, Neustarts und manuelle Flushes können weiterhin zusätzliche Blöcke
+verursachen. Die geringere Anzahl zeitbedingt abgeschlossener Tempo-Blöcke ist
+keine Zusage über eine entsprechende Senkung sämtlicher S3-Anfragen.
+
+Loki verwendet `/loki/index_cache_v2` als neuen Download-Cache. Damit werden die
+im bisherigen `/loki/index_cache` möglicherweise durch lange Abfragen angelegten
+Tabellen beim Neustart nicht wieder eingelesen und regelmäßig synchronisiert.
+Der alte Cache bleibt zunächst unberührt. Aktiver Schreibindex, WAL und S3-Daten
+bleiben erhalten. Bei Bedarf lädt Loki historische Indizes erneut aus S3; die
+erste Abfrage kann deshalb länger dauern und zusätzliche Lesezugriffe erzeugen.
+Die Cache-TTL betrifft ausschließlich ungenutzte Download-Einträge. Loki prüft
+deren Ablauf stündlich, daher erfolgt die Bereinigung nicht exakt nach einer
+Stunde. Wiederholte Abfragen halten die benötigten Einträge weiter aktiv.
+
+Nach dem Deployment in Grafana Explore mit der Datenquelle „Prometheus Live
+(Alarme)“ einen vollständig nach der Umstellung liegenden Zeitraum prüfen:
+
+```promql
+sum by (operation) (increase(loki_s3_request_duration_seconds_count[1h]))
+```
+
+Der Zähler `S3.List` ist für diese Diagnose entscheidend. Die Prometheus-Werte
+sind hochgerechnete Zählerzuwächse, keine exakten R2-Abrechnungszahlen. Ein
+Rückbau der Regeln allein entfernt keinen zuvor aufgebauten Download-Cache.
+
+Neue S3-Blöcke werden später entdeckt. Aktuelle Metriken bleiben über den
+Thanos-Sidecar erreichbar. Tempo hält abgeschlossene Blöcke eine Stunde lokal
+vor, fragt Ingester für die letzten zwei Stunden mit ab und behält kompaktierte
+Blöcke zwei Stunden. Damit überlappen lokale Suche und verzögerte S3-Erkennung.
+Der lokale Plattenbedarf kann steigen; RAM und Swap nach Bereitstellung prüfen.
+Automatische Loki-Aufzeichnungsregeln sind deaktiviert. Aufbewahrungsfristen
+bleiben unverändert; automatische Löschungen können später ausgeführt werden.
+
+Über den regulären Monitoring-Workflow bereitstellen; kein Datenreset erforderlich.
+Nach Bereitstellung neue Logs, aktuelle und archivierte Metriken sowie neue und
+archivierte Traces prüfen. Für die Kostenauswertung zwei vergleichbare volle
+Zeitfenster vor und nach der Bereitstellung verwenden, ohne Deployment-Spitzen.
+`r2-operations.graphql` liefert die Aufteilung nach S3-Operation. Die Abfrage
+verwendet die Cloudflare-Analytics-API, keinen S3-Zugangsschlüssel. Zugangstoken
+privat halten. Die Zahlen aus adaptiver Analytics können Schätzwerte sein;
+für tatsächliche Kosten gilt die Abrechnung.
+
+Bei gleichbleibender Last entspricht eine Million Klasse-A-Aufrufe in 30 Tagen
+etwa 8.333 Aufrufen pro sechs Stunden. Die Änderung garantiert nicht, dass dieses
+Budget erreicht wird. Klasse A, Klasse B und Speicher getrennt kontrollieren.
+
+Quellen: [R2-Abrechnung](https://developers.cloudflare.com/r2/pricing/),
+[Thanos 0.40.1 Compactor](https://github.com/thanos-io/thanos/blob/v0.40.1/cmd/thanos/compact.go),
+[Tempo 2.10.8 Speicherparameter](https://github.com/grafana/tempo/blob/v2.10.8/tempodb/config.go).
+
+## S3-Anbieter einer laufenden Installation wechseln
+
+Zuerst die aktualisierten Skripte über den regulären Monitoring-Release bereitstellen,
+damit auch die installierten Sicherungsjobs die separate S3-Revision unterstützen.
+Die bisherige Konfiguration dabei noch beibehalten.
+
+Für einen neuen Bucket ohne Übernahme der bisherigen Remote-Daten eine Kopie
+von `/etc/projekt/observability.env` als `/etc/projekt/observability-r2.env`
+anlegen (root:root, Modus `0600`). Darin `LOKI_S3_ENDPOINT`, `LOKI_S3_BUCKET`
+und `LOKI_S3_REGION` ändern sowie eine neue `OBS_S3_SECRET_REVISION` setzen.
+`OBS_SECRET_REVISION` unverändert lassen: Grafana, SMTP und PostgreSQL verwenden
+weiterhin diese Revision. Ohne separate S3-Revision bleibt das bisherige Verhalten.
+Für Cloudflare R2 gilt Region `auto`; der HTTPS-Endpunkt enthält keinen Bucketpfad.
+Bei EU-Buckets den EU-Endpunkt aus dem Dashboard verwenden.
+
+Die neuen Schlüssel in `/etc/projekt/r2-input.json` als `s3AccessKey` und
+`s3SecretKey` speichern (root:root, Modus `0600`). Danach im aktualisierten
+Repository auf dem Swarm-Manager ausführen:
+
+```sh
+sudo bash -c 'set -a; source /etc/projekt/observability-r2.env; set +a; node infrastructure/observability/replace-s3-secrets.mjs /etc/projekt/r2-input.json'
+sudo bash infrastructure/observability/storage-admin.sh prepare /etc/projekt/observability-r2.env
+```
+
+Die neue Revision muss unbenutzt sein. Verwendete Secrets werden abgewiesen;
+die bisherigen S3-Secrets bleiben für einen Rückweg bestehen. Der Speichertest
+prüft neue Testobjekte, nicht die vollständige Kompatibilität aller Dienste.
+Bei Fehlern nicht bereitstellen.
+
+Nach erfolgreichem Speichertest bereitstellen und die gemeinsame Konfiguration
+für Sicherungsjobs erst nach erfolgreichem Deployment aktualisieren:
+
+```sh
+sudo bash infrastructure/observability/deploy.sh /etc/projekt/observability-r2.env
+sudo cp -p /etc/projekt/observability.env /etc/projekt/observability-before-r2.env
+sudo install -o root -g root -m 600 /etc/projekt/observability-r2.env /etc/projekt/observability.env
+```
+
+PostgreSQL-Backups verwenden ebenfalls diese gemeinsame Konfiguration. Nach der
+Umstellung einen Lauf über den installierten Service prüfen:
+
+```sh
+sudo systemctl start projekt-postgres-backup.service
+sudo journalctl -u projekt-postgres-backup.service -n 40 --no-pager
+```
+
+Der Lauf muss Upload, Rücklesen und Prüfsummenvergleich bestätigen. Neue Archive
+liegen im neuen Bucket unter `projekt/production/postgres/`; bisherige Backups
+bleiben im alten Bucket und werden nicht automatisch übertragen.
+
+Befehle einzeln ausführen und bei Fehlern stoppen. Danach neue Logs, Traces,
+Metrikabfragen und Sicherungen prüfen. Es werden keine alten Bucketobjekte
+kopiert und keine lokalen Volumes gelöscht. Lokal vorhandene Daten können
+weiterhin sichtbar sein oder später hochgeladen werden; insbesondere ersetzt
+der Bucketwechsel keine Bereinigung lokaler WALs, Caches oder Upload-Metadaten.
+Auf fehlende historische Objekte und ausbleibende neue Uploads achten.
+Die alten Remote-Daten sind über die neue Konfiguration nicht erreichbar.
+Ein Rückwechsel kann wiederum Daten ausblenden, die ausschließlich in R2 liegen.
+
+## Fehlende Objekte in Cloudflare R2 untersuchen
+
+In Cloudflare unter R2 den betroffenen Bucket und den UTC-Zeitraum aus dem Diagramm
+wählen. Die HTTP-404-Kurve fasst alle Objekte und Operationen zusammen. Für die
+50 häufigsten Kombinationen aus Operation und Objektname die lesende Abfrage
+`r2-404.graphql` im GraphQL-Client ausführen. Endpunkt ist
+`https://api.cloudflare.com/client/v4/graphql`, Header ist `Authorization: Bearer <Token>`
+mit einem Cloudflare-Token mit Leserecht für Account Analytics. Zugangsdaten nur
+lokal im Client hinterlegen. Beispielvariablen für eine Stunde des Vorfalls:
+
+```json
+{
+  "konto": "<Cloudflare-Account-ID>",
+  "bucket": "<Bucketname, bei EU-Jurisdiktion mit eu_ davor>",
+  "von": "2026-11-04T03:00:00Z",
+  "bis": "2026-11-04T04:00:00Z"
+}
+```
+
+Unter `projekt/production/` gehört `metrics/` zu Thanos, `loki/` zu Loki,
+`tempo/` zu Tempo und `grafana-backups/` bzw. `postgres/` zu den Sicherungen.
+Das Präfix bezeichnet den Datenbestand. Für die Ursache die Operation und den
+konkreten Schlüssel mit den Dienstlogs im selben Zeitraum vergleichen. Eine
+Existenzprüfung auf eine optionale Datei kann 404 liefern. Ein fehlendes Objekt,
+das zum Lesen eines vorhandenen Blocks oder zur Wiederherstellung einer Sicherung
+benötigt wird, erfordert eine Prüfung von Uploads, Löschungen und Bucketwechsel.
+
+[Cloudflare-Dokumentation zu R2 Analytics](https://developers.cloudflare.com/r2/platform/metrics-analytics/)
+
+## Temporäre Nginx-Diagnose für HTTP 400 und 501
+
+Nach Bereitstellung des neuen Images über **Nginx bauen und bereitstellen** auf
+dem Swarm-Knoten mit dem laufenden Nginx-Task in derselben Shell ausführen:
+
+```sh
+nginx_task=$(sudo docker ps -q --filter label=com.docker.swarm.service.name=projekt_nginx --filter health=healthy)
+case "$nginx_task" in
+  ""|*[!0-9a-f]*)
+    printf '%s\n' 'Kein eindeutiger gesunder Nginx-Container gefunden. Deployment und Task-Status prüfen.'
+    unset nginx_task
+    ;;
+  *)
+    sudo docker exec "$nginx_task" sh -ec 'ln -sf /etc/nginx/security-diagnose.inc /etc/nginx/security-aktiv.inc && nginx -t && nginx -s reload'
+    ;;
+esac
+```
+
+Bei laufenden Updates können mehrere Container desselben Dienstes existieren.
+Die Auswahl verlangt genau einen gesunden Container. Nach erfolgreicher Aktivierung
+die ausgewählte ID in derselben Shell für die Rückschaltung verwenden.
+
+Während des kurzen Diagnosefensters schreibt Nginx HTTP-Fehlermeldungen ab
+`info` und ergänzt bei 400/501 den Security-Eintrag um Proxy-Adresse, übermittelte
+Client-Adresse, Port, Prozess- und Verbindungsnummer. Ein leeres
+`proxy_client_ip` bedeutet, dass keine PROXY-Quelladresse vorlag. Routineanfragen
+behalten das übliche Format. Freitextmeldungen können Anfragedetails enthalten.
+Für den Export nur betroffene Verbindungen auswählen.
+
+In Grafana unter **Entdecken → Loki** nach Diagnosezeilen suchen:
+
+```logql
+{environment="production", service_name="nginx", log_type="security"} | json | __error__="" | status=~"400|501" | connection!=""
+```
+
+Im selben Container und Zeitfenster nach `*<connection> ` in den Textmeldungen
+suchen und die Prozessnummer vergleichen. Danach die Standardprotokollierung
+sofort wieder aktivieren:
+
+```sh
+sudo docker exec "$nginx_task" sh -ec 'ln -sf /etc/nginx/security-standard.inc /etc/nginx/security-aktiv.inc && nginx -t && nginx -s reload'
+```
+
+Die Umschaltung gilt nur für den aktuellen Task. Ein neu erstellter Container
+startet im Standardmodus.
+
+## Bereitstellung
+
+1. Das Proxy-Netz muss vor dem nächsten Nginx-/Stack-Deploy existieren.
+2. Next.js und Nginx mit den bestehenden Build-/Deploy-Workflows aktualisieren.
+   Die App-Compose aktiviert `OBSERVABILITY_ENABLED` und den OTLP-Endpunkt.
+   Abweichende Werte in `/etc/projekt/runtime.json` vorher abgleichen, da dieses
+   Manifest die Compose-Umgebung ergänzen beziehungsweise überschreiben kann.
+3. Den separaten Monitoring-Stack mit dauerhaftem, root-eigenem Release und
+   Backup-Timer installieren:
+
+```sh
+release_source=$(mktemp -d /tmp/projekt-observability.XXXXXXXX)
+git archive HEAD infrastructure/observability | tar -x -C "$release_source" --strip-components=2
+sudo bash infrastructure/observability/install-release.sh "$release_source"
+```
+
+Das temporäre Upload-Verzeichnis nach erfolgreicher Installation entfernen.
+Es enthält nur Repository-Dateien, keine Produktions-Secrets.
+
+Der Deploy prüft Einstellungen, Secrets, Netz und Node-Platzierung, bevor er
+Services verändert. Swarm Configs erhalten inhaltsabhängige Namen. Alte Configs
+bleiben für Rollbacks erhalten. Anschließend müssen alle 15 Dienste, alle 16
+Metrik-Jobs, Datenbank-/Redis-/Nginx-Verbindungen und Thanos-Abfragen
+erfolgreich sein. Ein Fehler beendet das Deployment mit Fehlerstatus; es erfolgt
+kein unkontrollierter Rollback des gesamten Stacks.
+
+Für CI den Installer zunächst installieren und nach Änderungen an
+`infrastructure/observability/install-release.sh` erneut aktualisieren. Der Workflow
+verwendet die separat installierte Kopie auf dem Server, nicht das mit dem
+Release hochgeladene Skript. Die leere Datei `loki-rules.yml` bleibt im Paket,
+damit bereits installierte Installer mit dieser Dateiliste weiterhin funktionieren.
+Sie wird nicht als Swarm Config eingebunden und enthält keine Regeln.
+
+```sh
+sudo install -o root -g root -m 0755 infrastructure/observability/install-release.sh /usr/local/lib/projekt-deploy/install-observability-release.sh
+```
+
+Die Sudoers-Regel ist nur bei der ersten Einrichtung nötig:
+
+```sh
+sudo visudo -f /etc/sudoers.d/projekt-observability
+```
+
+Die passende Regel für den tatsächlichen Deploy-Benutzer eintragen:
+
+```sudoers
+alex ALL=(root) NOPASSWD: /usr/local/lib/projekt-deploy/install-observability-release.sh /tmp/projekt-observability.*
+```
+
+Mit `sudo visudo -c` prüfen. Der Benutzer ist damit wie beim App-Deployment ein
+vertrauenswürdiger Produktionsadministrator. Der Workflow **Monitoring prüfen und
+bereitstellen** prüft relevante Änderungen in Pull Requests. Bei einem Push auf
+`main` mit Änderungen an Monitoring, Instrumentierung, Nginx, Loki oder dem Workflow
+validiert er zuerst isoliert, veröffentlicht das geprüfte Loki-Image und deployt
+anschließend automatisch. Die genauen Pfadfilter stehen im Workflow.
+Manuelle Starts bleiben möglich: `deploy=false` prüft und veröffentlicht nur das
+Image, `deploy=true` stellt anschließend bereit. Die Server-Vorbereitung und der
+aktuelle CI-Installer müssen vor dem ersten automatischen Deployment vorhanden sein.
+Der Workflow nutzt die vorhandenen `PROD_*`-Secrets und die gemeinsame
+Produktions-Concurrency-Gruppe. Erfolgreiche Installation aktiviert den Backup-Timer.
+Der oben gezeigte manuelle Installer aktiviert denselben Timer. Ein direkter Aufruf
+von `deploy.sh` aktualisiert ausschließlich den Stack und ersetzt nicht den
+installierten Backup-Code. Deshalb für neue Releases den Installer verwenden.
+
+## Abnahme
+
+- Als anonymer Benutzer sowie als `USER` darf kein Grafana-Zugriff möglich sein.
+  Fremde `X-Webauth-*`-Header dürfen das nicht umgehen.
+- Als `SUPER_ADMIN` Dashboard, Logs und Traces öffnen. Benutzer danach
+  deaktivieren beziehungsweise Rolle entziehen und erneuten Zugriff prüfen.
+- Testfehler im Browser und eine serverseitige Anfrage erzeugen, in Grafana
+  nachsehen. Keine Anfrageinhalte, Cookies oder Zugangsdaten dürfen exportiert werden.
+- In Grafana einen Testalarm an die konfigurierte E-Mail-Adresse senden.
+- Erste Sicherung ausführen und den erfolgreichen Rücklese-/Prüfsummenvergleich prüfen:
+
+```sh
+sudo systemctl start projekt-monitoring-backup.service
+sudo journalctl -u projekt-monitoring-backup.service -n 40 --no-pager
+sudo systemctl status projekt-monitoring-backup.timer --no-pager
+```
+
+## Speicherung und Wiederherstellung
+
+Alle Objekte liegen unter dem eigenen Präfix `projekt/production/`:
+
+| Daten | Aufbewahrung / Pfad |
+| --- | --- |
+| Betriebslogs | unbegrenzt, `loki/` |
+| Security-Logs einschließlich Nginx-Fehler | 30 Tage, ebenfalls `loki/` |
+| Metriken | 730 Tage, `metrics/` über Thanos |
+| Traces | 90 Tage, `tempo/` |
+| PostgreSQL-Sicherungen | lokal 14 Tage, S3 unbegrenzt, `postgres/` |
+| Grafana-Sicherungen | 30 Kalendertage und 12 Kalendermonate, `grafana-backups/` |
+
+Nginx-Betriebslogs enthalten normalisierte Pfade ohne Querystring und Client-IP;
+Pfade selbst können fachliche Kennungen enthalten. Andere Docker-Logs werden
+unverändert gesammelt. Für neue Dienste und zusätzliche Logfelder deren Inhalte
+und Aufbewahrung prüfen. Der allgemeine Fehlerhandler protokolliert keine rohen
+Exception-Objekte. Der Collector lässt nur ausgewählte Span-Attribute passieren.
+
+Prometheus hält lokal höchstens 15 Tage / 10 GB; das ist ein Retentionsziel, kein
+hartes Gesamtlimit für WAL und Arbeitsdateien. Loki-WAL, Tempo-WAL, Alloy-Queues,
+Thanos-Caches und Docker-Logs benötigen ebenfalls freien Plattenplatz.
+Anwendungs-, Edge- und Monitoring-Container rotieren ihre Docker-Logs bei
+10 MB und behalten drei Dateien; längere Ausfälle der Erfassung können daher Logs verlieren.
+Bucket-Lifecycle-Regeln dürfen die genannten Präfixe nicht vorzeitig entfernen.
+
+Die Grafana-Sicherung erstellt eine konsistente SQLite-Kopie, prüft deren Integrität,
+lädt das Archiv hoch und verifiziert einen vollständigen Download per SHA-256.
+Erst danach werden ausschließlich eigene abgelaufene Archivnamen gelöscht.
+Die Sicherung enthält Grafana-Datenbank, Plugins und Image-Metadaten; Secrets,
+private Einstellungen und Repository-Konfiguration separat sicher aufbewahren.
+
+Für einen Restore in ein **neues leeres Volume** entpacken, SQLite prüfen und mit
+der im Archiv genannten Grafana-Version isoliert starten. Erst nach Prüfung den
+Produktionsdienst auf das neue Volume umstellen. Niemals über eine laufende
+Grafana-Datenbank entpacken. Bei Hostverlust lesen Thanos und Tempo ihre S3-Daten
+wieder; noch nicht hochgeladene Blöcke und lokale Queues können verloren gehen.
+
+Zum Stoppen `sudo docker stack rm observability` verwenden und den Backup-Timer
+stoppen. Volumes, Secrets und S3-Daten bleiben erhalten. Das ist kein vollständiger
+Rollback der Anwendungsinstrumentierung; dafür `OBSERVABILITY_ENABLED=false`
+setzen und Next.js neu bereitstellen. Alte Configs nicht vor Ablauf des
+Rollback-Zeitraums entfernen.
+
+## Lokale Prüfungen
+
+```sh
+npm run check
+npm audit
+npm run audit:dependencies
+bash infrastructure/observability/validate.sh
+python3 -m unittest discover -s infrastructure/observability -p 'test_*.py'
+python3 infrastructure/observability/test-loki-query-integration.py
+python3 infrastructure/observability/test-query-classification-integration.py
+python3 infrastructure/observability/test-storage-integration.py
+python3 infrastructure/observability/test-grafana-integration.py
+docker build -t projekt-observability-nginx-check apps/stellensuche/services/nginx
+python3 infrastructure/observability/test-nginx-integration.py
+node --experimental-strip-types --test testing/observability.test.mjs
+```
+
+Python-Integrationstests benötigen PyYAML 6.0.3 und Docker. Sie verwenden isolierte
+Testcontainer und künstliche Daten ohne Produktions-Secrets. Sie ersetzen keine
+SMTP-Zustellprüfung, Zielhost-Lastprüfung oder S3-Abnahme mit den späteren Zugangsdaten.
+
+Technische Grundlagen: [Grafana Auth Proxy](https://grafana.com/docs/grafana/latest/setup-grafana/configure-access/configure-authentication/auth-proxy/),
+[Alloy-Konfigurationsprüfung](https://grafana.com/docs/alloy/latest/reference/cli/validate/)
+und [Thanos Sidecar](https://thanos.io/tip/components/sidecar.md/).
+
+
+## Übernommene Korrekturen für Abfrageabbrüche
+
+### Next.js- und Sharp-Speicher messen
+
+Der bestehende Metrik-Endpunkt auf Port 9464 liest Sharp im laufenden
+Next.js-Prozess aus. `app_sharp_memory_bytes{kind="current|high|max"}` zeigt
+aktuell von libvips erfassten Speicher, den Höchstwert seit Prozessstart und
+das Cachelimit. Die gerundeten MiB werden in Bytes umgerechnet. Der Höchstwert
+bleibt nach einer Freigabe hoch; das Cachelimit ist kein Limit für den gesamten
+Prozessspeicher. Nicht alle nativen Allokationen werden von libvips erfasst.
+
+`app_sharp_tasks{state="queue|process"}` zeigt wartende und aktive Aufgaben,
+`app_sharp_cache_items{kind="current|max"}` die gecachten Operationen und ihr Limit.
+Die Erfassung verändert weder Cachelimits noch Parallelität. Kurze Aufgaben
+zwischen zwei Prometheus-Abfragen können unbemerkt bleiben.
+
+Die Panels **Next.js-Prozessspeicher**, **Sharp / libvips – Speicher** und
+**Sharp – Bildverarbeitung** zeigen Prozessspeicher, JavaScript-Heap und
+Sharp-Werte getrennt. Sie beziehen sich immer auf Next.js; der Dienstfilter
+für Logs gilt hier nicht. Die Differenz zwischen RSS und Heap ist nicht
+automatisch Sharp-Speicher und kein Nachweis eines Speicherlecks.
+
+Zur Auslieferung Next.js neu bauen und bereitstellen sowie das Monitoring-
+Dashboard aktualisieren. Ein Neustart setzt den Sharp-Höchstwert zurück.
+Ein separater Node-Prozess misst nicht den Zustand des laufenden Servers.
+Prüfung: `node --experimental-strip-types --test testing/sharp-metrics.test.mjs`.
+
+### Abgestimmte Zeitlimits für Loki-Abfragen
+
+Kalte Archivabfragen können zunächst S3-Daten laden, bevor eine Antwort beginnt.
+Die Zeitlimits sind deshalb aufeinander abgestimmt: Loki `query_timeout: 90s`,
+Loki-HTTP-Antwort `http_server_write_timeout: 100s`, Grafanas Loki-Datenquelle
+`timeout: 105` und Nginx `proxy_read_timeout 120s` für die geschützten Dashboard-,
+Such- und Datenabfragepfade. Der Nginx-Wert gilt pro Lesepause.
+
+Damit bricht Grafana eine noch laufende Abfrage nicht schon nach seinem bisherigen
+30-Sekunden-Limit ab. Die Änderung beschleunigt weder S3 noch beseitigt sie
+Speicherknappheit. Interne `ratestore`-Zeitlimits bleiben davon unabhängig.
+Bei Zeitraumwechseln können bereits angenommene Abfragen weiterhin bis zum
+Zeitlimit arbeiten. Echte Upstream-Fehler bleiben sichtbar.
+
+Für die Bereitstellung das neue Nginx-Image über **Nginx bauen und bereitstellen**
+ausliefern und den Workflow **Monitoring prüfen und bereitstellen** für Grafana
+und Loki erfolgreich abschließen. Die einzelne Grafana-/Loki-Instanz kann beim
+Austausch laufende Monitoring-Abfragen unterbrechen.
+
+Der Test `python infrastructure/observability/test-grafana-query-timeout-integration.py`
+prüft eine um 65 Sekunden verzögerte Loki-Testantwort über echtes Grafana und
+Nginx sowie die Weitergabe eines HTTP-Fehlers. Er benötigt PyYAML, Docker und das
+Image `projekt-observability-nginx-check`. `--baseline` entfernt nur das
+Datenquellen-Zeitlimit und muss nach etwa 30 Sekunden fehlschlagen.
+Der Workflow führt den Erfolgsfall aus. Dies ersetzt keinen Lasttest auf dem Server.
+
+### Behandlung abgebrochener Verbindungen
+
+Loki verwendet das projektspezifische Image und den eng begrenzten Patch aus
+[`infrastructure/observability/loki-image`](loki-image/README.md). Nur bestätigte Kontext-Abbrüche
+beim Laden von Chunks werden auf Debug protokolliert. Speicherfehler,
+Berechtigungsfehler und Zeitüberschreitungen bleiben Fehler. Der Image-Build führt
+die betroffenen Upstream-Pakettests aus.
+
+Vor der ersten Installation den Workflow **Monitoring prüfen und bereitstellen**
+auf `main` mit `deploy=false` ausführen: Er baut, prüft und veröffentlicht das Image
+`ghcr.io/alexschneider-dev/projekt-loki:3.6.18-projekt.1`. Der Server benötigt
+Lesezugriff auf dieses Paket. Der bestehende Docker-Login unter root muss bei einem
+privaten Paket berechtigt sein; das Deployment reicht Registry-Zugangsdaten an
+Swarm weiter. Das Image wird außerhalb des kleinen Produktionsservers gebaut.
+
+Nginx gibt frühe Browser-Abbrüche bei Dashboard-Seiten, `/grafana/api/ds/query`
+und der Ordner-/Dashboardsuche unter
+`/grafana/apis/dashboard.grafana.app/v0alpha1/namespaces/default/search`
+nicht sofort an Grafana weiter. Die Anmeldung und Rollenprüfung bleiben erhalten.
+Andere APIs und Live-WebSockets behalten ihr bisheriges Abbruchverhalten. Bereits
+angenommene Abfragen können dadurch länger Ressourcen belegen. Große Antworten
+können beim Schreiben an den getrennten Client weiterhin abbrechen; der Test
+`test-grafana-cancellation-integration.py` reproduziert auch diese Grenze.
+Für diese Änderung das Nginx-Image neu bauen und bereitstellen.
+
+Next.js-Seiten akzeptieren am Produktionsproxy ausschließlich GET und HEAD.
+Das Projekt verwendet keine Server Actions; Formulare verwenden `/api/`, dessen
+Methoden davon unberührt bleiben. Unerwartete Methoden an Seitenrouten erhalten
+HTTP 405 mit `Allow: GET, HEAD`, bevor Next.js Aktionsreferenzen verarbeitet.
+Vor Einführung von Server Actions muss diese Einschränkung angepasst werden.
+
+Alloy markiert ausschließlich Grafanas `logger=context` / `Error writing to response`
+mit TCP-Schreibfehler `broken pipe` oder `connection reset by peer` als
+`query_event="response_peer_closed"`. Das Dashboard zeigt diese Originalmeldungen
+im Diagnosepanel. Sie sind kein Nachweis eines harmlosen Browser-Abbruchs: Bei
+wiederholten Meldungen Nginx-Logs und sichtbare Ladefehler prüfen. HTTP 500,
+Schreib-Timeouts, andere Logger und andere Dienste bleiben im Fehlerpanel.
+Die Integrationstests enthalten entsprechende Gegenbeispiele.
+
+## PostgreSQL-Sicherungen
+
+Der Release-Installer installiert und aktiviert zusätzlich `projekt-postgres-backup.timer`.
+Bei bestehenden Installationen zuerst die aktuelle `install-release.sh` wie oben
+beschrieben als `/usr/local/lib/projekt-deploy/install-observability-release.sh`
+installieren, dann das Monitoring-Release bereitstellen. Der Timer läuft alle sechs
+Stunden um 00:30, 06:30, 12:30 und 18:30 UTC mit bis zu fünf Minuten Verzögerung.
+Verpasste Termine werden beim Start nachgeholt. Für die erste Sicherung:
+
+```sh
+sudo systemctl start projekt-postgres-backup.service
+sudo journalctl -u projekt-postgres-backup.service -n 40 --no-pager
+sudo systemctl status projekt-postgres-backup.timer --no-pager
+```
+
+`pg_dumpall` im laufenden Container `projekt_postgres` sichert alle Datenbanken und
+Rollen einschließlich Passwort-Hashes als komprimiertes SQL. Der lokale Socket
+muss den Betriebssystembenutzer `postgres` ohne Passwort zulassen; andernfalls
+bricht der Lauf ab. Die Client-Version entspricht dadurch der Server-Version.
+Jede Datenbank wird konsistent gesichert; es gibt keinen gemeinsamen Snapshot über
+mehrere Datenbanken und keine Wiederherstellung auf beliebige Zeitpunkte (WAL).
+
+Bucket, Endpunkt, Region und versioniertes S3-Secret entsprechen exakt der
+Log-Konfiguration (`LOKI_S3_*`, `OBS_S3_SECRET_REVISION` mit Rückfall auf
+`OBS_SECRET_REVISION`). Es werden keine neuen
+Zugangsdaten angelegt. Der Schlüssel benötigt Schreib- und Leserechte für
+`projekt/production/postgres/`. Bucket-Lifecycle-Regeln prüfen: Das Werkzeug
+löscht keine PostgreSQL-Objekte aus S3.
+
+Lokale Archive liegen mit restriktiven Rechten in `/etc/projekt/postgres-backups`.
+Nach erfolgreichem Upload und vollständigem SHA-256-Rücklesevergleich werden eigene
+lokale Archive älter als 14 Tage entfernt. Bei Fehlern bleibt die lokale Kopie
+liegen; Plattenplatz bei anhaltenden Fehlern überwachen. Der gemeinsame Deploy-Lock
+verhindert Überschneidungen mit Deployment und Grafana-Sicherung. Grafana alarmiert
+bei Fehlern sowie fehlender oder mehr als acht Stunden alter erfolgreicher Sicherung.
+
+Für eine Wiederherstellung das gewünschte `.sql.gz` über einen autorisierten
+S3-Client herunterladen und `gzip -t` ausführen. Einen isolierten, leeren
+PostgreSQL-Server derselben Hauptversion mit einem separaten Bootstrap-Superuser
+(z. B. `restore_admin`) starten. Das vermeidet den Konflikt mit der im Dump
+enthaltenen Rolle `postgres`. Anschließend beispielsweise:
+
+```sh
+set -o pipefail
+gzip -dc /sicherer/pfad/sicherung.sql.gz | docker exec -i --user postgres POSTGRES_TEST_CONTAINER psql -U restore_admin -d postgres -v ON_ERROR_STOP=1
+```
+
+Rollen, Tabellen und fachliche Daten prüfen, bevor die Anwendung auf die
+wiederhergestellte Datenbank umgestellt wird. Das SQL niemals ungeprüft gegen die
+laufende Produktionsdatenbank ausführen. Datenbank-Backups enthalten vertrauliche
+Daten und Passwort-Hashes; Downloads entsprechend geschützt aufbewahren.
+
+Der isolierte Wiederherstellungstest verwendet ausschließlich temporäre Container:
+`python3 infrastructure/observability/test-postgres-integration.py`.
+Zum Abschalten `sudo systemctl disable --now projekt-postgres-backup.timer` ausführen.
+
+
+## Dashboard-Abgleich und Event Loop
+
+Das provisionierte Dashboard heißt **Projekt – Betrieb und Diagnose**
+(UID `projekt-production`). Es enthält **Node.js Event Loop p99** neben
+**Node.js Heap**. Die Event-Loop-Metrik stammt von Next.js, nicht vom Browser.
+Ein vollständig fehlendes Panel von einem Panel mit „No data“ unterscheiden:
+Bei fehlendem Panel Dashboard-UID und bereitgestellte Konfiguration prüfen;
+bei fehlenden Daten `nodejs_eventloop_lag_p99_seconds` in Prometheus und Thanos prüfen.
+
+Die projektrelevanten Anzeigen der Vorlage sind übernommen. Elasticsearch,
+Chat-Metriken und ein nicht vorhandener Anwendungs-Cron bleiben ausgenommen.
+PostgreSQL- und Grafana-Sicherungen haben eigene Anzeigen; WebSocket-Dauer kann
+Grafana Live erfassen und ist keine HTTP-Latenz. Ohne entsprechende abgeschlossene
+Verbindungen bleibt diese Anzeige leer.
+
+Der Alarm **Anhaltende Swap-Aktivität** reagiert auf mehr als 100 Speicherseiten/s
+(Ein- plus Auslagerungen, Mittelwert über fünf Minuten), wenn dieser Zustand
+fünf Minuten anhält. `FIRING` bedeutet, dass die Regel ausgelöst hat; es ist keine
+Entwarnung und kein bloßer Versandtest. Einlagerungen nach Start oder Sicherung
+können die Regel auslösen. Mit `vmstat 1 60`, verfügbarem RAM, Antwortzeiten und
+I/O-Wartezeit bewerten; die erste vmstat-Zeile ist der Mittelwert seit Systemstart.
+
+Die E-Mail-Benachrichtigungen für **Anhaltende Swap-Aktivität** und
+**Weniger als 15 % Swap frei** sind über die Benachrichtigungsrichtlinie und das
+ganztägige Zeitintervall `swap-dauerhaft-stumm` dauerhaft stummgeschaltet.
+Beide Regeln werden weiterhin ausgewertet und bleiben in Grafana sichtbar.
+Andere Alarme senden weiterhin E-Mails. Die Änderung wird mit dem nächsten
+Monitoring-Deployment wirksam. Zum erneuten Aktivieren der Swap-E-Mails die
+zugehörige Unterroute unter `policies` in `grafana/alerting.yml` entfernen.

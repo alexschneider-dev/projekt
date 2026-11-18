@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    working-directory: apps/stellensuche
+
 jobs:
   pruefungen:
     name: Anwendung prüfen
@@ -26,6 +30,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: apps/stellensuche/package-lock.json
 
       - name: Abhängigkeiten und Prisma vorbereiten
         run: |
@@ -40,6 +45,9 @@ jobs:
 
       - name: Komponenten, Logik und Testabdeckung
         run: npm run test:coverage
+
+      - name: Schemaumzug und Datenbankrechte prüfen
+        run: npm run test:database:isolation
 
       - name: Browser installieren
         run: npx playwright install --with-deps chromium
@@ -59,9 +67,9 @@ jobs:
         with:
           name: testergebnisse
           path: |
-            playwright-report/
-            test-results/
-            coverage/
+            apps/stellensuche/playwright-report/
+            apps/stellensuche/test-results/
+            apps/stellensuche/coverage/
           retention-days: 7
 
       - name: Testdatenbank entfernen
@@ -82,6 +90,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: apps/stellensuche/package-lock.json
 
       - run: npm ci
       - run: npx playwright install --with-deps chromium firefox webkit
@@ -93,8 +102,8 @@ jobs:
         with:
           name: browsermatrix
           path: |
-            playwright-report/
-            test-results/
+            apps/stellensuche/playwright-report/
+            apps/stellensuche/test-results/
           retention-days: 7
 
       - name: Testdatenbank entfernen
@@ -123,6 +132,6 @@ jobs:
         with:
           name: ansichten
           path: |
-            playwright-report/
-            test-results/
+            apps/stellensuche/playwright-report/
+            apps/stellensuche/test-results/
           retention-days: 7
