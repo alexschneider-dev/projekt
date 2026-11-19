@@ -86,3 +86,27 @@ test("Sicherheitsprüfung bleibt unabhängig von Testbuilds und blockiert Releas
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "apps/stellensuche/package.json"), "utf8"));
   assert.equal(manifest.scripts.prebuild, "npm run audit:dependencies");
 });
+
+test("Nur der Sicherheits-Audit läuft täglich; Browserjobs verwenden eine feste Ubuntu-Version", () => {
+  const directory = path.join(root, ".github/workflows");
+  const scheduled = fs.readdirSync(directory).filter((file) => {
+    return file.endsWith(".yml") && read(`.github/workflows/${file}`).on.schedule;
+  });
+  assert.deepEqual(scheduled, ["security-audit.yml"]);
+  const tests = read(".github/workflows/tests.yml");
+  assert.ok(Object.hasOwn(tests.on, "push"));
+  assert.ok(Object.hasOwn(tests.on, "pull_request"));
+  assert.ok(Object.hasOwn(tests.on, "workflow_dispatch"));
+  assert.ok(Object.hasOwn(tests.on, "workflow_call"));
+  assert.equal(tests.jobs.browsermatrix.if, "github.event_name == 'workflow_dispatch'");
+
+  for (const name of [
+    "pruefungen",
+    "browsermatrix",
+  ]) {
+    const job = tests.jobs[name];
+    assert.equal(job["runs-on"], "ubuntu-24.04");
+    const install = job.steps.find((step) => step.uses === "./.github/actions/install-playwright");
+    assert.equal(install.with.browsers, name === "pruefungen" ? "chromium" : "chromium firefox webkit");
+  }
+});

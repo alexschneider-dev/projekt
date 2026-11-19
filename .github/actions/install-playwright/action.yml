@@ -1,0 +1,30 @@
+name: Playwright-Browser installieren
+description: Browser mit begrenzten Wiederholungen für Ubuntu-Paketdownloads vorbereiten.
+
+inputs:
+  browsers:
+    description: Durch Leerzeichen getrennte Playwright-Browser.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Paketdownloads gegen vorübergehende Verbindungsfehler absichern
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo tee /etc/apt/apt.conf.d/80projekt-downloads >/dev/null <<'APT'
+        Acquire::Retries "3";
+        Acquire::http::Timeout "30";
+        Acquire::https::Timeout "30";
+        APT
+
+    - name: Festgelegte Playwright-Version und Systemabhängigkeiten installieren
+      shell: bash
+      working-directory: apps/stellensuche
+      env:
+        PLAYWRIGHT_BROWSERS: ${{ inputs.browsers }}
+      run: |
+        set -euo pipefail
+        read -r -a browsers <<< "$PLAYWRIGHT_BROWSERS"
+        npx --no-install playwright install --with-deps "${browsers[@]}"

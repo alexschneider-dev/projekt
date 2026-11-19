@@ -139,12 +139,20 @@ bei jedem Commit statt. Ein bestehender eigener Hook muss vor der Aktivierung
 mit diesem Ablauf zusammengeführt werden.
 
 Der Workflow `Anwendung testen` läuft bei Pull Requests, Pushes auf `main`, manuell
-und nachts. Die Jobs `Anwendung prüfen` und `Ansichten vergleichen` sind die
+und als Teil des Bereitstellungsworkflows. Die Jobs `Anwendung prüfen` und `Ansichten vergleichen` sind die
 vorgesehenen verpflichtenden Prüfungen. In den GitHub-Repository-Einstellungen
 nach dem ersten erfolgreichen Lauf für `main` als erforderliche Statusprüfungen
 aktivieren und direkte Änderungen ohne Pull Request einschränken. Diese
 serverseitige Repository-Einstellung ist nicht Bestandteil einer Workflow-Datei.
-Nachts und bei manuellem Start läuft zusätzlich die vollständige Browsermatrix.
+Nur bei manuellem Start läuft zusätzlich die vollständige Browsermatrix.
+Täglich läuft ausschließlich der separate Workflow zur Sicherheitsprüfung der
+Abhängigkeiten; Anwendungstests haben keinen Zeitplan.
+
+Die beiden Browserjobs verwenden fest Ubuntu 24.04. Die gemeinsame Action
+`install-playwright` installiert die Browser mit der lokal festgelegten
+Playwright-Version. APT wiederholt fehlgeschlagene Paketdownloads bis zu dreimal
+mit begrenzten Verbindungswartezeiten. Dauerhafte Downloadfehler bleiben sichtbar
+und lassen den Job fehlschlagen.
 
 Der Testworkflow führt den Sicherheits-Audit als eigenen verpflichtenden Job
 parallel zu den Fach- und Ansichtentests aus. Die isolierten Testbuilds generieren
