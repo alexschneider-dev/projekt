@@ -138,15 +138,26 @@ Der Hook führt `check` und `test:unit` aus. Vollständige Browserläufe finden 
 bei jedem Commit statt. Ein bestehender eigener Hook muss vor der Aktivierung
 mit diesem Ablauf zusammengeführt werden.
 
-Der Workflow `Anwendung testen` läuft bei Pull Requests, Pushes auf `main`, manuell
-und als Teil des Bereitstellungsworkflows. Die Jobs `Anwendung prüfen` und `Ansichten vergleichen` sind die
-vorgesehenen verpflichtenden Prüfungen. In den GitHub-Repository-Einstellungen
-nach dem ersten erfolgreichen Lauf für `main` als erforderliche Statusprüfungen
-aktivieren und direkte Änderungen ohne Pull Request einschränken. Diese
-serverseitige Repository-Einstellung ist nicht Bestandteil einer Workflow-Datei.
-Nur bei manuellem Start läuft zusätzlich die vollständige Browsermatrix.
-Täglich läuft ausschließlich der separate Workflow zur Sicherheitsprüfung der
-Abhängigkeiten; Anwendungstests haben keinen Zeitplan.
+Der Workflow `Anwendung testen` führt bei Pull Requests und Pushes auf `main`
+ESLint, TypeScript, Unit- und Regressionstests sowie den Sicherheits-Audit aus.
+Es werden dabei keine Browser installiert und keine Docker-Testdatenbanken gestartet.
+
+Vor einem Anwendungsbuild ruft der Bereitstellungsworkflow dieselbe Testsuite
+mit `full: true` auf. Nach den schnellen Prüfungen folgen Testabdeckung,
+Schema-Isolation, Datenbanktests, zentrale Chromium-/Mobilabläufe mit Testbuild
+und visuelle Vergleiche. Fehler blockieren den Image-Build und die Bereitstellung.
+Die vollständige Browsermatrix mit Firefox und WebKit ist dabei ausgeschaltet.
+
+Beim manuellen Start sind `full` und `browser_matrix` standardmäßig aktiviert.
+Beide Optionen können unabhängig abgewählt werden. Die Browsermatrix bleibt
+somit für gezielte Prüfungen und größere Releases verfügbar. Eine automatische
+Auswahl nach geänderten Dateipfaden ist derzeit nicht eingerichtet.
+
+Täglich läuft ausschließlich der separate Sicherheits-Audit. Anwendungstests
+haben keinen Zeitplan. Als erforderliche Statusprüfungen für Pull Requests eignen
+sich `Anwendung prüfen` und der Sicherheitsjob; umfangreiche Jobs werden bei
+normalen Pushes absichtlich übersprungen. Die Branch-Regeln werden separat in den
+GitHub-Repository-Einstellungen verwaltet und hier nicht geändert.
 
 Die beiden Browserjobs verwenden fest Ubuntu 24.04. Die gemeinsame Action
 `install-playwright` installiert die Browser mit der lokal festgelegten

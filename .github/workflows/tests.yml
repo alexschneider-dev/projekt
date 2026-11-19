@@ -5,7 +5,25 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      full:
+        description: Datenbank-, Chromium- und Ansichtentests ausführen
+        type: boolean
+        default: true
+      browser_matrix:
+        description: Zusätzlich Firefox und WebKit prüfen
+        type: boolean
+        default: true
   workflow_call:
+    inputs:
+      full:
+        description: Umfangreiche Prüfungen vor dem Build ausführen
+        type: boolean
+        default: false
+      browser_matrix:
+        description: Zusätzlich Firefox und WebKit prüfen
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -45,7 +63,32 @@ jobs:
       - name: Bestehende Regressionstests
         run: npm run test:legacy
 
-      - name: Komponenten, Logik und Testabdeckung
+      - name: Komponenten und Logik
+        run: npm run test:unit
+
+  integration:
+    name: Anwendung vor Bereitstellung prüfen
+    if: inputs.full == true
+    needs: pruefungen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/stellensuche/package-lock.json
+
+      - name: Abhängigkeiten und Prisma vorbereiten
+        run: |
+          npm ci
+          npx prisma generate
+
+      - name: Testabdeckung prüfen
         run: npm run test:coverage
 
       - name: Schemaumzug und Datenbankrechte prüfen
@@ -82,7 +125,8 @@ jobs:
 
   browsermatrix:
     name: Erweiterte Browserprüfung
-    if: github.event_name == 'workflow_dispatch'
+    if: inputs.browser_matrix == true
+    needs: pruefungen
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -119,6 +163,8 @@ jobs:
 
   visuell:
     name: Ansichten vergleichen
+    if: inputs.full == true
+    needs: pruefungen
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 25
     steps:

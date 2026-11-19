@@ -35,6 +35,9 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/tests.yml
+    with:
+      full: true
+      browser_matrix: false
 
   build:
     needs:

@@ -78,7 +78,7 @@ test("Sicherheitsprüfung bleibt unabhängig von Testbuilds und blockiert Releas
   assert.equal(audit.if, undefined);
   assert.equal(audit["continue-on-error"], undefined);
   assert.equal(tests.jobs.pruefungen.needs, undefined);
-  assert.equal(tests.jobs.visuell.needs, undefined);
+  assert.equal(tests.jobs.visuell.needs, "pruefungen");
 
   const release = read(".github/workflows/build-deploy-nextjs-and-migration.yml");
   assert.ok(release.jobs.build.needs.includes("audit"));
@@ -98,15 +98,41 @@ test("Nur der Sicherheits-Audit läuft täglich; Browserjobs verwenden eine fest
   assert.ok(Object.hasOwn(tests.on, "pull_request"));
   assert.ok(Object.hasOwn(tests.on, "workflow_dispatch"));
   assert.ok(Object.hasOwn(tests.on, "workflow_call"));
-  assert.equal(tests.jobs.browsermatrix.if, "github.event_name == 'workflow_dispatch'");
+  assert.equal(tests.jobs.browsermatrix.if, "inputs.browser_matrix == true");
 
   for (const name of [
-    "pruefungen",
+    "integration",
     "browsermatrix",
   ]) {
     const job = tests.jobs[name];
     assert.equal(job["runs-on"], "ubuntu-24.04");
     const install = job.steps.find((step) => step.uses === "./.github/actions/install-playwright");
-    assert.equal(install.with.browsers, name === "pruefungen" ? "chromium" : "chromium firefox webkit");
+    assert.equal(install.with.browsers, name === "integration" ? "chromium" : "chromium firefox webkit");
   }
+});
+
+test("Pushes bleiben schnell und Anwendungsbuilds verlangen die umfangreichen Prüfungen", () => {
+  const tests = read(".github/workflows/tests.yml");
+  const release = read(".github/workflows/build-deploy-nextjs-and-migration.yml");
+  const fast = tests.jobs.pruefungen.steps.map((step) => step.run ?? "").join("\n");
+  assert.match(fast, /npm run check/);
+  assert.match(fast, /npm run test:legacy/);
+  assert.match(fast, /npm run test:unit/);
+  assert.doesNotMatch(fast, /test:e2e|test:visual|test:db|test:coverage|playwright install/);
+
+  for (const name of [
+    "full",
+    "browser_matrix",
+  ]) {
+    assert.equal(tests.on.workflow_call.inputs[name].type, "boolean");
+    assert.equal(tests.on.workflow_call.inputs[name].default, false);
+    assert.equal(tests.on.workflow_dispatch.inputs[name].default, true);
+  }
+
+  assert.equal(release.jobs.tests.with.full, true);
+  assert.equal(release.jobs.tests.with.browser_matrix, false);
+  assert.equal(tests.jobs.integration.if, "inputs.full == true");
+  assert.equal(tests.jobs.integration.needs, "pruefungen");
+  assert.equal(tests.jobs.visuell.if, "inputs.full == true");
+  assert.equal(tests.jobs.browsermatrix.if, "inputs.browser_matrix == true");
 });
