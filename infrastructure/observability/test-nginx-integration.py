@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 IMAGE = "projekt-observability-nginx-check"
 SERVER = """from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
+import threading
 class Handler(BaseHTTPRequestHandler):
     def do_HEAD(self):
         self.send_response(200)
@@ -19,7 +20,7 @@ class Handler(BaseHTTPRequestHandler):
         self.do_GET()
     def do_GET(self):
         cookie = self.headers.get('Cookie', '')
-        if self.path == '/api/observability/auth':
+        if self.path == '/marketplace/api/observability/auth':
             router_headers = [
                 'RSC',
                 'Next-Router-State-Tree',
@@ -30,11 +31,11 @@ class Handler(BaseHTTPRequestHandler):
             ]
             if any(self.headers.get(name) for name in router_headers):
                 self.send_response(307)
-                self.send_header('Location', '/api/observability/auth?_rsc=test')
+                self.send_header('Location', '/marketplace/api/observability/auth?_rsc=test')
                 self.end_headers()
                 return
-            role = cookie.removeprefix('role=')
-            self.send_response(204 if role == 'SUPER_ADMIN' else 403 if role in ['USER', 'ADMIN'] else 401)
+            role = cookie.removeprefix('marketplace_role=')
+            self.send_response(204 if role == 'SUPER_ADMIN' else 403 if role in ['CUSTOMER', 'SELLER'] else 401)
             if role == 'SUPER_ADMIN':
                 self.send_header('X-Webauth-User', 'projekt-test')
                 self.send_header('X-Webauth-Role', 'Admin')
@@ -44,6 +45,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(dict(self.headers)).encode())
     def log_message(self, *args): pass
+threading.Thread(target=HTTPServer(('0.0.0.0', 8080), Handler).serve_forever, daemon=True).start()
 HTTPServer(('0.0.0.0', 3000), Handler).serve_forever()
 """
 
@@ -96,7 +98,9 @@ def main():
                 "--network",
                 network,
                 "--network-alias",
-                "tasks.nextjs",
+                "stellensuche-haproxy",
+                "--network-alias",
+                "marketplace-haproxy",
                 "--network-alias",
                 "observability_grafana",
                 "-v",
@@ -169,6 +173,7 @@ def main():
                     1,
                 )
 
+            body, status = "", ""
             for _ in range(30):
                 try:
                     body, status = request()
@@ -177,6 +182,8 @@ def main():
                 except subprocess.CalledProcessError:
                     pass
                 time.sleep(1)
+            else:
+                assert status == "302", (status, body)
             assert (
                 request(
                     "X-Webauth-User: admin",
@@ -184,11 +191,24 @@ def main():
                 )[1]
                 == "302"
             )
+            # Eine Stellensuche-Sitzung darf keinen Grafana-Zugang erhalten.
+            assert request("Cookie: stellensuche_role=SUPER_ADMIN")[1] == "302"
+            assert request(path="/marketplace/api/auth/callback/credentials", method="POST", body="test=1")[1] == "200"
+            for path in [
+                "/login",
+                "/stellen",
+                "/unbekannt",
+            ]:
+                body, status = request(path=path)
+                assert status == "404", (path, status, body)
+                assert "404" in body
             # Seiten nehmen keine Server Actions an, auch nicht als Formular im Body.
             for path in [
                 "/",
-                "/login",
-                "/dashboard",
+                "/stellensuche/login",
+                "/stellensuche/dashboard",
+                "/marketplace",
+                "/marketplace/login",
             ]:
                 for method in [
                     "GET",
@@ -207,9 +227,9 @@ def main():
                 ]:
                     assert request(*headers, path=path, method="POST", body=body)[1] == "405"
             # NextAuth- und Grafana-POSTs bleiben erreichbar (Backend im Test simuliert).
-            assert request(path="/api/auth/callback/credentials", method="POST", body="test=1")[1] == "200"
+            assert request(path="/stellensuche/api/auth/callback/credentials", method="POST", body="test=1")[1] == "200"
             assert request(
-                "Cookie: role=SUPER_ADMIN",
+                "Cookie: marketplace_role=SUPER_ADMIN",
                 path="/grafana/api/ds/query",
                 method="POST",
                 body="{}",
@@ -221,11 +241,11 @@ def main():
                     "302",
                 ),
                 (
-                    "USER",
+                    "CUSTOMER",
                     "403",
                 ),
                 (
-                    "ADMIN",
+                    "SELLER",
                     "403",
                 ),
                 (
@@ -234,7 +254,7 @@ def main():
                 ),
             ]:
                 body, status = request(
-                    f"Cookie: role={role}",
+                    f"Cookie: marketplace_role={role}",
                     "RSC: 1",
                     "Next-Router-State-Tree: %5B%22%22%5D",
                     "Next-Router-Prefetch: 1",
@@ -259,11 +279,11 @@ def main():
             for path, target in [
                 (
                     "/grafana/",
-                    "/login",
+                    "/marketplace/login",
                 ),
                 (
                     "/grafana/d/projekt-production",
-                    "/login",
+                    "/marketplace/login",
                 ),
                 (
                     "/grafana",
@@ -299,11 +319,11 @@ def main():
                 )
                 assert location == f"https://alex-schneider-dev.de{target}", location
             for role in [
-                "USER",
-                "ADMIN",
+                "CUSTOMER",
+                "SELLER",
             ]:
                 body, status = request(
-                    f"Cookie: role={role}",
+                    f"Cookie: marketplace_role={role}",
                     "X-Webauth-User: admin",
                     "X-Webauth-Role: Admin",
                 )
@@ -318,7 +338,7 @@ def main():
                 ),
             ]:
                 body, status = request(
-                    f"Cookie: role={role}",
+                    f"Cookie: marketplace_role={role}",
                     "X-Webauth-User: attacker",
                     "X-Webauth-Role: Admin",
                     "Authorization: Bearer secret",
