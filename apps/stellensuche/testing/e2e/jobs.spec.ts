@@ -498,7 +498,12 @@ test("Laufende Hauptsuche stoppen und den bestätigten Stopp anzeigen", async ({
     exact: true
   }).click();
   await expect(page.getByRole("button", { name: "Wird gestoppt …" })).toBeDisabled();
-  expect((await database.jobImportState.findUniqueOrThrow({ where: { userId: account.id } })).stopRequested).toBe(true);
+  // Der deaktivierte Button erscheint bereits während der noch laufenden HTTP-Anfrage.
+  await expect.poll(async () => {
+    const state = await database.jobImportState.findUniqueOrThrow({ where: { userId: account.id } });
+
+    return state.stopRequested;
+  }).toBe(true);
   await database.jobImportState.update({
     where: { userId: account.id },
     data: {

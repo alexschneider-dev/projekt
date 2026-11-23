@@ -2,7 +2,10 @@ import {
   defineConfig,
   devices,
 } from "@playwright/test";
-import { TEST_BASE_URL } from "./testing/support/environment.mjs";
+import {
+  TEST_APP_URL,
+  TEST_BASE_URL,
+} from "./testing/support/environment.mjs";
 
 
 export default defineConfig({
@@ -35,7 +38,7 @@ export default defineConfig({
   },
   webServer: {
     command: "node testing/run.mjs server",
-    url: TEST_BASE_URL,
+    url: TEST_APP_URL,
     reuseExistingServer: false,
     timeout: 300_000,
     stdout: "pipe",

@@ -1,5 +1,5 @@
 import { defineConfig } from "@playwright/test";
-import { TEST_BASE_URL } from "./testing/support/environment.mjs";
+import { TEST_APP_URL } from "./testing/support/environment.mjs";
 import config from "./playwright.config";
 
 
@@ -8,7 +8,7 @@ export default defineConfig({
   snapshotPathTemplate: "{testDir}/visual/snapshots/{arg}{ext}",
   webServer: {
     command: "node testing/run.mjs visual-server",
-    url: TEST_BASE_URL,
+    url: TEST_APP_URL,
     reuseExistingServer: false,
     timeout: 60_000,
   },
