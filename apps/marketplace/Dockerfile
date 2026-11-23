@@ -1,4 +1,4 @@
-FROM node:22.23.1-alpine AS dependencies
+FROM node:22-alpine3.24 AS dependencies
 WORKDIR /app
 RUN apk upgrade --no-cache && apk add --no-cache openssl
 COPY package.json package-lock.json ./
@@ -11,7 +11,10 @@ ARG NEXT_PUBLIC_BASE_PATH=/marketplace
 ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 RUN npm run build
 
-FROM node:22.23.1-alpine AS runtime
+FROM node:22-alpine3.24 AS runtime
+# Standalone-Next.js benötigt keine Paketmanager zur Laufzeit.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+  /opt/yarn* /usr/local/bin/yarn /usr/local/bin/yarnpkg /root/.npm
 WORKDIR /app
 RUN apk upgrade --no-cache && apk add --no-cache openssl
 ENV NODE_ENV=production

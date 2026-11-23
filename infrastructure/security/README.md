@@ -74,13 +74,39 @@ aus, etwa OTLP-Schreiben/Lesen bei Tempo und PromQL-Abfragen bei Thanos.
 Erst nach strengem Trivy-Scan werden die Images bei manuellem Workflow-Aufruf
 auf `main` veröffentlicht. Pull Requests veröffentlichen nichts.
 
-Diese neuen Hersteller-Images sind zunächst Build-Kandidaten. Ihre Tags werden
-nicht automatisch in die Produktionskonfiguration eingesetzt. Nach erfolgreichem
-Build, Funktionsprüfung und Scan können die ausgegebenen Digests in Compose
-beziehungsweise die dafür vorgesehenen Image-Umgebungsvariablen übernommen werden.
-Der vorhandene Loki-Releasepfad baut bereits Version 3.6.22 mit dem bestehenden
-Abbruch-Logpatch und blockiert eine Veröffentlichung bei fehlgeschlagenen Tests
-oder Sicherheitsbefunden. Datenbankimages erhalten keinen ungeprüften Austausch.
+Die Observability-Compose-Datei wählt die korrigierten Prometheus-, cAdvisor-,
+Tempo-, Thanos-, Python- und Exporter-Images aus dieser Build-Matrix aus.
+**Zuerst muss „Infrastruktur – Sicherheitsimages bauen“ auf `main` erfolgreich
+fertig sein.** Erst danach kann der Observability-Workflow diese Images laden,
+integriert testen und bei bestandener Sicherheitsprüfung bereitstellen.
+Die ausgewählten Tags sind keine Bestätigung über bereits laufende Container.
+
+Grafana und Alloy verwenden neuere offizielle, per Digest festgelegte Releases.
+Auch diese können weiterhin Befunde haben. Die experimentellen Ersatzbuilds
+werden wegen offener Sicherheits- und Laufzeitprobleme nicht übernommen.
+PostgreSQL bleibt unverändert; ein Datenbankwechsel benötigt einen gesondert
+geprüften Sicherungs-/Wiederherstellungsablauf. Keine dieser offenen Komponenten
+wird durch `report-only`, niedrigere Schweregrade oder Ignore-Regeln freigestellt.
+
+Der Loki-Releasepfad baut Version 3.6.22 mit dem bestehenden Abbruch-Logpatch.
+Anwendungs-Releases bauen ihre Images neu; Laufzeitimages enthalten keine
+ungenutzten globalen npm-/Yarn-Installationen. Stellensuche und Import verwenden
+nun dieselbe Alpine-Basis in Build und Laufzeit, einschließlich OpenSSL für Prisma.
+
+### Befunde des Produktionslaufs vom 23. November 2026
+
+Der bereitgestellte Lauf prüfte 26 Dienste, gruppiert in 23 Image-Scans.
+20 Image-Scans hatten Sicherheitsbefunde; die drei Nginx-Scans waren sauber.
+Inventar und npm-Prüfungen bestanden. Details stehen in
+[der Auswertung](reports/2026-11-23-produktionsaudit.json).
+
+Ein erneuter Audit desselben laufenden Digests repariert kein Image. Nach einem
+sauberen Build muss das jeweilige Image über den vorgesehenen Releaseweg
+bereitgestellt werden. Erst der folgende Live-Audit prüft den neuen Stand.
+Der Stack-Konfigurationsworkflow bewahrt die bestehenden Edge- und Redis-Images;
+diese beiden Dienste benötigen nach erfolgreichem Build ein gezieltes manuelles
+Image-Update. Die Images heißen `projekt-haproxy:3.2.27-projekt.1` und
+`projekt-redis:7.4.12-projekt.1` unter `ghcr.io/alexschneider-dev/`.
 
 ## Lokale Prüfungen
 

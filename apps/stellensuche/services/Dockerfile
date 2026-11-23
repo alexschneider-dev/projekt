@@ -1,9 +1,7 @@
-FROM node:22-bookworm-slim AS base
+FROM node:22-alpine3.24 AS base
 
-RUN apt-get update \
-  && apt-get upgrade -y \
-  && apt-get install -y --no-install-recommends curl procps \
-  && rm -rf /var/lib/apt/lists/*
+RUN apk upgrade --no-cache \
+  && apk add --no-cache curl procps openssl
 
 
 FROM base AS deps
@@ -26,6 +24,9 @@ RUN npm prune --omit=dev --ignore-scripts
 
 
 FROM base AS jobs
+# Paketmanager werden ausschließlich beim Build benötigt.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+  /opt/yarn* /usr/local/bin/yarn /usr/local/bin/yarnpkg /root/.npm
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=jobs-deps /app ./
@@ -49,13 +50,16 @@ RUN npm run build
 
 
 FROM base AS runner
+# Standalone-Next.js startet direkt mit Node.js.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+  /opt/yarn* /usr/local/bin/yarn /usr/local/bin/yarnpkg /root/.npm
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV HOME=/home/nextjs
 
-RUN addgroup --system --gid 1001 nodejs \
-  && useradd -m -u 1001 -s /bin/bash -g nodejs nextjs
+RUN addgroup -S -g 1001 nodejs \
+  && adduser -S -D -u 1001 -s /bin/sh -G nodejs nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

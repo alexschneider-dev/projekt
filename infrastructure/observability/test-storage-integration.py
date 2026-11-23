@@ -21,7 +21,7 @@ from messages import ERRORS
 
 HERE = Path(__file__).resolve().parent
 PROJECT = "projekt-storage-test"
-PYTHON_IMAGE = "python:3.13.9-alpine3.22"
+PYTHON_IMAGE = "ghcr.io/alexschneider-dev/projekt-python:3.13.18-projekt.1"
 
 
 def command(*args):

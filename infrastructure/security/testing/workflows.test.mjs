@@ -116,3 +116,49 @@ test("Trivy-Berichte werden isoliert gespeichert und Fehler bleiben blockierend"
   assert.match(artifact.with.name, /report_key/);
   assert.equal(artifact.with["retention-days"], 30);
 });
+
+test("Observability verwendet die eigenen korrigierten Images aus der Build-Matrix", () => {
+  const services = read("infrastructure/observability/compose.swarm.yml").services;
+  const images = read(".github/workflows/build-security-images.yml").jobs.build.strategy.matrix.include;
+  const available = new Set(images.map(entry => entry.image));
+  for (const name of [
+    "prometheus",
+    "cadvisor",
+    "tempo",
+    "node",
+    "postgres-exporter",
+    "redis-exporter",
+    "nginx-exporter",
+    "swarm-exporter",
+    "thanos-sidecar",
+    "thanos-store",
+    "thanos-query",
+    "thanos-compact",
+  ]) {
+    assert.ok(available.has(services[name].image), name);
+  }
+  for (const name of [
+    "grafana",
+    "alloy",
+  ]) {
+    assert.match(services[name].image, /@sha256:[a-f0-9]{64}$/);
+  }
+});
+
+test("App- und Importreleases prüfen native Laufzeit und Migrationswerkzeug vor dem Scan", () => {
+  for (const file of [
+    "stellensuche-deploy.yml",
+    "marketplace-deploy.yml",
+  ]) {
+    const steps = read(`.github/workflows/${file}`).jobs.build.steps;
+    const checks = steps.filter(step => step.name === "Native Node-Laufzeit isoliert prüfen"
+      || step.name === "Prisma-Migrationswerkzeug isoliert prüfen");
+    assert.equal(checks.length, file === "stellensuche-deploy.yml" ? 3 : 2);
+    for (const check of checks) {
+      assert.match(check.run, /--network none/);
+      const scan = steps.findIndex(step => step.uses === "./.github/actions/audit-image"
+        && step.with.image === check.env.IMAGE);
+      assert.ok(scan > steps.indexOf(check));
+    }
+  }
+});

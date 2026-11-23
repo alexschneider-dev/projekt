@@ -12,6 +12,10 @@ COPY services/migration/package.json ./services/migration/package.json
 
 RUN npm ci --workspace services/migration --include-workspace-root=false --omit=dev
 
+# Prisma wird über die bereits installierte CLI gestartet.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+  /opt/yarn* /usr/local/bin/yarn /usr/local/bin/yarnpkg /root/.npm
+
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 

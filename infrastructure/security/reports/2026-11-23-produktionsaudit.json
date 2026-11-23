@@ -1,0 +1,170 @@
+{
+  "quelle": "logs_122430518531.zip",
+  "hinweis": "Befunde der damals laufenden Images; keine Aussage über neu gebaute Images. Einzelbefunde können in mehreren Binärdateien vorkommen.",
+  "images": [
+    {
+      "dienste": [
+        "projekt_stellensuche-haproxy"
+      ],
+      "befunde": 10,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "projekt_stellensuche-nginx"
+      ],
+      "befunde": 0,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "projekt_postgres"
+      ],
+      "befunde": 913,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "projekt_nextjs"
+      ],
+      "befunde": 461,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "projekt_nginx"
+      ],
+      "befunde": 0,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "projekt_redis"
+      ],
+      "befunde": 50,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "projekt_marketplace-nginx"
+      ],
+      "befunde": 0,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "projekt_marketplace"
+      ],
+      "befunde": 33,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "projekt_marketplace-haproxy"
+      ],
+      "befunde": 10,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_postgres-exporter"
+      ],
+      "befunde": 39,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_cadvisor"
+      ],
+      "befunde": 58,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_swarm-exporter"
+      ],
+      "befunde": 119,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_tempo"
+      ],
+      "befunde": 54,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_alloy"
+      ],
+      "befunde": 55,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_redis-exporter"
+      ],
+      "befunde": 2,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_nginx-exporter"
+      ],
+      "befunde": 27,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_loki"
+      ],
+      "befunde": 12,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_node"
+      ],
+      "befunde": 35,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_thanos-compact",
+        "observability_thanos-query",
+        "observability_thanos-sidecar",
+        "observability_thanos-store"
+      ],
+      "befunde": 117,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "projekt-edge_edge"
+      ],
+      "befunde": 11,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "projekt_jobs"
+      ],
+      "befunde": 461,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_grafana"
+      ],
+      "befunde": 405,
+      "scanfehler": false
+    },
+    {
+      "dienste": [
+        "observability_prometheus"
+      ],
+      "befunde": 11,
+      "scanfehler": false
+    }
+  ]
+}

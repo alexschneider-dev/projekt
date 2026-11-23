@@ -1,0 +1,23 @@
+{
+  "hinweis": "Lokale Prüfimages; keine Produktionsbereitstellung. CI prüft linux/amd64 erneut.",
+  "images": {
+    "marketplace": {
+      "scan_erfolgreich": true,
+      "architektur": "arm64",
+      "trivy": "0.76.2",
+      "laufzeittest": "Benutzerrechte, Sharp, Prisma-Engine, entfernte globale npm-/Yarn-Installation"
+    },
+    "nextjs": {
+      "scan_erfolgreich": true,
+      "architektur": "arm64",
+      "trivy": "0.76.2",
+      "laufzeittest": "Benutzerrechte, Sharp, Prisma-Engine, entfernte globale npm-/Yarn-Installation"
+    },
+    "jobs": {
+      "scan_erfolgreich": true,
+      "architektur": "arm64",
+      "trivy": "0.76.2",
+      "laufzeittest": "Benutzerrechte, Sharp, Prisma-Engine, entfernte globale npm-/Yarn-Installation"
+    }
+  }
+}

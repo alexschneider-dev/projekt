@@ -60,6 +60,15 @@ jobs:
             ghcr.io/alexschneider-dev/projekt-marketplace:${{ github.sha }}
           cache-from: type=gha,scope=marketplace
           cache-to: type=gha,mode=max,scope=marketplace
+      - name: Native Node-Laufzeit isoliert prüfen
+        env:
+          IMAGE: ghcr.io/alexschneider-dev/projekt-marketplace:${{ github.sha }}
+        run: |
+          docker run --rm --network none \
+            -e DATABASE_URL='postgresql://fixture:fixture@127.0.0.1:1/fixture?connect_timeout=1' \
+            -v "$GITHUB_WORKSPACE/infrastructure/security/testing/node-runtime.mjs:/runtime-check.mjs:ro" \
+            "$IMAGE" node /runtime-check.mjs
+
       - name: Container-Image auf Sicherheitslücken prüfen
         uses: ./.github/actions/audit-image
         with:
@@ -87,6 +96,14 @@ jobs:
             ghcr.io/alexschneider-dev/projekt-marketplace-migration:${{ github.sha }}
           cache-from: type=gha,scope=marketplace-migration
           cache-to: type=gha,mode=max,scope=marketplace-migration
+
+      - name: Prisma-Migrationswerkzeug isoliert prüfen
+        env:
+          IMAGE: ghcr.io/alexschneider-dev/projekt-marketplace-migration:${{ github.sha }}
+        run: |
+          docker run --rm --network none \
+            -e DATABASE_URL='postgresql://fixture:fixture@127.0.0.1:1/fixture' \
+            "$IMAGE" ./node_modules/.bin/prisma -v
 
       - name: Container-Image auf Sicherheitslücken prüfen
         uses: ./.github/actions/audit-image

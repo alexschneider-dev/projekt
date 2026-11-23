@@ -1,7 +1,7 @@
 version: '3.9'
 services:
   grafana:
-    image: grafana/grafana:13.2.4
+    image: grafana/grafana:13.2.6@sha256:b21409d7951ddcfd63a4b49083e4ef2cc35bc1437d071813bf82bfb238b00bca
     networks:
     - monitoring
     - grafana_proxy
@@ -77,7 +77,7 @@ services:
         max-size: 20m
         max-file: '5'
   prometheus:
-    image: prom/prometheus:v3.15.1
+    image: ghcr.io/alexschneider-dev/projekt-prometheus:3.16.0-projekt.1
     networks:
     - monitoring
     - app
@@ -165,7 +165,7 @@ services:
         max-file: '5'
   tempo:
     stop_grace_period: 60s
-    image: grafana/tempo:2.10.8
+    image: ghcr.io/alexschneider-dev/projekt-tempo:2.10.10-projekt.2
     environment:
       GOMEMLIMIT: 300MiB
       TEMPO_S3_BUCKET: ${LOKI_S3_BUCKET}
@@ -210,7 +210,7 @@ services:
         max-file: '5'
   alloy:
     stop_grace_period: 60s
-    image: grafana/alloy:v1.21.1
+    image: grafana/alloy:v1.22.0@sha256:9acc2529bc1edb7f5b2bd801dd8334ebc80c158e3a9e5526ecd7c9a273d43189
     networks:
     - monitoring
     - app
@@ -250,7 +250,7 @@ services:
         max-size: 20m
         max-file: '5'
   node:
-    image: prom/node-exporter:v1.12.1
+    image: ghcr.io/alexschneider-dev/projekt-node-exporter:1.13.1-projekt.1
     networks:
     - monitoring
     - app
@@ -283,7 +283,7 @@ services:
         max-size: 20m
         max-file: '5'
   cadvisor:
-    image: ghcr.io/google/cadvisor:0.60.6
+    image: ghcr.io/alexschneider-dev/projekt-cadvisor:0.61.1-projekt.1
     networks:
     - monitoring
     - app
@@ -318,7 +318,7 @@ services:
         max-size: 20m
         max-file: '5'
   postgres-exporter:
-    image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+    image: ghcr.io/alexschneider-dev/projekt-postgres-exporter:0.21.1-projekt.1
     networks:
     - monitoring
     - app
@@ -350,7 +350,7 @@ services:
         max-size: 20m
         max-file: '5'
   redis-exporter:
-    image: oliver006/redis_exporter:v1.95.0
+    image: ghcr.io/alexschneider-dev/projekt-redis-exporter:1.95.0-projekt.1
     networks:
     - monitoring
     - app
@@ -378,7 +378,7 @@ services:
         max-size: 20m
         max-file: '5'
   nginx-exporter:
-    image: nginx/nginx-prometheus-exporter:1.5.3
+    image: ghcr.io/alexschneider-dev/projekt-nginx-exporter:1.5.3-projekt.1
     networks:
     - monitoring
     - app
@@ -406,7 +406,7 @@ services:
         max-size: 20m
         max-file: '5'
   swarm-exporter:
-    image: python:3.13.9-alpine3.22
+    image: ghcr.io/alexschneider-dev/projekt-python:3.13.18-projekt.1
     networks:
     - monitoring
     - app
@@ -445,7 +445,7 @@ services:
         max-size: 20m
         max-file: '5'
   thanos-sidecar:
-    image: quay.io/thanos/thanos:v0.40.1
+    image: ghcr.io/alexschneider-dev/projekt-thanos:0.42.5-projekt.1
     user: 0:0
     stop_grace_period: 60s
     networks:
@@ -485,7 +485,7 @@ services:
         max-size: 20m
         max-file: '5'
   thanos-store:
-    image: quay.io/thanos/thanos:v0.40.1
+    image: ghcr.io/alexschneider-dev/projekt-thanos:0.42.5-projekt.1
     user: 0:0
     stop_grace_period: 60s
     networks:
@@ -531,7 +531,7 @@ services:
         max-size: 20m
         max-file: '5'
   thanos-query:
-    image: quay.io/thanos/thanos:v0.40.1
+    image: ghcr.io/alexschneider-dev/projekt-thanos:0.42.5-projekt.1
     user: 0:0
     stop_grace_period: 60s
     networks:
@@ -567,7 +567,7 @@ services:
         max-size: 20m
         max-file: '5'
   thanos-compact:
-    image: quay.io/thanos/thanos:v0.40.1
+    image: ghcr.io/alexschneider-dev/projekt-thanos:0.42.5-projekt.1
     user: 0:0
     stop_grace_period: 60s
     networks:

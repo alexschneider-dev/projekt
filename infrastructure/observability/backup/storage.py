@@ -23,7 +23,7 @@ from messages import ERRORS
 
 ROOT = Path("/etc/projekt/monitoring-storage")
 PREFIX = "projekt/production/grafana-backups/"
-PYTHON_IMAGE = "python:3.13.9-alpine3.22"
+PYTHON_IMAGE = "ghcr.io/alexschneider-dev/projekt-python:3.13.18-projekt.1"
 HERE = Path(__file__).resolve().parent
 
 
