@@ -1,4 +1,6 @@
-FROM node:22-alpine
+FROM node:22-alpine3.24
+
+RUN apk upgrade --no-cache && apk add --no-cache openssl
 
 WORKDIR /app
 

@@ -1,0 +1,54 @@
+{
+  "node": {
+    "image": "ghcr.io/alexschneider-dev/projekt-node-exporter:1.13.1-projekt.1",
+    "args": {
+      "SOURCE_URL": "https://codeload.github.com/prometheus/node_exporter/tar.gz/refs/tags/v1.13.1",
+      "SOURCE_SHA256": "329f02a71a0bb007e7e700f12ff724b019415730fb60bdf724bf2b28f3d5f223",
+      "RUNTIME_IMAGE": "prom/node-exporter:v1.13.1@sha256:7296504d4ada44b7d7ab4431e27e9f9900d8488f8d55842f4b12ae2704e16dfe",
+      "BINARY_PATH": "/bin/node_exporter",
+      "MAIN_PACKAGE": ".",
+      "RELEASE_VERSION": "1.13.1-projekt.1",
+      "TEST_PATTERN": "./...",
+      "TEST_FILTER": "."
+    }
+  },
+  "postgres": {
+    "image": "ghcr.io/alexschneider-dev/projekt-postgres-exporter:0.21.1-projekt.1",
+    "args": {
+      "SOURCE_URL": "https://codeload.github.com/prometheus-community/postgres_exporter/tar.gz/refs/tags/v0.21.1",
+      "SOURCE_SHA256": "e7327b6a500a6b08c78bf1f94b66132b6b0d19717738d42b8bb53f7586227ba5",
+      "RUNTIME_IMAGE": "quay.io/prometheuscommunity/postgres-exporter:v0.21.1@sha256:a88794758ad461c75f3825b51cde4bde730bdff04b3b24d00efe14217e41f615",
+      "BINARY_PATH": "/bin/postgres_exporter",
+      "MAIN_PACKAGE": "./cmd/postgres_exporter",
+      "RELEASE_VERSION": "0.21.1-projekt.1",
+      "TEST_PATTERN": "./...",
+      "TEST_FILTER": "."
+    }
+  },
+  "redis": {
+    "image": "ghcr.io/alexschneider-dev/projekt-redis-exporter:1.95.0-projekt.1",
+    "args": {
+      "SOURCE_URL": "https://codeload.github.com/oliver006/redis_exporter/tar.gz/refs/tags/v1.95.0",
+      "SOURCE_SHA256": "395a72cc03215ab7d497659ec1c1b49d4396173cc59d7beefd5e98188cc3af48",
+      "RUNTIME_IMAGE": "oliver006/redis_exporter:v1.95.0@sha256:afb21407aba3df1b4010899f155fc6b1ba2026c97b725d72aca4019d772e7b6b",
+      "BINARY_PATH": "/redis_exporter",
+      "MAIN_PACKAGE": ".",
+      "RELEASE_VERSION": "1.95.0-projekt.1",
+      "TEST_PATTERN": ".",
+      "TEST_FILTER": "^(TestGetEnv.*|TestParseLogLevel|TestValidateTLSClientConfig|TestLoadScripts|TestSetupLogging|TestCreatePrometheusRegistry|TestValidateAuthParams)$"
+    }
+  },
+  "nginx": {
+    "image": "ghcr.io/alexschneider-dev/projekt-nginx-exporter:1.5.3-projekt.1",
+    "args": {
+      "SOURCE_URL": "https://codeload.github.com/nginx/nginx-prometheus-exporter/tar.gz/refs/tags/v1.5.3",
+      "SOURCE_SHA256": "25031b1193b23994e14950ab2fbdff33f96d6fda9305c4dd5963bc49c94d7a38",
+      "RUNTIME_IMAGE": "nginx/nginx-prometheus-exporter:1.5.3@sha256:85666e7fde7e253f1c6d978f9a961245df4c9cdb7677e1866d9bb28e8f9ee41d",
+      "BINARY_PATH": "/usr/bin/nginx-prometheus-exporter",
+      "MAIN_PACKAGE": ".",
+      "RELEASE_VERSION": "1.5.3-projekt.1",
+      "TEST_PATTERN": "./...",
+      "TEST_FILTER": "."
+    }
+  }
+}

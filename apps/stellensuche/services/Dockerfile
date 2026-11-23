@@ -1,6 +1,7 @@
 FROM node:22-bookworm-slim AS base
 
 RUN apt-get update \
+  && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends curl procps \
   && rm -rf /var/lib/apt/lists/*
 

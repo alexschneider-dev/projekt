@@ -1,7 +1,7 @@
-# Loki 3.6.18: Abbruch beim Vorladen von Chunks
+# Loki 3.6.22: Abbruch beim Vorladen von Chunks
 
-Das Image `ghcr.io/alexschneider-dev/projekt-loki:3.6.18-projekt.1` baut den festen
-Upstream-Commit `c969f5cf4b4ca6073d29e0a74b236f4d05d7b79a`. Das Quellarchiv
+Das Image `ghcr.io/alexschneider-dev/projekt-loki:3.6.22-projekt.1` baut den festen
+Upstream-Commit `38e4020516b25119f795a8a5f55e06ccd9c9d1fc`. Das Quellarchiv
 wird per SHA-256 geprüft. Der Patch ändert ausschließlich die Log-Ausgabe an
 zwei Stellen: `parallel_chunk_fetch.go` und `fetcher.go`.
 
@@ -16,7 +16,7 @@ beide sind auf Debug weiterhin nachvollziehbar. Er behebt keine Netzstörung.
 
 ## Build und Auslieferung
 
-`docker build -t ghcr.io/alexschneider-dev/projekt-loki:3.6.18-projekt.1 infrastructure/observability/loki-image`
+`docker build -t ghcr.io/alexschneider-dev/projekt-loki:3.6.22-projekt.1 infrastructure/observability/loki-image`
 
 Der Build führt die Go-Tests der drei betroffenen Pakete aus, einschließlich
 Regressionstest für den parallelen Chunk-Fetcher und negativer Kontrollen.
@@ -34,7 +34,7 @@ erfordert ein neues Nginx-Image. Loki läuft einmal;
 sein Austausch kann Log-Abfragen kurz unterbrechen.
 
 Künftige Änderungen benötigen einen neuen Image-Tag in der Compose-Datei
-und im Workflow. Für einen Rückbau dort wieder `grafana/loki:3.6.18` verwenden
+und im Workflow. Für einen Rückbau dort wieder `grafana/loki:3.6.22` verwenden
 und den Custom-Build/-Push im Workflow entfernen. Es gibt keine Schema- oder
 Speichermigration. Der separate Alloy-Diagnosefilter bleibt unabhängig davon.
 

@@ -40,3 +40,9 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "${PROD_USER}@${PROD_HOST}" \
             "sudo -n /usr/local/lib/projekt-deploy/deploy-stack.sh"
+
+      - name: Laufende Image-Digests sichern
+        uses: ./.github/actions/capture-image-inventory
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          user: ${{ secrets.PROD_USER }}

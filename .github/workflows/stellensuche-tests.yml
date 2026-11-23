@@ -27,6 +27,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 defaults:
   run:
@@ -36,6 +37,8 @@ jobs:
   sicherheit:
     name: Abhängigkeiten auf Sicherheitslücken prüfen
     uses: ./.github/workflows/shared-security-audit.yml
+    with:
+      skip-production-images: true
 
   pruefungen:
     name: Anwendung prüfen
@@ -62,6 +65,11 @@ jobs:
 
       - name: Bestehende Regressionstests
         run: npm run test:legacy
+
+      - name: Container-Sicherheitsabläufe prüfen
+        run: |
+          node --test ../../infrastructure/security/testing/workflows.test.mjs
+          python3 -B -m unittest discover -s ../../infrastructure/security/testing -p 'test_*.py'
 
       - name: Komponenten und Logik
         run: npm run test:unit

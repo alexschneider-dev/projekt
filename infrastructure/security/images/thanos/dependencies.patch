@@ -1,0 +1,34 @@
+--- a/compat/promql-engine/ringbuffer/functions.go
++++ b/compat/promql-engine/ringbuffer/functions.go
+@@ -828,7 +828,10 @@
+ 		}
+ 	}
+ 
+-	h := last.CopyToSchema(minSchema)
++	h, err := last.CopyToSchema(minSchema)
++	if err != nil {
++		return nil, warn, err
++	}
+ 	if _, _, nhcbBoundsReconciled, err := h.Sub(prev); err != nil {
+ 		return nil, warn, err
+ 	} else if nhcbBoundsReconciled {
+--- a/compat/prom-label-proxy/injectproxy/routes.go
++++ b/compat/prom-label-proxy/injectproxy/routes.go
+@@ -172,7 +172,7 @@
+ // WithPromqlDurationExpressionParsing enables parsing of duration expressions in the PromQL parser.
+ func WithPromqlDurationExpressionParsing() Option {
+ 	return optionFunc(func(o *options) {
+-		o.parserOptions.ExperimentalDurationExpr = true
++		// Duration expressions are always enabled in Prometheus 3.16.
+ 	})
+ }
+ 
+@@ -186,7 +186,7 @@
+ // WithPromqlExtendedRangeSelectors enables extended range selectors in the PromQL parser.
+ func WithPromqlExtendedRangeSelectors() Option {
+ 	return optionFunc(func(o *options) {
+-		o.parserOptions.EnableExtendedRangeSelectors = true
++		// Extended range selectors are always enabled in Prometheus 3.16.
+ 	})
+ }
+ 

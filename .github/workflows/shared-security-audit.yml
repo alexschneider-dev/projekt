@@ -5,20 +5,121 @@ on:
     - cron: "23 6 * * *"
   workflow_dispatch:
   workflow_call:
+    inputs:
+      skip-production-images:
+        description: Nur Quellstand und neu gebaute Images prüfen
+        type: boolean
+        default: true
   pull_request:
     paths:
       - "**/package.json"
       - "**/package-lock.json"
       - ".github/workflows/shared-security-audit.yml"
-      - ".github/actions/audit-nginx/**"
+      - ".github/actions/audit-image/**"
       - ".github/workflows/infrastructure-nginx.yml"
       - "infrastructure/nginx/**"
       - "apps/*/services/nginx/**"
+      - "infrastructure/security/**"
+      - ".github/actions/capture-image-inventory/**"
+      - ".github/workflows/*deploy*.yml"
+      - ".github/workflows/infrastructure-observability.yml"
 
 permissions:
   contents: read
 
 jobs:
+  inventory-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inventarprüfung mit isolierten Testdaten prüfen
+        run: python3 -B -m unittest discover -s infrastructure/security/testing -p 'test_*.py'
+
+  live-inventory:
+    if: ${{ !inputs.skip-production-images && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: Production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: CI-Verbindung für lesendes Inventar vorbereiten
+        env:
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_KNOWN_HOSTS: ${{ secrets.PROD_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$PROD_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$PROD_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - uses: ./.github/actions/capture-image-inventory
+        id: capture
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          user: ${{ secrets.PROD_USER }}
+
+  inventory:
+    needs: live-inventory
+    if: ${{ !cancelled() && needs.live-inventory.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.images.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # Nur validierte Dienstdaten übertragen; keine SSH-Zugangsdaten in Job-Ausgaben.
+      - uses: actions/download-artifact@v4
+        if: github.event_name != 'pull_request' && needs.live-inventory.result == 'success'
+        with:
+          name: deployed-images-live-inventory
+          path: ${{ runner.temp }}/live-inventory
+      - name: Produktionsinventar prüfen
+        id: images
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          LIVE_RESULT: ${{ needs.live-inventory.result }}
+          LIVE_INVENTORY: ${{ runner.temp }}/live-inventory/deployed-images.json
+        run: |
+          set -Eeuo pipefail
+          [[ "$LIVE_RESULT" == success && -f "$LIVE_INVENTORY" ]]
+          matrix=$(python3 infrastructure/security/image-audit.py --inventory "$LIVE_INVENTORY")
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
+
+  images:
+    needs: inventory
+    name: Image-Prüfung (${{ matrix.services }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.inventory.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Bei privater Image-Registry anmelden
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Erfassten Produktions-Digest prüfen
+        uses: ./.github/actions/audit-image
+        with:
+          image: ${{ matrix.image }}
+
   nginx:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -41,7 +142,7 @@ jobs:
         run: docker build --pull --no-cache -t projekt-nginx-audit:local "$BUILD_CONTEXT"
 
       - name: Nginx-Image auf Sicherheitslücken prüfen
-        uses: ./.github/actions/audit-nginx
+        uses: ./.github/actions/audit-image
         with:
           image: projekt-nginx-audit:local
 

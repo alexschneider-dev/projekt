@@ -1,0 +1,75 @@
+name: Container-Image prüfen
+description: Gebautes oder veröffentlichtes Image auf bekannte Paket-Sicherheitslücken prüfen
+inputs:
+  image:
+    description: Image-Tag oder unveränderlicher Registry-Digest für die Prüfung
+    required: true
+  report-only:
+    description: Befunde nur melden; Scannerfehler bleiben blockierend
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Vorherigen Bericht entfernen
+      shell: bash
+      run: rm -f "$RUNNER_TEMP/image-audit.txt"
+
+    - name: Image-Pakete prüfen
+      uses: aquasecurity/trivy-action@v0.36.0
+      with:
+        version: v0.76.2
+        scan-type: image
+        image-ref: ${{ inputs.image }}
+        scanners: vuln
+        format: table
+        output: ${{ runner.temp }}/image-audit.txt
+        severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+        ignore-unfixed: false
+        exit-code: ${{ inputs.report-only == 'true' && '0' || '1' }}
+        timeout: 10m
+
+    - name: Prüfergebnis zusammenfassen
+      id: summary
+      if: ${{ always() }}
+      shell: bash
+      env:
+        AUDIT_IMAGE: ${{ inputs.image }}
+        AUDIT_REPORT_ONLY: ${{ inputs.report-only }}
+      run: |
+        if [[ -f "$RUNNER_TEMP/image-audit.txt" ]]; then
+          cat "$RUNNER_TEMP/image-audit.txt"
+          python3 - <<'PYTHON'
+        import hashlib
+        import os
+        from pathlib import Path
+
+
+        report = Path(os.environ["RUNNER_TEMP"]) / "image-audit.txt"
+        data = report.read_bytes()
+        # Die Zusammenfassung auf 200 KB begrenzen; der vollständige Bericht
+        # bleibt im Protokoll und als Artefakt erhalten.
+        limit = 200_000
+        preview = data[:limit].decode("utf-8", errors="ignore")
+        image = os.environ["AUDIT_IMAGE"]
+        key = hashlib.sha256(image.encode()).hexdigest()
+        with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+            output.write(f"report_key={key}\n")
+        summary = f"## Sicherheitsprüfung des Container-Images\n\nImage: `{image}`\n\n```text\n{preview}\n```\n"
+        if os.environ["AUDIT_REPORT_ONLY"] == "true":
+            summary += "\nBerichtsmodus: Sicherheitsbefunde blockieren nicht; Scannerfehler bleiben blockierend.\n"
+        if len(data) > limit:
+            summary += "\nVorschau gekürzt. Der vollständige Bericht steht im Job-Protokoll und im image-audit-Artefakt.\n"
+        summary += "\nPrüft das Image anhand der Scanner-Datenbank. Host-Kernel, Quellpatches und Konfiguration benötigen separate Prüfungen.\n"
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
+            output.write(summary)
+        PYTHON
+        fi
+
+    - name: Vollständigen Prüfbericht speichern
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: image-audit-${{ github.job }}-${{ github.run_attempt }}-${{ steps.summary.outputs.report_key }}
+        path: ${{ runner.temp }}/image-audit.txt
+        if-no-files-found: ignore
+        retention-days: 30

@@ -32,7 +32,7 @@ for (const [file, service] of Object.entries(callers)) {
       const publication = build.findIndex(step => step.name === "Geprüftes Nginx-Image veröffentlichen");
       assert.ok(verification >= 0 && publication > verification);
     } else {
-      assert.ok(buildStep.with.push);
+      assert.ok(buildStep.with.load);
     }
     assert.ok(fs.existsSync(path.join(root, buildStep.with.file)));
 
@@ -148,7 +148,7 @@ test("Pushes bleiben schnell und Anwendungsbuilds verlangen die umfangreichen Pr
 test("Jedes Nginx-Release prüft das gebaute Image vor der Veröffentlichung", () => {
   for (const file of Object.keys(callers)) {
     const steps = read(`.github/workflows/${file}`).jobs.build.steps;
-    const auditIndex = steps.findIndex(step => step.uses === "./.github/actions/audit-nginx");
+    const auditIndex = steps.findIndex(step => step.uses === "./.github/actions/audit-image" && step.with.image.includes("nginx"));
     const publicationIndex = steps.findIndex(step => step.name === "Geprüftes Nginx-Image veröffentlichen");
     const image = steps[auditIndex]?.with.image;
     const buildIndex = steps.findIndex(step => step.with?.tags?.includes(image));
@@ -161,8 +161,8 @@ test("Jedes Nginx-Release prüft das gebaute Image vor der Veröffentlichung", (
     assert.equal(steps[publicationIndex].if, undefined);
   }
 
-  const scan = read(".github/actions/audit-nginx/action.yml").runs.steps[0];
-  assert.equal(scan.with["exit-code"], "1");
+  const scan = read(".github/actions/audit-image/action.yml").runs.steps.find(step => step.uses?.startsWith("aquasecurity/trivy-action@"));
+  assert.equal(scan.with["exit-code"], "${{ inputs.report-only == 'true' && '0' || '1' }}");
   assert.equal(scan.with["ignore-unfixed"], false);
   assert.equal(scan.with.severity, "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL");
   const workflow = read(".github/workflows/shared-security-audit.yml");

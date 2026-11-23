@@ -1,6 +1,6 @@
 FROM node:22.23.1-alpine AS dependencies
 WORKDIR /app
-RUN apk add --no-cache openssl
+RUN apk upgrade --no-cache && apk add --no-cache openssl
 COPY package.json package-lock.json ./
 COPY tools ./tools
 RUN npm ci
@@ -13,7 +13,7 @@ RUN npm run build
 
 FROM node:22.23.1-alpine AS runtime
 WORKDIR /app
-RUN apk add --no-cache openssl
+RUN apk upgrade --no-cache && apk add --no-cache openssl
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3001

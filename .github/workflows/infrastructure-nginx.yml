@@ -75,7 +75,7 @@ jobs:
           python3 infrastructure/observability/test-nginx-integration.py
 
       - name: Nginx-Image auf Sicherheitslücken prüfen
-        uses: ./.github/actions/audit-nginx
+        uses: ./.github/actions/audit-image
         with:
           image: ghcr.io/alexschneider-dev/nginx-projekt:${{ github.sha }}
 

@@ -1,0 +1,34 @@
+name: Laufende Container-Images erfassen
+description: Erfasst laufende Swarm-Images über die vorbereitete CI-Verbindung.
+inputs:
+  host:
+    required: true
+    description: Produktionshost
+  user:
+    required: true
+    description: Deployment-Benutzer
+runs:
+  using: composite
+  steps:
+    - name: Laufende Images erfassen
+      id: capture
+      shell: bash
+      env:
+        PROD_HOST: ${{ inputs.host }}
+        PROD_USER: ${{ inputs.user }}
+      run: |
+        set -Eeuo pipefail
+        ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=yes \
+          "${PROD_USER}@${PROD_HOST}" \
+          'sudo -n /usr/local/lib/projekt-audit/export-audit-images.py' \
+          > "$RUNNER_TEMP/deployed-images.txt"
+        python3 infrastructure/security/image-audit.py \
+          --inventory "$RUNNER_TEMP/deployed-images.json" \
+          --import-export "$RUNNER_TEMP/deployed-images.txt" > /dev/null
+    - uses: actions/upload-artifact@v4
+      with:
+        name: deployed-images-${{ github.job }}
+        overwrite: true
+        path: ${{ runner.temp }}/deployed-images.json
+        retention-days: 30
+        if-no-files-found: error

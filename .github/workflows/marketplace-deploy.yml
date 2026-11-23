@@ -51,25 +51,55 @@ jobs:
           context: apps/marketplace
           file: apps/marketplace/Dockerfile
           platforms: linux/amd64
-          push: true
+          load: true
+          pull: true
+          no-cache: true
           build-args: NEXT_PUBLIC_BASE_PATH=/marketplace
           tags: |
             ghcr.io/alexschneider-dev/projekt-marketplace:${{ inputs.version }}
             ghcr.io/alexschneider-dev/projekt-marketplace:${{ github.sha }}
           cache-from: type=gha,scope=marketplace
           cache-to: type=gha,mode=max,scope=marketplace
+      - name: Container-Image auf Sicherheitslücken prüfen
+        uses: ./.github/actions/audit-image
+        with:
+          image: ghcr.io/alexschneider-dev/projekt-marketplace:${{ github.sha }}
+
+      - name: Geprüftes Container-Image veröffentlichen
+        env:
+          VERSION: ${{ inputs.version }}
+          REVISION: ${{ github.sha }}
+        run: |
+          docker push "ghcr.io/alexschneider-dev/projekt-marketplace:$VERSION"
+          docker push "ghcr.io/alexschneider-dev/projekt-marketplace:$REVISION"
+
       - name: Marketplace-Migrationsimage bauen
         uses: docker/build-push-action@v6
         with:
           context: apps/marketplace
           file: apps/marketplace/services/migration/Dockerfile
           platforms: linux/amd64
-          push: true
+          load: true
+          pull: true
+          no-cache: true
           tags: |
             ghcr.io/alexschneider-dev/projekt-marketplace-migration:${{ inputs.version }}
             ghcr.io/alexschneider-dev/projekt-marketplace-migration:${{ github.sha }}
           cache-from: type=gha,scope=marketplace-migration
           cache-to: type=gha,mode=max,scope=marketplace-migration
+
+      - name: Container-Image auf Sicherheitslücken prüfen
+        uses: ./.github/actions/audit-image
+        with:
+          image: ghcr.io/alexschneider-dev/projekt-marketplace-migration:${{ github.sha }}
+
+      - name: Geprüftes Container-Image veröffentlichen
+        env:
+          VERSION: ${{ inputs.version }}
+          REVISION: ${{ github.sha }}
+        run: |
+          docker push "ghcr.io/alexschneider-dev/projekt-marketplace-migration:$VERSION"
+          docker push "ghcr.io/alexschneider-dev/projekt-marketplace-migration:$REVISION"
 
       - name: marketplace-nginx bauen
         uses: docker/build-push-action@v6
@@ -84,7 +114,7 @@ jobs:
             ghcr.io/alexschneider-dev/projekt-marketplace-nginx:${{ github.sha }}
 
       - name: Nginx-Image auf Sicherheitslücken prüfen
-        uses: ./.github/actions/audit-nginx
+        uses: ./.github/actions/audit-image
         with:
           image: ghcr.io/alexschneider-dev/projekt-marketplace-nginx:${{ github.sha }}
 
@@ -96,15 +126,30 @@ jobs:
           docker push "ghcr.io/alexschneider-dev/projekt-marketplace-nginx:$VERSION"
           docker push "ghcr.io/alexschneider-dev/projekt-marketplace-nginx:$REVISION"
 
-      - name: marketplace-haproxy bauen und veröffentlichen
+      - name: marketplace-haproxy bauen
         uses: docker/build-push-action@v6
         with:
           context: apps/marketplace/services/haproxy
           platforms: linux/amd64
-          push: true
+          load: true
+          pull: true
+          no-cache: true
           tags: |
             ghcr.io/alexschneider-dev/projekt-marketplace-haproxy:${{ inputs.version }}
             ghcr.io/alexschneider-dev/projekt-marketplace-haproxy:${{ github.sha }}
+
+      - name: Container-Image auf Sicherheitslücken prüfen
+        uses: ./.github/actions/audit-image
+        with:
+          image: ghcr.io/alexschneider-dev/projekt-marketplace-haproxy:${{ github.sha }}
+
+      - name: Geprüftes Container-Image veröffentlichen
+        env:
+          VERSION: ${{ inputs.version }}
+          REVISION: ${{ github.sha }}
+        run: |
+          docker push "ghcr.io/alexschneider-dev/projekt-marketplace-haproxy:$VERSION"
+          docker push "ghcr.io/alexschneider-dev/projekt-marketplace-haproxy:$REVISION"
 
   deploy:
     if: ${{ inputs.deploy }}

@@ -611,7 +611,7 @@ die betroffenen Upstream-Pakettests aus.
 
 Vor der ersten Installation den Workflow **Monitoring prüfen und bereitstellen**
 auf `main` mit `deploy=false` ausführen: Er baut, prüft und veröffentlicht das Image
-`ghcr.io/alexschneider-dev/projekt-loki:3.6.18-projekt.1`. Der Server benötigt
+`ghcr.io/alexschneider-dev/projekt-loki:3.6.22-projekt.1`. Der Server benötigt
 Lesezugriff auf dieses Paket. Der bestehende Docker-Login unter root muss bei einem
 privaten Paket berechtigt sein; das Deployment reicht Registry-Zugangsdaten an
 Swarm weiter. Das Image wird außerhalb des kleinen Produktionsservers gebaut.
@@ -736,7 +736,7 @@ Nginx 1.30.7 enthält die Sicherheitskorrekturen vom November 2026; siehe
 [offizielle Nginx-Sicherheitsmeldungen](https://nginx.org/en/security_advisories.html).
 
 Die Release-Workflows bauen die Nginx-Images mit frischem Basisimage und ohne
-Build-Cache. Vor der Veröffentlichung prüft `.github/actions/audit-nginx` das
+Build-Cache. Vor der Veröffentlichung prüft `.github/actions/audit-image` das
 jeweilige Image mit Trivy. Befunde aller Schweregrade einschließlich noch nicht
 behobener Schwachstellen blockieren Veröffentlichung und Bereitstellung.
 Der gemeinsame Sicherheitsworkflow baut und prüft die drei Produktions-Proxys

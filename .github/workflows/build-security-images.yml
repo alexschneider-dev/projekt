@@ -1,0 +1,163 @@
+name: Infrastruktur – Sicherheitsimages bauen
+
+on:
+  pull_request:
+    paths:
+      - 'infrastructure/security/images/edge/**'
+      - 'infrastructure/security/images/redis/**'
+      - 'infrastructure/security/images/exporters/**'
+      - 'infrastructure/security/images/prometheus/**'
+      - 'infrastructure/security/images/cadvisor/**'
+      - 'infrastructure/security/images/tempo/**'
+      - 'infrastructure/security/images/thanos/**'
+      - 'infrastructure/security/testing/exporter-image-smoke.py'
+      - 'infrastructure/security/testing/prometheus-image-smoke.py'
+      - 'infrastructure/security/testing/tempo-image-smoke.py'
+      - 'infrastructure/security/testing/thanos-image-smoke.py'
+      - 'infrastructure/security/testing/errors/**'
+      - 'infrastructure/security/images/observability-python/**'
+      - '.github/actions/audit-image/**'
+      - '.github/workflows/build-security-images.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - context: infrastructure/security/images/observability-python
+            image: ghcr.io/alexschneider-dev/projekt-python:3.13.18-projekt.1
+          - context: infrastructure/security/images/edge
+            image: ghcr.io/alexschneider-dev/projekt-haproxy:3.2.27-projekt.1
+          - context: infrastructure/security/images/redis
+            image: ghcr.io/alexschneider-dev/projekt-redis:7.4.12-projekt.1
+          - context: infrastructure/security/images/prometheus
+            image: ghcr.io/alexschneider-dev/projekt-prometheus:3.16.0-projekt.1
+          - context: infrastructure/security/images/cadvisor
+            image: ghcr.io/alexschneider-dev/projekt-cadvisor:0.61.1-projekt.1
+          - context: infrastructure/security/images/tempo
+            image: ghcr.io/alexschneider-dev/projekt-tempo:2.10.10-projekt.2
+          - context: infrastructure/security/images/thanos
+            image: ghcr.io/alexschneider-dev/projekt-thanos:0.42.5-projekt.1
+          - context: infrastructure/security/images/exporters
+            exporter: node
+            image: ghcr.io/alexschneider-dev/projekt-node-exporter:1.13.1-projekt.1
+          - context: infrastructure/security/images/exporters
+            exporter: postgres
+            image: ghcr.io/alexschneider-dev/projekt-postgres-exporter:0.21.1-projekt.1
+          - context: infrastructure/security/images/exporters
+            exporter: redis
+            image: ghcr.io/alexschneider-dev/projekt-redis-exporter:1.95.0-projekt.1
+          - context: infrastructure/security/images/exporters
+            exporter: nginx
+            image: ghcr.io/alexschneider-dev/projekt-nginx-exporter:1.5.3-projekt.1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inventarlogik prüfen
+        run: python3 -B -m unittest discover -s infrastructure/security/testing -p 'test_*.py'
+      - uses: docker/setup-buildx-action@v3
+      - name: Festgelegte Exporter-Buildparameter laden
+        if: matrix.context == 'infrastructure/security/images/exporters'
+        id: exporter
+        env:
+          KIND: ${{ matrix.exporter }}
+          IMAGE: ${{ matrix.image }}
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          import os
+          from pathlib import Path
+
+
+          entry = json.loads(Path('infrastructure/security/images/exporters/images.json').read_text())[os.environ['KIND']]
+          assert entry['image'] == os.environ['IMAGE']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write('args<<BUILD_ARGS\n')
+              for key, value in entry['args'].items():
+                  assert '\n' not in value
+                  out.write(key + '=' + value + '\n')
+              out.write('BUILD_ARGS\n')
+          PYTHON
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          build-args: ${{ steps.exporter.outputs.args }}
+          platforms: linux/amd64
+          pull: true
+          no-cache: true
+          load: true
+          tags: ${{ matrix.image }}
+      - name: Laufzeitfunktionen isoliert prüfen
+        env:
+          IMAGE: ${{ matrix.image }}
+          CONTEXT: ${{ matrix.context }}
+          EXPORTER: ${{ matrix.exporter }}
+        run: |
+          case "$CONTEXT" in
+            infrastructure/security/images/observability-python)
+              docker run --rm --network none "$IMAGE" python -c 'import ssl, sqlite3, tarfile, http.server, socket, json'
+              ;;
+            infrastructure/security/images/edge)
+              docker run --rm --network none \
+                -v "$PWD/production/edge-haproxy.cfg:/check.cfg:ro" \
+                "$IMAGE" haproxy -c -f /check.cfg
+              ;;
+            infrastructure/security/images/redis)
+              docker run --rm --network none --user redis --entrypoint sh "$IMAGE" -ec '
+                redis-server --port 0 --unixsocket /tmp/check.sock --save "" --appendonly no --daemonize yes
+                attempts=0
+                until [ "$(redis-cli -s /tmp/check.sock ping 2>/dev/null)" = PONG ]; do
+                  attempts=$((attempts + 1))
+                  if [ "$attempts" -ge 30 ]; then
+                    echo "Redis wurde innerhalb von 30 Sekunden nicht bereit" >&2
+                    exit 1
+                  fi
+                  sleep 1
+                done
+                test "$(redis-cli -s /tmp/check.sock set security-check ok)" = OK
+                test "$(redis-cli -s /tmp/check.sock get security-check)" = ok
+                redis-cli -s /tmp/check.sock shutdown nosave
+              '
+              ;;
+            infrastructure/security/images/exporters)
+              python3 infrastructure/security/testing/exporter-image-smoke.py "$EXPORTER" "$IMAGE"
+              ;;
+            infrastructure/security/images/prometheus)
+              python3 infrastructure/security/testing/prometheus-image-smoke.py "$IMAGE"
+              ;;
+            infrastructure/security/images/cadvisor)
+              docker run --rm --network none --entrypoint /usr/bin/cadvisor "$IMAGE" --version
+              ;;
+            infrastructure/security/images/tempo)
+              python3 infrastructure/security/testing/tempo-image-smoke.py "$IMAGE"
+              ;;
+            infrastructure/security/images/thanos)
+              python3 infrastructure/security/testing/thanos-image-smoke.py "$IMAGE"
+              ;;
+            *) exit 1 ;;
+          esac
+      - uses: ./.github/actions/audit-image
+        with:
+          image: ${{ matrix.image }}
+      - uses: docker/login-action@v3
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Geprüftes Image veröffentlichen
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: docker push "$IMAGE"

@@ -134,3 +134,9 @@ jobs:
         env:
           SMOKE_BASE_URL: https://alex-schneider-dev.de/marketplace
         run: node apps/marketplace/scripts/smoke.mjs
+
+      - name: Laufende Image-Digests sichern
+        uses: ./.github/actions/capture-image-inventory
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          user: ${{ secrets.PROD_USER }}

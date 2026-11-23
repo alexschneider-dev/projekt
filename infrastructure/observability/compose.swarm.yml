@@ -120,7 +120,7 @@ services:
         max-size: 20m
         max-file: '5'
   loki:
-    image: ghcr.io/alexschneider-dev/projekt-loki:3.6.18-projekt.1
+    image: ghcr.io/alexschneider-dev/projekt-loki:3.6.22-projekt.1
     networks:
     - monitoring
     deploy:
