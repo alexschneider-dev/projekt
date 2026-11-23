@@ -1,6 +1,6 @@
 """Echter Nginx mit verzögertem HTTP-Testserver, ohne Produktionszugriff.
 Prüft Browser-Abbrüche, Anmeldung, HTTP-Fehler und Live-WebSockets.
-Vorher: docker build -t projekt-observability-nginx-check apps/stellensuche/services/nginx
+Vorher: docker build -t projekt-observability-nginx-check infrastructure/nginx
 Mit --baseline das vorherige Abbruchverhalten reproduzieren.
 """
 
@@ -76,7 +76,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 )
             )
         )
-        if self.path == "/api/observability/auth":
+        if self.path == "/marketplace/api/observability/auth":
             self.send_response(
                 200 if self.headers.get("Cookie") == "test=allowed" else 401
             )
@@ -223,10 +223,12 @@ try:
             cmd,
         )
         config = (
-            (ROOT / "apps/stellensuche/services/nginx/default.conf")
+            (ROOT / "infrastructure/nginx/default.conf")
             .read_text()
+            .replace("include /etc/nginx/grafana.inc;", (ROOT / "infrastructure/nginx/grafana.inc").read_text())
+            .replace("marketplace-haproxy:8080", backend)
             .replace(
-                "tasks.nextjs:3000 resolve",
+                "stellensuche-haproxy:8080 resolve",
                 backend + resolve,
             )
             .replace(

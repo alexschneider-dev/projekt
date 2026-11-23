@@ -38,7 +38,7 @@ services:
         - -fsS
         - -o
         - /dev/null
-        - http://localhost:3000/
+        - http://localhost:3000/stellensuche/
       interval: 15s
       timeout: 10s
       retries: 10
@@ -69,6 +69,155 @@ services:
           memory: 1G
         reservations:
           memory: 256M
+
+
+  marketplace:
+    image: ${MARKETPLACE_IMAGE:-ghcr.io/alexschneider-dev/projekt-marketplace:initial}
+    entrypoint:
+      - /bin/sh
+      - /production-entrypoint.sh
+      - docker-entrypoint.sh
+    command:
+      - node
+      - server.js
+    environment:
+      HOSTNAME: "0.0.0.0"
+      PORT: "3001"
+      OBSERVABILITY_ENABLED: "true"
+      METRICS_PORT: "9465"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://observability_alloy:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_SERVICE_VERSION: ${MARKETPLACE_IMAGE:-unbekannt}
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    networks:
+      - projekt_net
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3001/marketplace/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    deploy:
+      replicas: 1
+      endpoint_mode: dnsrr
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        order: start-first
+      restart_policy:
+        condition: any
+        delay: 5s
+        window: 30s
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+  stellensuche-nginx:
+    image: ${STELLENSUCHE_NGINX_IMAGE:-ghcr.io/alexschneider-dev/projekt-stellensuche-nginx:1.00}
+    networks:
+      - projekt_net
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    deploy:
+      replicas: 1
+      update_config:
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        order: start-first
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
+
+  stellensuche-haproxy:
+    image: ${STELLENSUCHE_HAPROXY_IMAGE:-ghcr.io/alexschneider-dev/projekt-stellensuche-haproxy:1.00}
+    networks:
+      - projekt_net
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    deploy:
+      replicas: 1
+      update_config:
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        order: start-first
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
+
+  marketplace-nginx:
+    image: ${MARKETPLACE_NGINX_IMAGE:-ghcr.io/alexschneider-dev/projekt-marketplace-nginx:1.00}
+    networks:
+      - projekt_net
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    deploy:
+      replicas: 1
+      update_config:
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        order: start-first
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
+
+  marketplace-haproxy:
+    image: ${MARKETPLACE_HAPROXY_IMAGE:-ghcr.io/alexschneider-dev/projekt-marketplace-haproxy:1.00}
+    networks:
+      - projekt_net
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    deploy:
+      replicas: 1
+      update_config:
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        order: start-first
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
 
   jobs:
     image: ${JOBS_IMAGE}

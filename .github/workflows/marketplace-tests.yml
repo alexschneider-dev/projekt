@@ -1,0 +1,107 @@
+name: Marketplace – Tests
+
+on:
+  pull_request:
+    paths:
+      - apps/marketplace/**
+      - infrastructure/postgres/**
+      - production/**
+      - .github/workflows/marketplace-*.yml
+  push:
+    branches: [main]
+    paths:
+      - apps/marketplace/**
+      - infrastructure/postgres/**
+      - production/**
+      - .github/workflows/marketplace-*.yml
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marketplace-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/marketplace
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated-marketplace-admin-password
+          POSTGRES_DB: postgres
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://marketplace_app:isolated-marketplace-app-password@localhost:55439/postgres?schema=marketplace
+      DATABASE_APP_PASSWORD: isolated-marketplace-app-password
+      PGHOST: localhost
+      PGPORT: 55439
+      PGUSER: postgres
+      PGDATABASE: postgres
+      PGPASSWORD: isolated-marketplace-admin-password
+      NEXTAUTH_URL: http://localhost:3001/marketplace/api/auth
+      NEXTAUTH_SECRET: isolated-marketplace-session-secret-never-production
+      MARKETPLACE_TEST_DATABASE: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.1
+          cache: npm
+          cache-dependency-path: apps/marketplace/package-lock.json
+      - run: npm ci
+      - name: Abhängigkeiten prüfen
+        run: |
+          npm audit
+          npm run audit:dependencies
+      - name: Isolierte Datenbank vorbereiten
+        run: |
+          psql -X -f testing/setup.sql
+          npx prisma generate
+          npx prisma migrate deploy
+          npm run data:seed -- 120
+          npm run data:seed -- 120
+      - name: Statische Prüfungen und Datenbanktests
+        run: |
+          npm run check
+          npm test
+      - run: npm run build
+      - name: Chromium installieren
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Desktop, Mobilansicht und Barrierefreiheit
+        run: npm run test:e2e
+      - name: HTTP-Anmeldung und Rollenrechte
+        run: |
+          set -Eeuo pipefail
+          npm run start > "$RUNNER_TEMP/marketplace.log" 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:3001/marketplace/api/health >/dev/null; then break; fi
+            sleep 2
+          done
+          npm run test:http
+          npm run test:smoke
+      - name: Testergebnisse sichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketplace-tests
+          path: |
+            apps/marketplace/playwright-report/
+            apps/marketplace/test-results/
+          retention-days: 7

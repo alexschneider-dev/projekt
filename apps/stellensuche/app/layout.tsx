@@ -1,3 +1,4 @@
+import { withBasePath } from "@/lib/constants/base-path";
 import type {
   Metadata,
   Viewport,
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { BrowserTelemetry } from "@/components/observability/browser-telemetry";
 import { Toaster } from "@/components/ui/toaster";
 import { PwaSupport } from "@/components/pwa/pwa-support";
+import { AuthProvider } from "@/components/auth/auth-provider";
 import "./globals.css";
 
 
@@ -39,7 +41,7 @@ export const metadata: Metadata = {
     title: "Projekt",
     statusBarStyle: "default",
   },
-  icons: { apple: "/icons/apple-touch-icon.png" },
+  icons: { apple: withBasePath("/icons/apple-touch-icon.png") },
 };
 
 export const viewport: Viewport = { themeColor: "#171717" };
@@ -52,10 +54,12 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body className={cn(geistSans.variable, geistMono.variable, inter.variable)}>
-        <BrowserTelemetry />
-        <PwaSupport />
-        <Toaster />
-        <BodyWrapper variant="document">{children}</BodyWrapper>
+        <AuthProvider>
+          <BrowserTelemetry />
+          <PwaSupport />
+          <Toaster />
+          <BodyWrapper variant="document">{children}</BodyWrapper>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,0 +1,16 @@
+name: marketplace-tests
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: isolated-marketplace-admin-password
+      POSTGRES_DB: postgres
+    ports:
+      - "127.0.0.1:55439:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 30

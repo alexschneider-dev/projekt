@@ -1,12 +1,13 @@
+import { withBasePath } from "@/lib/constants/base-path";
 import { ROUTES } from "@/lib/constants/routes";
 import { HTTP_STATUS } from "@/lib/http/status";
 import { ERROR_PWA } from "@/lib/http/errors/pwa";
 
 
 export const serviceWorker = String.raw`
-const CACHE_PREFIX = "projekt-offline-";
+const CACHE_PREFIX = "stellensuche-offline-";
 const CACHE_NAME = CACHE_PREFIX + "v1";
-const OFFLINE_URL = ${JSON.stringify(ROUTES.offline)};
+const OFFLINE_URL = ${JSON.stringify(withBasePath(ROUTES.offline))};
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
@@ -47,7 +48,8 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/api/")) return;
+  if (!url.pathname.startsWith("/stellensuche/")) return;
+  if (url.pathname.startsWith("/stellensuche/api/")) return;
 
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).catch(async () => {

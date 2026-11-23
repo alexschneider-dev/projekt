@@ -1,3 +1,4 @@
+import { withBasePath } from "@/lib/constants/base-path";
 import { ROUTES } from "@/lib/constants/routes";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -11,13 +12,41 @@ import {
 
 
 export const authOptions: NextAuthOptions = {
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production" ? "__Secure-stellensuche.session-token" : "stellensuche.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    csrfToken: {
+      name: "stellensuche.csrf-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: withBasePath("/"),
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    callbackUrl: {
+      name: "stellensuche.callback-url",
+      options: {
+        sameSite: "lax",
+        path: withBasePath("/"),
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
   session: {
     strategy: "jwt",
     maxAge: 8 * 60 * 60
   },
   pages: {
-    signIn: ROUTES.login,
-    error: ROUTES.login
+    signIn: withBasePath(ROUTES.login),
+    error: withBasePath(ROUTES.login)
   },
   providers: [CredentialsProvider({
     name: "E-Mail und Passwort",

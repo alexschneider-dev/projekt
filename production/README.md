@@ -453,3 +453,10 @@ unbestätigte Registrierungen an; bestehende Benutzer bleiben erhalten. Nach dem
 Deployment einmal mit einer eigenen E-Mail-Adresse registrieren, den Link
 bestätigen und die Anmeldung prüfen. Eine API-Annahme durch Resend garantiert
 keine Zustellung; Versandstatus und Zustellfehler im Resend-Dashboard prüfen.
+
+## Marketplace als weitere Anwendung
+
+Der optionale Dienst `marketplace` verwendet eigene Secrets und Migrationen.
+Die Einrichtung, unabhängigen GitHub-Workflows und Grenzen der Erstbereitstellung
+sind im [Marketplace-Betriebsablauf](../docs/marketplace-betrieb.md) beschrieben.
+Der gemeinsame Nginx liegt unter `infrastructure/nginx/`.

@@ -1,0 +1,31 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: #ffffff;
+  --color-card: #ffffff;
+  --color-muted: #f1f3f4;
+  --color-muted-foreground: #58646b;
+  --color-border: #dce2e5;
+  --color-accent: #edf4f2;
+  --color-destructive: #b42318;
+  --font-sans: Arial, Helvetica, sans-serif;
+}
+
+:root {
+  --background: #fbfcfc;
+  --foreground: #172d32;
+  --primary: #176b55;
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; }
+  h1 { @apply text-4xl font-semibold tracking-tight md:text-5xl; }
+  h2 { @apply text-xl font-semibold tracking-tight; }
+  summary { @apply cursor-pointer; }
+  button, a, input, select { @apply focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary; }
+}

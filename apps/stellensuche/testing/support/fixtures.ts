@@ -16,7 +16,7 @@ import {
   USER,
   type InternalRole,
 } from "@/lib/auth/roles";
-import { ROUTES } from "@/lib/constants/routes";
+import { ROUTES } from "@/testing/support/routes";
 import { HTTP_STATUS } from "@/lib/http/status";
 import {
   TEST_DATABASE_URL,

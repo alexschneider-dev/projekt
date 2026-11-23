@@ -36,5 +36,25 @@
     "secrets": [
       "DATABASE_URL"
     ]
+  },
+  "marketplace": {
+    "public": [
+      "NODE_ENV",
+      "HOSTNAME",
+      "PORT",
+      "NEXTAUTH_URL",
+      "OBSERVABILITY_ENABLED",
+      "METRICS_PORT",
+      "OTEL_EXPORTER_OTLP_ENDPOINT",
+      "OTEL_EXPORTER_OTLP_PROTOCOL",
+      "OTEL_SERVICE_VERSION",
+      "MAIL_FROM",
+      "TRUST_PROXY"
+    ],
+    "secrets": [
+      "DATABASE_URL",
+      "NEXTAUTH_SECRET",
+      "RESEND_API_KEY"
+    ]
   }
 }

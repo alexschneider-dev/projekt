@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 COMPOSE_FILE="$SCRIPT_DIR/compose.dev.yml"
-ENV_FILE="$SCRIPT_DIR/.env.development.docker"
+ENV_FILE="$PROJECT_DIR/.env.local"
 
 cd "$PROJECT_DIR"
 
@@ -24,32 +24,19 @@ fi
 
 echo "Docker-Compose-Dienste werden gestartet..."
 
-# Vor dem Schemaumzug dürfen keine alten Anwendungsprozesse mehr schreiben.
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile dev --profile jobs stop nextjs-projekt jobs nginx
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --wait postgres redis
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T postgres bash /opt/projekt-postgres/init-stellensuche.sh
+# PostgreSQL und Anwendungsrollen werden separat über die Infrastruktur eingerichtet.
 
-docker compose \
+if ! docker compose \
   --env-file "$ENV_FILE" \
   -f "$COMPOSE_FILE" \
   --profile dev \
-  up -d --build
-
-docker compose \
-  --env-file "$ENV_FILE" \
-  -f "$COMPOSE_FILE" \
-  --profile dev \
-  ps
-
-# Schema und Client stammen durch --build aus demselben Quellstand.
-docker compose \
-  --env-file "$ENV_FILE" \
-  -f "$COMPOSE_FILE" \
-  --profile dev \
-  exec -T nextjs-projekt npx prisma migrate deploy
+  up -d --build --wait --wait-timeout 150; then
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=40 nextjs-projekt
+  exit 1
+fi
 
 echo "✅ Container gestartet; Compose Watch läuft anschließend in diesem Terminal."
-echo "Website: https://localhost"
+echo "Website: https://localhost/stellensuche (gemeinsamen Nginx separat starten)"
 
 # Compose Watch synchronisiert Quellcode und führt konfigurierte Neubauten aus.
 exec docker compose \

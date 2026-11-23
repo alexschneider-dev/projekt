@@ -32,7 +32,7 @@ class Fixture(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.rfile.read(int(self.headers.get("Content-Length", 0)))
-        if self.path == "/api/observability/auth":
+        if self.path == "/marketplace/api/observability/auth":
             self.send_response(200 if self.headers.get("Cookie") == "test=allowed" else 401)
             self.send_header("X-Webauth-User", "timeout-test")
             self.send_header("X-Webauth-Role", "Admin")
@@ -174,8 +174,11 @@ def main():
                     time.sleep(1)
             else:
                 raise AssertionError(ERRORS["GRAFANA_TEST_START"])
-            config = (ROOT / "apps/stellensuche/services/nginx/default.conf").read_text().replace(
-                "tasks.nextjs:3000 resolve",
+            config = (ROOT / "infrastructure/nginx/default.conf").read_text().replace(
+                "include /etc/nginx/grafana.inc;",
+                (ROOT / "infrastructure/nginx/grafana.inc").read_text(),
+            ).replace("marketplace-haproxy:8080", "fixture:8000").replace(
+                "stellensuche-haproxy:8080 resolve",
                 "fixture:8000 resolve",
             ).replace(
                 "server_name alex-schneider-dev.de;",

@@ -1,0 +1,76 @@
+name: marketplace-dev
+services:
+  marketplace:
+    image: projekt-marketplace-dev:${MARKETPLACE_DEV_VERSION:-1.00}
+    build:
+      context: ../../..
+      dockerfile: services/development/Dockerfile
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://marketplace_app:${MARKETPLACE_DATABASE_PASSWORD:?Eigenes Passwort für den Marketplace setzen}@postgres-projekt:5432/postgres?schema=marketplace
+    volumes:
+      - type: bind
+        source: ../../../.env.local
+        target: /app/.env.local
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/marketplace/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    develop:
+      watch:
+        - action: sync
+          path: ../../..
+          target: /app
+          initial_sync: true
+          ignore:
+            - node_modules/
+            - .next/
+            - data/
+            - .env*
+            - prisma/
+            - tools/
+            - services/
+            - package.json
+            - package-lock.json
+        - action: rebuild
+          path: ../../../package.json
+        - action: rebuild
+          path: ../../../package-lock.json
+        - action: rebuild
+          path: ../../../prisma
+        - action: rebuild
+          path: ../../../tools
+        - action: rebuild
+          path: ../../../services/development/Dockerfile
+    networks:
+      - nextjs_dev
+
+  marketplace-nginx:
+    build:
+      context: ../../nginx
+    image: projekt-marketplace-nginx-dev:${MARKETPLACE_DEV_VERSION:-1.00}
+    restart: unless-stopped
+    networks:
+      - nextjs_dev
+
+  marketplace-haproxy:
+    build:
+      context: ../../haproxy
+    image: projekt-marketplace-haproxy-dev:${MARKETPLACE_DEV_VERSION:-1.00}
+    restart: unless-stopped
+    networks:
+      - nextjs_dev
+
+networks:
+  nextjs_dev:
+    external: true
+    name: nextjs_dev

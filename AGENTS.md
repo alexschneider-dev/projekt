@@ -8,12 +8,13 @@ Anweisungen des Nutzers haben Vorrang.
 - Anwendungen liegen getrennt unter `apps/`; die bestehende Next.js-Anwendung liegt
   unter `apps/stellensuche/`. Anwendungspfade wie `app/`, `components/`, `lib/`,
   `scripts/` und `testing/` in diesen Regeln beziehen sich auf diesen Ordner.
+- Der gemeinsame Nginx liegt unter `infrastructure/nginx/`, nicht in einer Anwendung.
 - Gemeinsam betriebene Infrastruktur liegt unter `infrastructure/`; der
   Observability-Stack einschließlich Loki-Image unter `infrastructure/observability/`.
 - `production/` und `.github/` liegen weiterhin an der Repository-Wurzel.
 - Anwendungen behalten eigene Paket- und Lockdateien. Direkte npm-/npx-Aufrufe
-  im jeweiligen Anwendungsordner ausführen; die Root-Skripte leiten an die
-  Stellensuche weiter. Neue Anwendungen unabhängig bauen und bereitstellen.
+  im jeweiligen Anwendungsordner ausführen; die Root-Skripte bieten explizite App-Namen; `dev`, `build` und `start`
+  wählen standardmäßig den Marketplace. Gemeinsame Prüfungen erfassen beide Apps. Neue Anwendungen unabhängig bauen und bereitstellen.
 
 ## Datenbanktrennung zwischen Anwendungen
 

@@ -1,0 +1,32 @@
+import { Text } from "@/components/ui/text";
+import SectionWrapper from "@/components/ui/page/section-wrapper";
+import PageWrapper from "@/components/ui/page/page-wrapper";
+import { AppLink } from "@/components/ui/app-link";
+import { ROUTES } from "@/lib/constants/routes";
+import { LoginForm } from "./login-form";
+
+
+export function Login() {
+  return (
+    <PageWrapper variant="auth">
+      <SectionWrapper variant="card">
+        <AppLink
+          href={ROUTES.home}
+          variant="authBrand"
+          aria-label="Marktplatz – zur Homepage"
+        >
+          MARKTPLATZ
+        </AppLink>
+
+        <h1>Willkommen zurück</h1>
+
+        <Text variant="intro">Melde dich mit deinem Konto an.</Text>
+
+        <LoginForm />
+        <Text variant="hint">
+          Noch kein Konto? <AppLink href={ROUTES.register}>Jetzt registrieren</AppLink>
+        </Text>
+      </SectionWrapper>
+    </PageWrapper>
+  );
+}

@@ -1,31 +1,4 @@
 services:
-  postgres:
-    image: postgres:17
-    container_name: postgres-projekt
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: postgres
-      STELLENSUCHE_DATABASE_PASSWORD: ${STELLENSUCHE_DATABASE_PASSWORD:?Eigenes Passwort für die Stellensuche setzen}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data_dev_projekt:/var/lib/postgresql/data
-      - ../../../../../infrastructure/postgres:/opt/projekt-postgres:ro
-      - ../../../../../infrastructure/postgres/init-stellensuche.sh:/docker-entrypoint-initdb.d/10-stellensuche.sh:ro
-    networks:
-      - nextjs_dev
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U postgres -d postgres"
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
   redis:
     image: redis:7-alpine
     container_name: redis-projekt
@@ -57,7 +30,7 @@ services:
     working_dir: /app
     environment:
       NODE_ENV: development
-      DATABASE_URL: postgresql://stellensuche_app:${STELLENSUCHE_DATABASE_PASSWORD}@postgres:5432/postgres?schema=stellensuche&connection_limit=10&pool_timeout=50&connect_timeout=10
+      DATABASE_URL: postgresql://stellensuche_app:${STELLENSUCHE_DATABASE_PASSWORD}@postgres-projekt:5432/postgres?schema=stellensuche&connection_limit=10&pool_timeout=50&connect_timeout=10
       REDIS_URL: redis://redis:6379
     volumes:
       # Compose Watch überträgt Quellcode für native Linux-Dateiereignisse.
@@ -107,21 +80,25 @@ services:
         - action: rebuild
           path: ../../../prisma.config.ts
     command:
-      - npm
-      - run
-      - dev
-      - --
-      - --port
-      - "3000"
-      - --hostname
-      - "0.0.0.0"
+      - sh
+      - -c
+      - npx prisma migrate deploy && npm run dev -- --port 3000 --hostname 0.0.0.0
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/stellensuche').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_started
     networks:
-      - nextjs_dev
+      nextjs_dev:
+        aliases: [nextjs]
 
   jobs:
     profiles: ["jobs"]
@@ -132,36 +109,31 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://stellensuche_app:${STELLENSUCHE_DATABASE_PASSWORD}@postgres:5432/postgres?schema=stellensuche
-    depends_on:
-      postgres:
-        condition: service_healthy
+      DATABASE_URL: postgresql://stellensuche_app:${STELLENSUCHE_DATABASE_PASSWORD}@postgres-projekt:5432/postgres?schema=stellensuche
     networks:
       - nextjs_dev
 
-  nginx:
-    profiles: ["dev"]
+
+  stellensuche-nginx:
     build:
-      context: ../nginx-dev
-      dockerfile: Dockerfile
-    image: nginx-dev-projekt:${NGINX_DEV_VERSION}
-    container_name: nginx-projekt
+      context: ../../nginx
+    image: projekt-stellensuche-nginx-dev:${PROJEKT_DEV_VERSION:-1.00}
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - nginx_cache_dev_projekt:/var/cache/nginx
-    depends_on:
-      - nextjs-projekt
+    networks:
+      - nextjs_dev
+
+  stellensuche-haproxy:
+    build:
+      context: ../../haproxy
+    image: projekt-stellensuche-haproxy-dev:${PROJEKT_DEV_VERSION:-1.00}
+    restart: unless-stopped
     networks:
       - nextjs_dev
 
 networks:
   nextjs_dev:
+    external: true
     name: nextjs_dev
 
 volumes:
-  postgres_data_dev_projekt:
   redis_data_dev_projekt:
-  nginx_cache_dev_projekt:

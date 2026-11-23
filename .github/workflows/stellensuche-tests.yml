@@ -1,0 +1,190 @@
+name: Stellensuche – Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Datenbank-, Chromium- und Ansichtentests ausführen
+        type: boolean
+        default: true
+      browser_matrix:
+        description: Zusätzlich Firefox und WebKit prüfen
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      full:
+        description: Umfangreiche Prüfungen vor dem Build ausführen
+        type: boolean
+        default: false
+      browser_matrix:
+        description: Zusätzlich Firefox und WebKit prüfen
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: apps/stellensuche
+
+jobs:
+  sicherheit:
+    name: Abhängigkeiten auf Sicherheitslücken prüfen
+    uses: ./.github/workflows/shared-security-audit.yml
+
+  pruefungen:
+    name: Anwendung prüfen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/stellensuche/package-lock.json
+
+      - name: Abhängigkeiten und Prisma vorbereiten
+        run: |
+          npm ci
+          npx prisma generate
+
+      - name: Statische Prüfungen
+        run: npm run check
+
+      - name: Bestehende Regressionstests
+        run: npm run test:legacy
+
+      - name: Komponenten und Logik
+        run: npm run test:unit
+
+  integration:
+    name: Anwendung vor Bereitstellung prüfen
+    if: inputs.full == true
+    needs: pruefungen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/stellensuche/package-lock.json
+
+      - name: Abhängigkeiten und Prisma vorbereiten
+        run: |
+          npm ci
+          npx prisma generate
+
+      - name: Testabdeckung prüfen
+        run: npm run test:coverage
+
+      - name: Schemaumzug und Datenbankrechte prüfen
+        run: npm run test:database:isolation
+
+      - name: Browser installieren
+        uses: ./.github/actions/install-playwright
+        with:
+          browsers: chromium
+
+      - name: API und zentrale Browserabläufe mit Produktionsbuild
+        run: npm run test:e2e
+
+      - name: Stellenimport mit echter Testdatenbank
+        run: npm run test:jobs:db
+
+      - name: Registrierung und Kontingente mit echter Testdatenbank
+        run: npm run test:registration:db
+
+      - name: Berichte bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testergebnisse
+          path: |
+            apps/stellensuche/playwright-report/
+            apps/stellensuche/test-results/
+            apps/stellensuche/coverage/
+          retention-days: 7
+
+      - name: Testdatenbank entfernen
+        if: always()
+        run: npm run test:db:down
+
+  browsermatrix:
+    name: Erweiterte Browserprüfung
+    if: inputs.browser_matrix == true
+    needs: pruefungen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/stellensuche/package-lock.json
+
+      - run: npm ci
+      - name: Browser installieren
+        uses: ./.github/actions/install-playwright
+        with:
+          browsers: chromium firefox webkit
+      - run: npm run test:browsers
+
+      - name: Browserberichte bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browsermatrix
+          path: |
+            apps/stellensuche/playwright-report/
+            apps/stellensuche/test-results/
+          retention-days: 7
+
+      - name: Testdatenbank entfernen
+        if: always()
+        run: npm run test:db:down
+
+  visuell:
+    name: Ansichten vergleichen
+    if: inputs.full == true
+    needs: pruefungen
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Ansichten in identischer Linux-Umgebung vergleichen
+        run: npm run test:visual
+
+      - name: Vergleichsbilder bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ansichten
+          path: |
+            apps/stellensuche/playwright-report/
+            apps/stellensuche/test-results/
+          retention-days: 7

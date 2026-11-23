@@ -3,7 +3,7 @@ import {
   expect,
   login
 } from "../support/fixtures";
-import { ROUTES } from "@/lib/constants/routes";
+import { ROUTES } from "@/testing/support/routes";
 import { SUPER_ADMIN } from "@/lib/auth/roles";
 import { randomUUID } from "node:crypto";
 

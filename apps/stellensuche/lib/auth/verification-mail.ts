@@ -1,3 +1,4 @@
+import { withBasePath } from "@/lib/constants/base-path";
 import { createHash } from "node:crypto";
 import { ROUTES } from "@/lib/constants/routes";
 import { createApiError } from "@/lib/http/errors";
@@ -22,7 +23,7 @@ export function verificationMailer() {
   }
 
   return async (email: string, token: string) => {
-    const link = new URL(ROUTES.verifyEmail, origin);
+    const link = new URL(withBasePath(ROUTES.verifyEmail), origin);
     // Fragment statt Query: Der Token landet nicht in HTTP-Zugriffslogs oder Referrern.
     link.hash = token;
     try {

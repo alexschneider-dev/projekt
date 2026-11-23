@@ -7,7 +7,7 @@ import {
   USER,
   SUPER_ADMIN,
 } from "@/lib/auth/roles";
-import { ROUTES } from "@/lib/constants/routes";
+import { ROUTES } from "@/testing/support/routes";
 import { HTTP_STATUS } from "@/lib/http/status";
 import { ERROR_AUTH } from "@/lib/http/errors/auth";
 import { TEST_PASSWORD } from "../support/environment.mjs";

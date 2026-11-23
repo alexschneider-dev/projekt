@@ -1,0 +1,39 @@
+name: Nginx-Image prüfen
+description: Nginx-Image und Systempakete auf bekannte Sicherheitslücken prüfen
+inputs:
+  image:
+    description: Lokal gebautes Docker-Image für die Prüfung
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Nginx und Systempakete prüfen
+      uses: aquasecurity/trivy-action@v0.36.0
+      with:
+        version: v0.76.2
+        scan-type: image
+        image-ref: ${{ inputs.image }}
+        scanners: vuln
+        format: table
+        output: ${{ runner.temp }}/nginx-audit.txt
+        severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+        ignore-unfixed: false
+        exit-code: '1'
+        timeout: 10m
+
+    - name: Prüfergebnis zusammenfassen
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        if [[ -f "$RUNNER_TEMP/nginx-audit.txt" ]]; then
+          cat "$RUNNER_TEMP/nginx-audit.txt"
+          {
+            echo '## Sicherheitsprüfung des Nginx-Images'
+            echo ''
+            echo '```text'
+            cat "$RUNNER_TEMP/nginx-audit.txt"
+            echo '```'
+            echo ''
+            echo 'Prüft das gebaute Image. Das laufende Produktionsimage, der Host-Kernel und die Konfiguration benötigen separate Prüfungen.'
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi

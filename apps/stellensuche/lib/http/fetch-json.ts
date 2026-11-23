@@ -1,3 +1,4 @@
+import { withBasePath } from "../constants/base-path";
 import { ApiError } from "./api-error";
 import {
   createApiError,
@@ -20,7 +21,7 @@ export async function fetchJson<T>(input: RequestInfo | URL, options: FetchJsonO
   let response: Response;
 
   try {
-    response = await fetch(input, {
+    response = await fetch(typeof input === "string" && input.startsWith("/") ? withBasePath(input) : input, {
       method: options.method ?? "GET",
       ...(body === undefined ? {} : { body }),
       ...(isFormData || body === undefined ? {} : { headers: { "Content-Type": "application/json" } }),

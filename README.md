@@ -6,7 +6,9 @@ Infrastruktur. Alle Bereiche werden in einem Git-Repository versioniert.
 ```text
 apps/
   stellensuche/             Next.js, Prisma, Importdienst, Tests und Docker-Builds
+  marketplace/              Stuhlkatalog, Verkäuferangebote, Bildimport und eigene Anmeldung
 infrastructure/
+  nginx/                   Gemeinsamer Proxy für die Anwendungen
   postgres/                Schema-Trennung in einer gemeinsamen Datenbank
   observability/           Grafana, Prometheus, Loki, Tempo, Alloy und Sicherungen
     loki-image/            Quellcode des angepassten Loki-Images
@@ -20,11 +22,11 @@ Voraussetzung ist Node.js 22 gemäß `apps/stellensuche/package.json`.
 Vom Repository-Hauptordner aus:
 
 ```bash
-npm run setup
-npm run dev
+npm run setup:stellensuche
+npm run dev:stellensuche
 ```
 
-`setup` installiert die festgelegten Abhängigkeiten der Stellensuche. Die lokale
+`setup:stellensuche` installiert die festgelegten Abhängigkeiten der Stellensuche. Die lokale
 `.env.local` liegt in `apps/stellensuche`. Alternativ direkt dort arbeiten:
 
 ```bash
@@ -33,8 +35,8 @@ npm ci
 npm run dev
 ```
 
-Die Befehle `npm run check`, `npm test`, `npm run build` und die weiteren
-Anwendungsskripte im Hauptordner leiten an die Stellensuche weiter. Der Hauptordner
+Die Befehle `npm run check` und `npm test` prüfen beide Apps; `npm run build`
+baut standardmäßig den Marketplace. App-spezifische Befehle tragen den App-Namen. Der Hauptordner
 selbst benötigt keine installierten Node-Abhängigkeiten. Bei direkten Aufrufen
 von Werkzeugen wie `npx prisma` oder `npx playwright` zuerst in den
 Anwendungsordner wechseln.
@@ -84,5 +86,22 @@ Die anwendungsspezifischen Komponenten und Datenmodelle bleiben in ihrer Anwendu
 `production/compose.swarm.yml` bleibt die maßgebliche Quelle für die Betriebsparameter
 der bestehenden Bereitstellung. Der Monitoring-Stack hat seine eigene
 `infrastructure/observability/compose.swarm.yml`. Neue Anwendungen erhalten eigene
-Dienste und Build-/Deployment-Abläufe. Die vorhandenen Pipelines stellen weiterhin
-nur die Stellensuche und die bestehende Infrastruktur bereit.
+Dienste und Build-/Deployment-Abläufe. Die Anwendungen erhalten getrennte Release-Workflows. Der Marketplace verwendet
+`marketplace-deploy.yml`; der gemeinsame Nginx wird unabhängig
+über `infrastructure-nginx.yml` bereitgestellt.
+
+## Marktplatz
+
+Die neue Anwendung liegt unter [apps/marketplace](apps/marketplace/README.md).
+Sie verwendet eigene Pakete, das Schema `marketplace` und standardmäßig den
+URL-Pfad `/marketplace`. Die Root-Befehle `dev`, `build` und `start` wählen den Marketplace.
+Die Stellensuche ist über `/stellensuche` erreichbar. [Betriebsintegration und URL-Aufteilung](docs/marketplace-betrieb.md).
+
+### Anwendungen vom Repository-Hauptordner aus
+
+Jede Anwendung hat ihre eigene `package.json` und Lockdatei. `npm run dev`,
+`npm run build` und `npm start` wählen den Marketplace. Für eine explizite Auswahl:
+`npm run dev:marketplace` oder `npm run dev:stellensuche`; entsprechend gibt es
+`build:APP`, `start:APP`, `check:APP` und `test:APP`.
+`npm run check` und `npm test` prüfen beide Anwendungen. Die vollständigen lokalen
+Proxy-Ketten werden mit den jeweiligen Docker-Startskripten gestartet.

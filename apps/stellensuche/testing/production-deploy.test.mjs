@@ -315,7 +315,8 @@ test("Startscript erhält Shell-Syntax als Text und abschließende Zeilenumbrüc
 for (const service of [
   "nextjs",
   "nginx",
-  "jobs"
+  "jobs",
+  "marketplace"
 ]) {
   for (const rollback of [
     false,
@@ -329,6 +330,7 @@ for (const service of [
         nextjs: "projekt",
         nginx: "nginx-projekt",
         jobs: "projekt-jobs",
+        marketplace: "projekt-marketplace",
       };
       const repository = repositories[service];
       const dockerPath = run("sh", [
@@ -416,6 +418,7 @@ if (args[0] === 'service' && args[1] === 'inspect') {
     fs.writeFileSync(marker, '1');
     console.log(seen ? process.env.TEST_STATE : 'updating');
   }
+  else if (/^projekt_(stellensuche|marketplace)-(nginx|haproxy)$/.test(args[2])) console.log('ghcr.io/alexschneider-dev/' + args[2].replace('projekt_', 'projekt-') + ':2.0@sha256:test');
   else console.log(process.env.TEST_IMAGE);
 }
 `, { mode: 0o755 });
@@ -442,7 +445,15 @@ if (args[0] === 'service' && args[1] === 'inspect') {
 
       const applied = yaml.load(readFileSync(captured, "utf8"));
 
-      assert.deepEqual(Object.keys(applied.services), [service]);
+      const app = service === "nextjs" ? "stellensuche" : service === "marketplace" ? "marketplace" : null;
+      const expected = app ? [service, `${app}-nginx`, `${app}-haproxy`] : [service];
+      assert.deepEqual(Object.keys(applied.services).sort(), expected.sort());
+      if (app) {
+        for (const proxy of ["nginx", "haproxy"]) {
+          assert.equal(applied.services[`${app}-${proxy}`].image, `ghcr.io/alexschneider-dev/projekt-${app}-${proxy}:2.0`);
+          assert.equal(applied.services[`${app}-${proxy}`].environment, undefined);
+        }
+      }
 
       const spec = applied.services[service];
 
@@ -469,7 +480,7 @@ if (args[0] === 'service' && args[1] === 'inspect') {
 
       assert.equal(deploys.length, 1);
       assert.ok(!deploys[0].includes("--prune"));
-      assert.ok(calls.filter(args => args[0] === "service").every(args => args.includes(`projekt_${service}`)));
+      assert.ok(calls.filter(args => args[0] === "service").every(args => expected.some(name => args.includes(`projekt_${name}`))));
     });
   }
 }
@@ -488,7 +499,10 @@ case "$1 $2" in
     esac ;;
   "stack deploy")
     printf '%s\\n' "$*" >> "$CALL_LOG"
-    env | sort >> "$CALL_LOG" ;;
+    for key in EDGE_IMAGE EDGE_CONFIG_NAME NEXTJS_IMAGE NGINX_IMAGE POSTGRES_IMAGE REDIS_IMAGE JOBS_IMAGE; do
+      printf '%s=' "$key" >> "$CALL_LOG"
+      printenv "$key" >> "$CALL_LOG"
+    done ;;
 esac
 `, { mode: 0o755 });
   writeFileSync(join(dir, "deploy-stack.sh"), readFileSync(join(root, "production/deploy-stack.sh"), "utf8")
@@ -507,7 +521,7 @@ esac
 
   assert.match(calls, /--resolve-image never/);
   assert.match(calls, /-c compose.edge.yml projekt-edge/);
-  assert.match(calls, /-c compose.swarm.yml .* projekt/);
+  assert.match(calls, /-c \S+\/base.yml .* projekt/);
   assert.match(calls, /EDGE_IMAGE=example\/projekt-edge_edge:2.0@sha256:live/);
   const configName = calls.match(/^EDGE_CONFIG_NAME=(.+)$/m)?.[1];
   const configHash = createHash("sha256")
@@ -590,7 +604,8 @@ if (args[0] === "service" && args[1] === "inspect") {
 } else if (args[0] === "stack") {
   const files = [];
   args.forEach((arg, i) => { if (arg === "-c") files.push("-c", args[i + 1]); });
-  const result = spawnSync(process.env.REAL_DOCKER, ["stack", "config", ...files], { encoding: "utf8" });
+  const result = spawnSync(process.env.REAL_DOCKER, ["stack", "config", ...(args.includes("--skip-interpolation") ? ["--skip-interpolation"] : []), ...files], { encoding: "utf8" });
+  if (args[1] === "config") process.stdout.write(result.stdout || "");
   if (args[1] === "deploy") fs.writeFileSync(process.env.CAPTURED, result.stdout || "");
   process.stderr.write(result.stderr || "");
   process.exit(result.status ?? 1);
@@ -626,6 +641,7 @@ if (args[0] === "service" && args[1] === "inspect") {
   assert.equal(app.configs[0].target, "/production-entrypoint.sh");
   assert.equal(applied.secrets.auth.name, "existing_auth");
   assert.equal(applied.services.unexpected, undefined);
+  assert.equal(applied.services.marketplace, undefined);
   assert.deepEqual(JSON.parse(readFileSync(runtimePath, "utf8")), runtime);
 });
 

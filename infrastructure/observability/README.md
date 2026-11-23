@@ -534,7 +534,7 @@ python3 infrastructure/observability/test-loki-query-integration.py
 python3 infrastructure/observability/test-query-classification-integration.py
 python3 infrastructure/observability/test-storage-integration.py
 python3 infrastructure/observability/test-grafana-integration.py
-docker build -t projekt-observability-nginx-check apps/stellensuche/services/nginx
+docker build -t projekt-observability-nginx-check infrastructure/nginx
 python3 infrastructure/observability/test-nginx-integration.py
 node --experimental-strip-types --test testing/observability.test.mjs
 ```
@@ -726,3 +726,20 @@ Beide Regeln werden weiterhin ausgewertet und bleiben in Grafana sichtbar.
 Andere Alarme senden weiterhin E-Mails. Die Änderung wird mit dem nächsten
 Monitoring-Deployment wirksam. Zum erneuten Aktivieren der Swap-E-Mails die
 zugehörige Unterroute unter `policies` in `grafana/alerting.yml` entfernen.
+
+## Nginx-Sicherheitsupdates
+
+Der gemeinsame Proxy und die Entwicklungsumgebung verwenden Alpine 3.24 mit
+Nginx ab 1.30.7. Die internen Anwendungs-Proxys verwenden `nginx:1.30.7-alpine`.
+Alle vier Dockerfiles aktualisieren die Systempakete mit `apk upgrade --no-cache`.
+Nginx 1.30.7 enthält die Sicherheitskorrekturen vom November 2026; siehe
+[offizielle Nginx-Sicherheitsmeldungen](https://nginx.org/en/security_advisories.html).
+
+Die Release-Workflows bauen die Nginx-Images mit frischem Basisimage und ohne
+Build-Cache. Vor der Veröffentlichung prüft `.github/actions/audit-nginx` das
+jeweilige Image mit Trivy. Befunde aller Schweregrade einschließlich noch nicht
+behobener Schwachstellen blockieren Veröffentlichung und Bereitstellung.
+Der gemeinsame Sicherheitsworkflow baut und prüft die drei Produktions-Proxys
+zusätzlich täglich, bei relevanten Pull Requests und auf manuellen Aufruf.
+Die Prüfung betrifft die neu gebauten Images; bereits laufende Container werden
+erst durch eine anschließende Bereitstellung aktualisiert.

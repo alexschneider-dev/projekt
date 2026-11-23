@@ -40,15 +40,6 @@ export function DashboardNavigation({ role }: { role: InternalRole }) {
       </AppLink>
       {hasRole(role, SUPER_ADMIN) && (
         <AppLink
-          href={ROUTES.grafana}
-          navigationMode="document"
-          variant="navigation"
-        >
-          Monitoring
-        </AppLink>
-      )}
-      {hasRole(role, SUPER_ADMIN) && (
-        <AppLink
           href={ROUTES.superAdmin}
           variant="navigation"
         >

@@ -138,7 +138,7 @@ Der Hook führt `check` und `test:unit` aus. Vollständige Browserläufe finden 
 bei jedem Commit statt. Ein bestehender eigener Hook muss vor der Aktivierung
 mit diesem Ablauf zusammengeführt werden.
 
-Der Workflow `Anwendung testen` führt bei Pull Requests und Pushes auf `main`
+Der Workflow `Stellensuche – Tests` führt bei Pull Requests und Pushes auf `main`
 ESLint, TypeScript, Unit- und Regressionstests sowie den Sicherheits-Audit aus.
 Es werden dabei keine Browser installiert und keine Docker-Testdatenbanken gestartet.
 
@@ -179,7 +179,7 @@ Login, Weiterleitung und öffentliche Telemetrie-Konfiguration. Der bestehende
 Swarm-Betrieb einschließlich `start-first` bleibt erhalten.
 
 Eine Staging-Umgebung ist damit noch nicht eingerichtet. Der manuell ausführbare
-Workflow `Bereitstellung prüfen` kann eine vorhandene Staging-Adresse prüfen.
+Workflow `Stellensuche – Bereitstellung prüfen` kann eine vorhandene Staging-Adresse prüfen.
 Lokal funktioniert derselbe lesende Test so:
 
 ```sh

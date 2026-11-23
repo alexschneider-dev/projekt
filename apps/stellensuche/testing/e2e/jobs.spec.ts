@@ -6,7 +6,7 @@ import {
 import {
   ROUTES,
   jobSearchHref,
-} from "@/lib/constants/routes";
+} from "@/testing/support/routes";
 import { ERROR_JOBS } from "@/lib/http/errors/jobs";
 import { randomUUID } from "node:crypto";
 

@@ -62,24 +62,21 @@ Nur bei einer frischen Einrichtung ausführen:
 
 ```sh
 umask 077
-cat > services/development/scripts/.env.development.docker <<'EOF'
-PROJEKT_DEV_VERSION=lokal
-NGINX_DEV_VERSION=lokal
-POSTGRES_PASSWORD=lokales-entwicklungspasswort
-STELLENSUCHE_DATABASE_PASSWORD=stellensuche-lokal-passwort-2026
-EOF
-
 cat > .env.local <<'EOF'
+PROJEKT_DEV_VERSION=lokal
+STELLENSUCHE_DATABASE_PASSWORD=stellensuche-lokal-passwort-2026
 DATABASE_URL=postgresql://stellensuche_app:stellensuche-lokal-passwort-2026@localhost:5432/postgres?schema=stellensuche
-NEXTAUTH_URL=https://localhost
+NEXTAUTH_URL=https://localhost/stellensuche/api/auth
 OBSERVABILITY_ENABLED=false
 EOF
 printf 'NEXTAUTH_SECRET=%s\n' "$(openssl rand -hex 32)" >> .env.local
 ```
 
 Die gezeigten Passwörter gelten ausschließlich lokal. Das Anwendungspasswort muss
-in beiden Dateien übereinstimmen; das PostgreSQL-Administratorkennwort bleibt separat. Im Next.js-Container setzt Compose automatisch
-`DATABASE_URL` mit dem Host `postgres` und `REDIS_URL` mit dem Host `redis`.
+in `DATABASE_URL` und `STELLENSUCHE_DATABASE_PASSWORD` derselben `.env.local`
+übereinstimmen. Das PostgreSQL-Administratorkennwort
+liegt ausschließlich unter `../../infrastructure/postgres/development/.env.development.docker`. Im Next.js-Container setzt Compose automatisch
+`DATABASE_URL` mit dem Host `postgres-projekt` und `REDIS_URL` mit dem Host `redis`.
 Die URL in `.env.local` dient Werkzeugen, die auf dem Mac laufen.
 Ein geändertes `POSTGRES_PASSWORD` setzt das Passwort in einem vorhandenen
 Datenbankvolume nicht zurück.
@@ -91,8 +88,8 @@ vorbereiten. Die neue Anwendung darf nicht mehr mit dem Administratorzugang star
 
 ```sh
 mkcert -install
-mkcert -cert-file services/development/nginx-dev/fullchain.pem \
-  -key-file services/development/nginx-dev/privkey.pem \
+mkcert -cert-file ../../infrastructure/nginx/development/fullchain.pem \
+  -key-file ../../infrastructure/nginx/development/privkey.pem \
   localhost 127.0.0.1 ::1
 ```
 
@@ -102,11 +99,21 @@ auf dem Mac; insbesondere den privaten CA-Schlüssel nicht weitergeben.
 
 ## 5. Dienste starten und Datenbank vorbereiten
 
+Zuerst die [gemeinsame PostgreSQL-Infrastruktur](../infrastructure/postgres/README.md#lokale-entwicklung-und-tests)
+konfigurieren und starten. Vorhandenes Datenvolume beibehalten; Benutzer und Schema
+bei Bedarf einmalig einrichten. Die folgenden Befehle gelten aus `apps/stellensuche`:
+
+```sh
+../../infrastructure/postgres/development/start.sh
+# Nur bei der Einrichtung beziehungsweise einer bewussten Passwortänderung:
+../../infrastructure/postgres/development/provision.sh stellensuche
+```
+
 Diese Funktion gilt für das aktuelle Terminal; in neuen Terminals erneut definieren:
 
 ```sh
 dc() {
-  docker compose --env-file services/development/scripts/.env.development.docker \
+  docker compose --env-file .env.local \
     -f services/development/scripts/compose.dev.yml --profile dev "$@"
 }
 
@@ -118,7 +125,7 @@ dc exec nextjs-projekt npm run auth:create-user -- admin@example.test SUPER_ADMI
 
 Auf einen gesunden PostgreSQL-Container warten, bevor die Migration ausgeführt wird.
 Das Kontenskript fragt das Passwort verdeckt zweimal ab (12–128 Zeichen).
-Danach `https://localhost` öffnen, zur Anmeldung gehen und das neue Konto verwenden.
+Danach `https://localhost/stellensuche` öffnen, zur Anmeldung gehen und das neue Konto verwenden.
 Es gibt keine öffentliche Registrierung. Die Anmeldung führt auf die Homepage.
 
 ## 6. Änderungen synchronisieren
@@ -131,15 +138,16 @@ dc up --watch --menu=false --no-deps nextjs-projekt
 
 Dieses Terminal geöffnet lassen. Compose Watch überträgt Quellcodeänderungen und
 baut bei Änderungen an Paketdateien oder Prisma neu. Änderungen an `.env.local`
-erfordern einen Neustart (`dc restart nextjs-projekt`); Änderungen an der Compose-
-Env-Datei ein erneutes `dc up -d`. Bei neuen Migrationen nochmals
+erfordern ein erneutes `dc up -d --force-recreate nextjs-projekt`, damit auch die
+von Compose gesetzten Datenbankzugänge aktualisiert werden. Bei neuen Migrationen nochmals
 `dc exec nextjs-projekt npx prisma migrate deploy` ausführen.
-Änderungen an lokalen Nginx-Dateien oder Zertifikaten mit `dc up -d --build nginx` übernehmen.
+Den gemeinsamen Nginx separat mit `../../infrastructure/nginx/development/start.sh`
+starten oder nach Änderungen neu bauen. Seine optionale `.env.development.docker`
+liegt neben diesem Skript und enthält `NGINX_DEV_VERSION=1.00`.
 
 Optional startet `bash services/development/scripts/start_local_services.sh`
-Colima, Dienste und Monitorfenster automatisch. Dieses Komfortskript erwartet
-zusätzlich Terminal, Visual Studio Code und Google Chrome und kann macOS-
-Automatisierungsberechtigungen anfordern. Die obigen Befehle benötigen diese Apps nicht.
+Colima und die Stellensuche-Dienste und führt anschließend Compose Watch aus.
+Der gemeinsame Nginx wird separat gestartet.
 
 ## 7. Prüfen und beenden
 
@@ -155,13 +163,13 @@ in [der Testanleitung](../apps/stellensuche/testing/README.md). Prisma CLI lädt
 Mac nicht automatisch. Migrationen deshalb wie oben im Container ausführen.
 
 ```sh
-dc logs --tail=100 nextjs-projekt postgres nginx
-dc down
-colima stop
+dc logs --tail=100 nextjs-projekt
+bash services/development/scripts/stop_local_services.sh
 ```
 
-Zuvor Compose Watch mit Strg+C beenden. `down` erhält die Datenvolumes.
-`down -v` würde lokale Daten löschen und gehört nicht zum normalen Beenden.
+Zuvor Compose Watch mit Strg+C beenden. Der Stop beendet nur Stellensuche und
+Importdienst; Datenbank, Nginx und Colima bleiben für andere Anwendungen verfügbar.
+Nginx separat mit `../../infrastructure/nginx/development/stop.sh` beenden.
 
 ## Häufige Startprobleme
 

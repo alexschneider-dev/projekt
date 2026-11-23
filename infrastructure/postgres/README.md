@@ -6,7 +6,7 @@ ein eigenes Schema und einen eigenen PostgreSQL-Benutzer:
 | Anwendung | Datenbank | Schema | Datenbankbenutzer |
 | --- | --- | --- | --- |
 | Stellensuche | `postgres` | `stellensuche` | `stellensuche_app` |
-| Beispiel einer weiteren Anwendung | `postgres` | `verwaltung` | `verwaltung_app` |
+| Marktplatz | `postgres` | `marketplace` | `marketplace_app` |
 
 `User`, `InternalRole`, `JobListing` und alle weiteren Modelle der Stellensuche
 liegen ausschließlich in `stellensuche`. Eine zweite Anwendung kann eigene,
@@ -120,16 +120,55 @@ sudo docker exec "$postgres_container" rm -rf -- /tmp/projekt-postgres
 
 ## Lokale Entwicklung und Tests
 
-Die lokale Compose-Datei bindet die SQL-Werkzeuge schreibgeschützt ein. Bei einer
-leeren Datenbank erstellt `init-stellensuche.sh` das Schema während der PostgreSQL-
-Initialisierung. Für vorhandene Entwicklungsvolumes führt
-`services/development/scripts/start_local_services.sh` die Einrichtung vor dem
-Anwendungsstart aus. Zuerst vorhandene Migrationen im alten Schema abschließen.
-Ein separat gestarteter Next.js-Prozess auf dem Host muss vorher beendet werden.
+Die gemeinsame Entwicklungsdatenbank besitzt eine eigene Konfiguration unter
+`infrastructure/postgres/development/`. Nur deren `.env.development.docker`
+enthält das Administratorpasswort:
 
-`STELLENSUCHE_DATABASE_PASSWORD` in der lokalen Compose-Env-Datei ist unabhängig
-von `POSTGRES_PASSWORD`. `DATABASE_URL` für Host-Werkzeuge verwendet denselben
-Anwendungsbenutzer, aber den Host `localhost` statt `postgres`.
+```dotenv
+POSTGRES_PASSWORD=DEIN_BISHERIGES_ADMINISTRATORPASSWORT
+POSTGRES_DATA_VOLUME=scripts_postgres_data_dev_projekt
+```
+
+Die Vorlage liegt daneben als `.env.development.docker.example`. Der konfigurierte
+Volumename entspricht dem bisherigen Stellensuche-Compose-Volume. Bei abweichendem
+Compose-Projektnamen zuerst den tatsächlichen Volumenamen prüfen. Das Volume ist
+extern: Bei einem falschen oder fehlenden Namen bricht der Start ab, statt eine
+leere Ersatzdatenbank anzulegen. **Nur bei einer bewusst frischen Installation**
+das gewünschte Volume vorher mit `docker volume create NAME` anlegen.
+
+Aus der Repository-Wurzel:
+
+```bash
+./infrastructure/postgres/development/start.sh
+./infrastructure/postgres/development/provision.sh stellensuche
+./infrastructure/postgres/development/provision.sh marketplace
+```
+
+Die Einrichtung fragt das jeweilige Anwendungspasswort verdeckt ab und setzt es
+für den Benutzer. Dasselbe Passwort in der jeweiligen Anwendungskonfiguration
+verwenden. Vorhandene Benutzer müssen beim normalen Start nicht erneut eingerichtet
+werden. SQL-Werkzeuge sind schreibgeschützt eingebunden. Es werden keine
+Anwendungspasswörter als dauerhafte PostgreSQL-Containerumgebung benötigt.
+
+Für Bestandsdaten in `public` weiterhin zuerst den oben beschriebenen Schemaumzug
+vorbereiten, schreibende Anwendungen stoppen und lokal anschließend ausführen:
+
+```bash
+docker exec postgres-projekt psql -X -U postgres -d postgres \
+  -f /opt/projekt-postgres/move-stellensuche.sql
+```
+
+Bei einem vorhandenen Container `postgres-projekt` aus dem alten Compose-Projekt
+zuerst die Anwendungen stoppen und diesen Container mit `docker stop postgres-projekt`
+und `docker rm postgres-projekt` entfernen. **Kein Volume löschen.** Anschließend
+den neuen Infrastruktur-Start ausführen; er verwendet dasselbe Datenvolume.
+Ein geändertes `POSTGRES_PASSWORD` ändert kein Passwort im bestehenden Volume.
+
+`./infrastructure/postgres/development/stop.sh` stoppt ausdrücklich die gemeinsame
+Datenbank und unterbricht damit beide Anwendungen. Anwendungsskripte verwalten
+PostgreSQL nicht. Host-Werkzeuge verwenden `localhost:5432`, Anwendungscontainer
+`postgres-projekt:5432` im externen Netzwerk `nextjs_dev`. Der Datenbankport ist nur
+an die lokale Loopback-Adresse gebunden.
 
 ```bash
 npm run test:database:isolation

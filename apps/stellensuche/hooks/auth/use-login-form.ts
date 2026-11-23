@@ -1,5 +1,7 @@
 "use client";
 
+import { withBasePath } from "@/lib/constants/base-path";
+
 import { ROUTES } from "@/lib/constants/routes";
 import { ERROR_AUTH } from "@/lib/http/errors/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +30,7 @@ export function useLoginForm() {
       const result = await signIn("credentials", {
         ...values,
         redirect: false,
-        callbackUrl: ROUTES.home,
+        callbackUrl: withBasePath(ROUTES.home),
       });
 
       if (!result?.ok || result.error) {

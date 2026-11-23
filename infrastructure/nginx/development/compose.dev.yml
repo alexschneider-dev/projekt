@@ -1,0 +1,32 @@
+name: projekt-nginx-dev
+services:
+  nginx:
+    build:
+      context: ..
+      dockerfile: development/Dockerfile
+    image: nginx-dev-projekt:${NGINX_DEV_VERSION:-1.00}
+    container_name: nginx-projekt
+    restart: unless-stopped
+    volumes:
+      - nginx_cache:/var/cache/nginx
+    networks:
+      - nextjs_dev
+
+  edge:
+    image: haproxy:3.2-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+    volumes:
+      - ./edge-haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - nextjs_dev
+
+networks:
+  nextjs_dev:
+    external: true
+    name: nextjs_dev
+
+volumes:
+  nginx_cache:

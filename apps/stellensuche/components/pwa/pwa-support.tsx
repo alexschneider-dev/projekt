@@ -1,5 +1,7 @@
 "use client";
 
+import { withBasePath } from "@/lib/constants/base-path";
+
 import {
   useEffect,
   useState,
@@ -17,12 +19,30 @@ type InstallPrompt = Event & {
 };
 
 export function PwaSupport() {
-  const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(null);
-  const [offline, setOffline] = useState(false);
-  const [installing, setInstalling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [iosInstallAvailable, setIosInstallAvailable] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(false);
+  const [
+    installPrompt,
+    setInstallPrompt
+  ] = useState<InstallPrompt | null>(null);
+  const [
+    offline,
+    setOffline
+  ] = useState(false);
+  const [
+    installing,
+    setInstalling
+  ] = useState(false);
+  const [
+    error,
+    setError
+  ] = useState<string | null>(null);
+  const [
+    iosInstallAvailable,
+    setIosInstallAvailable
+  ] = useState(false);
+  const [
+    showInstructions,
+    setShowInstructions
+  ] = useState(false);
 
   useEffect(() => {
     const updateConnection = () => setOffline(!navigator.onLine);
@@ -56,8 +76,8 @@ export function PwaSupport() {
     window.addEventListener("appinstalled", installed);
 
     if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
-      void navigator.serviceWorker.register(ROUTES.serviceWorker, {
-        scope: ROUTES.home,
+      void navigator.serviceWorker.register(withBasePath(ROUTES.serviceWorker), {
+        scope: withBasePath(ROUTES.home),
         updateViaCache: "none",
       }).catch(() => {
         console.error(ERROR_PWA.REGISTRATION_FAILED.message);

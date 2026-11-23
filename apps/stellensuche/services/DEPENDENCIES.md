@@ -17,7 +17,7 @@ Dienst-Images installieren gezielt mit `npm ci --workspace services/NAME --inclu
 
 `npm run audit:dependencies` prüft das gemeinsame Lockfile einschließlich Entwicklungsabhängigkeiten. Ab Schweregrad `low` schlägt die Prüfung fehl; auch Registry- oder Netzwerkfehler blockieren den Build. `npm run build` und `npm run analyze` führen die Prüfung automatisch vorab aus.
 
-Der Workflow `.github/workflows/security-audit.yml` prüft täglich um 06:23 UTC (07:23 Uhr im Berliner Winter, 08:23 Uhr im Sommer), bei Pull Requests mit Manifest-/Lockfile-Änderungen sowie auf manuellen Aufruf. Der Next.js-/Migrations-Workflow ruft ihn vor dem Build auf. Bei einem Fehler werden weder Images gebaut noch deployt. Der Audit-Bericht steht in der Actions-Zusammenfassung. Updates werden nicht automatisch installiert.
+Der Workflow `.github/workflows/shared-security-audit.yml` prüft täglich um 06:23 UTC (07:23 Uhr im Berliner Winter, 08:23 Uhr im Sommer), bei Pull Requests mit Manifest-/Lockfile-Änderungen sowie auf manuellen Aufruf. Der Next.js-/Migrations-Workflow ruft ihn vor dem Build auf. Bei einem Fehler werden weder Images gebaut noch deployt. Der Audit-Bericht steht in der Actions-Zusammenfassung. Updates werden nicht automatisch installiert.
 
 ## E-Mail über GitHub Actions
 

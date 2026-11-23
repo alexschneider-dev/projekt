@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InternalRole {
+  CUSTOMER
+  SELLER
+  SUPER_ADMIN
+}
+
+enum AttributeKind {
+  TEXT
+  NUMBER
+  BOOLEAN
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  name           String?
+  passwordHash   String
+  role           InternalRole @default(CUSTOMER)
+  active         Boolean      @default(true)
+  sessionVersion Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  seller         Seller?
+}
+
+model PendingRegistration {
+  email        String   @id
+  passwordHash String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+
+  @@index([expiresAt])
+}
+
+model LoginAttempt {
+  key       String   @id
+  attempts  Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model Seller {
+  id     String  @id @default(cuid())
+  userId String  @unique
+  user   User    @relation(fields: [userId], references: [id])
+  name   String
+  slug   String  @unique
+  offers Offer[]
+}
+
+model Category {
+  id         String                @id
+  slug       String                @unique
+  name       String
+  attributes AttributeDefinition[]
+  products   Product[]
+}
+
+model AttributeDefinition {
+  id         String             @id
+  categoryId String
+  category   Category           @relation(fields: [categoryId], references: [id])
+  key        String
+  label      String
+  kind       AttributeKind
+  unit       String?
+  filterable Boolean            @default(true)
+  values     ProductAttribute[]
+
+  @@unique([categoryId, key])
+  @@unique([id, categoryId])
+}
+
+model Product {
+  id          Int                @id @default(autoincrement())
+  slug        String             @unique
+  name        String
+  description String
+  categoryId  String
+  category    Category           @relation(fields: [categoryId], references: [id])
+  imageId     String?
+  image       ImageAsset?        @relation(fields: [imageId], references: [id])
+  published   Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  attributes  ProductAttribute[]
+  offers      Offer[]
+
+  @@unique([id, categoryId])
+  @@index([categoryId, published, id])
+  @@index([imageId])
+}
+
+// Zusammengesetzte Fremdschlüssel verhindern Eigenschaften aus fremden Kategorien.
+model ProductAttribute {
+  productId    Int
+  categoryId   String
+  attributeId  String
+  product      Product             @relation(fields: [productId, categoryId], references: [id, categoryId], onDelete: Cascade)
+  definition   AttributeDefinition @relation(fields: [attributeId, categoryId], references: [id, categoryId])
+  textValue    String?
+  numberValue  Float?
+  booleanValue Boolean?
+
+  @@id([productId, attributeId])
+  @@index([attributeId, textValue, productId])
+  @@index([attributeId, numberValue, productId])
+}
+
+model Offer {
+  id           String  @id
+  sellerId     String
+  seller       Seller  @relation(fields: [sellerId], references: [id])
+  productId    Int
+  product      Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  priceCents   Int
+  stock        Int     @default(0)
+  deliveryDays Int     @default(3)
+  active       Boolean @default(true)
+
+  @@unique([sellerId, productId])
+  @@index([productId, active, priceCents])
+  @@index([sellerId, active, productId])
+  @@index([active, priceCents, productId])
+}
+
+model ImageAsset {
+  id              String    @id
+  sourceUrl       String
+  photographer    String
+  photographerUrl String
+  alt             String
+  material        String
+  color           String
+  kind            String
+  smallUrl        String
+  mediumUrl       String
+  largeUrl        String
+  bytes           Int
+  contentHash     String    @unique
+  products        Product[]
+}

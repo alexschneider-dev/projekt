@@ -73,7 +73,7 @@ it("sperrt das Formular beim Absenden und navigiert danach zur Homepage", async 
     email: "user@example.test",
     password: " Passwort mit Leerzeichen ",
     redirect: false,
-    callbackUrl: ROUTES.home,
+    callbackUrl: "/stellensuche/",
   });
 
   finish({ ok: true });

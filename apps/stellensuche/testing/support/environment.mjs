@@ -7,7 +7,7 @@ export const TEST_BASE_URL = "http://127.0.0.1:3100";
 export const TEST_PASSWORD = "Nur-fuer-lokale-Tests-2026!";
 export const TEST_ENV = {
   DATABASE_URL: TEST_DATABASE_URL,
-  NEXTAUTH_URL: TEST_BASE_URL,
+  NEXTAUTH_URL: `${TEST_BASE_URL}/stellensuche/api/auth`,
   NEXTAUTH_SECRET: "ausschliesslich-lokales-testgeheimnis-keine-produktionsdaten",
   OBSERVABILITY_ENABLED: "false",
   RESEND_API_KEY: "re_nur-fuer-lokale-tests",

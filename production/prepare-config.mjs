@@ -4,6 +4,7 @@ import {
 } from "./runtime-config.mjs";
 import { ERROR_CONFIG } from "./errors/config.mjs";
 import {
+  existsSync,
   readFileSync,
   writeFileSync
 } from "node:fs";
@@ -46,6 +47,7 @@ const pending = [];
 for (const service of Object.keys(runtimeKeys)) {
   // Der Stellenimport verwendet die Datenbank-Einbindung von Next.js im Resolver.
   if (service === "jobs") continue;
+  if (service === "marketplace" && !existsSync(resolve(envDirectory, "marketplace.env"))) continue;
 
   const values = parseEnv(readFileSync(resolve(envDirectory, `${service}.env`), "utf8"));
   const spec = {

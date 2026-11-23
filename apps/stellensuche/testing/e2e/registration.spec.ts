@@ -8,7 +8,7 @@ import {
   createHash
 } from "node:crypto";
 import { hashPassword } from "@/lib/auth/password.mjs";
-import { ROUTES } from "@/lib/constants/routes";
+import { ROUTES } from "@/testing/support/routes";
 import { USER } from "@/lib/auth/roles";
 import { TEST_PASSWORD } from "../support/environment.mjs";
 

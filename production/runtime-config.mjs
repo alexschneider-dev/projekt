@@ -132,7 +132,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (!source || !output) throw new Error(ERROR_CONFIG.RUNTIME_ARGUMENTS.message);
 
   const input = JSON.parse(readFileSync(source, "utf8"));
-  const services = selected.length ? selected : Object.keys(runtimeKeys);
+  const services = selected.length ? selected : Object.keys(runtimeKeys)
+    .filter(service => service !== "marketplace" || input.services?.marketplace);
   const runtime = resolveRuntime(input, services);
 
   writeFileSync(output, JSON.stringify(runtime, null, 2) + "\n", { mode: 0o600 });

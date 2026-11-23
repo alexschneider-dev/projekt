@@ -8,7 +8,7 @@ import {
   ROUTES,
   jobSearchApiHref,
   jobSearchHref,
-} from "@/lib/constants/routes";
+} from "@/testing/support/routes";
 import { HTTP_STATUS } from "@/lib/http/status";
 
 

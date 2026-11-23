@@ -6,7 +6,7 @@ import {
   vi,
 } from "vitest";
 import { serviceWorker } from "@/lib/pwa/service-worker";
-import { ROUTES } from "@/lib/constants/routes";
+import { ROUTES } from "@/testing/support/routes";
 import { ERROR_PWA } from "@/lib/http/errors/pwa";
 
 
@@ -20,9 +20,9 @@ function createWorker() {
   const caches = {
     open: vi.fn().mockResolvedValue(cache),
     keys: vi.fn().mockResolvedValue([
-      "projekt-offline-alt",
+      "stellensuche-offline-alt",
       "anderer-cache",
-      "projekt-offline-v1",
+      "stellensuche-offline-v1",
     ]),
     delete: vi.fn().mockResolvedValue(true),
   };
@@ -129,6 +129,6 @@ it("entfernt bei Aktivierung ausschließlich alte eigene Caches", async () => {
   worker.listeners.get("activate")!({ waitUntil: (value: Promise<void>) => { pending = value; } });
   await pending;
 
-  expect(worker.caches.delete.mock.calls).toEqual([["projekt-offline-alt"]]);
+  expect(worker.caches.delete.mock.calls).toEqual([["stellensuche-offline-alt"]]);
   expect(worker.self.clients.claim).toHaveBeenCalled();
 });

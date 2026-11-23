@@ -8,8 +8,9 @@ import yaml from "js-yaml";
 const root = path.resolve(import.meta.dirname, "../../..");
 const read = (file) => yaml.load(fs.readFileSync(path.join(root, file), "utf8"));
 const callers = {
-  "build-deploy-nextjs-and-migration.yml": "nextjs",
-  "build-deploy-nginx.yml": "nginx",
+  "stellensuche-deploy.yml": "nextjs",
+  "infrastructure-nginx.yml": "nginx",
+  "marketplace-deploy.yml": "marketplace",
 };
 
 for (const [file, service] of Object.entries(callers)) {
@@ -25,14 +26,21 @@ for (const [file, service] of Object.entries(callers)) {
 
     const buildStep = build.find(step => step.uses === "docker/build-push-action@v6");
 
-    assert.ok(buildStep.with.push);
+    if (service === "nginx") {
+      assert.ok(buildStep.with.load);
+      const verification = build.findIndex(step => step.name === "Proxy-Zugriff und Verbindungsabbrüche prüfen");
+      const publication = build.findIndex(step => step.name === "Geprüftes Nginx-Image veröffentlichen");
+      assert.ok(verification >= 0 && publication > verification);
+    } else {
+      assert.ok(buildStep.with.push);
+    }
     assert.ok(fs.existsSync(path.join(root, buildStep.with.file)));
 
     const deploy = workflow.jobs.deploy;
 
     assert.equal(deploy.needs, "build");
     assert.equal(deploy.if, "${{ inputs.deploy }}");
-    assert.equal(deploy.uses, "./.github/workflows/deploy-production-service.yml");
+    assert.equal(deploy.uses, "./.github/workflows/shared-deploy-service.yml");
     assert.equal(deploy.with.service, service);
     assert.equal(deploy.with.version, "${{ inputs.version }}");
     assert.equal(deploy.secrets, "inherit");
@@ -42,11 +50,11 @@ for (const [file, service] of Object.entries(callers)) {
 test(
   "Gemeinsame Bereitstellung prüft Reihenfolge, verhindert parallele Deploys und begrenzt Migrationen auf Next.js",
   () => {
-    const job = read(".github/workflows/deploy-production-service.yml").jobs.deploy;
+    const job = read(".github/workflows/shared-deploy-service.yml").jobs.deploy;
 
     assert.equal(job.environment, "Production");
 
-    const stackJob = read(".github/workflows/deploy-production-stack.yml").jobs.deploy;
+    const stackJob = read(".github/workflows/infrastructure-stack.yml").jobs.deploy;
 
     assert.equal(job.concurrency.group, stackJob.concurrency.group);
     assert.equal(job.concurrency["cancel-in-progress"], false);
@@ -72,15 +80,15 @@ test(
 );
 
 test("Sicherheitsprüfung bleibt unabhängig von Testbuilds und blockiert Releases", () => {
-  const tests = read(".github/workflows/tests.yml");
+  const tests = read(".github/workflows/stellensuche-tests.yml");
   const audit = tests.jobs.sicherheit;
-  assert.equal(audit.uses, "./.github/workflows/security-audit.yml");
+  assert.equal(audit.uses, "./.github/workflows/shared-security-audit.yml");
   assert.equal(audit.if, undefined);
   assert.equal(audit["continue-on-error"], undefined);
   assert.equal(tests.jobs.pruefungen.needs, undefined);
   assert.equal(tests.jobs.visuell.needs, "pruefungen");
 
-  const release = read(".github/workflows/build-deploy-nextjs-and-migration.yml");
+  const release = read(".github/workflows/stellensuche-deploy.yml");
   assert.ok(release.jobs.build.needs.includes("audit"));
   assert.ok(release.jobs.build.needs.includes("tests"));
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "apps/stellensuche/package.json"), "utf8"));
@@ -92,8 +100,8 @@ test("Nur der Sicherheits-Audit läuft täglich; Browserjobs verwenden eine fest
   const scheduled = fs.readdirSync(directory).filter((file) => {
     return file.endsWith(".yml") && read(`.github/workflows/${file}`).on.schedule;
   });
-  assert.deepEqual(scheduled, ["security-audit.yml"]);
-  const tests = read(".github/workflows/tests.yml");
+  assert.deepEqual(scheduled, ["shared-security-audit.yml"]);
+  const tests = read(".github/workflows/stellensuche-tests.yml");
   assert.ok(Object.hasOwn(tests.on, "push"));
   assert.ok(Object.hasOwn(tests.on, "pull_request"));
   assert.ok(Object.hasOwn(tests.on, "workflow_dispatch"));
@@ -112,8 +120,8 @@ test("Nur der Sicherheits-Audit läuft täglich; Browserjobs verwenden eine fest
 });
 
 test("Pushes bleiben schnell und Anwendungsbuilds verlangen die umfangreichen Prüfungen", () => {
-  const tests = read(".github/workflows/tests.yml");
-  const release = read(".github/workflows/build-deploy-nextjs-and-migration.yml");
+  const tests = read(".github/workflows/stellensuche-tests.yml");
+  const release = read(".github/workflows/stellensuche-deploy.yml");
   const fast = tests.jobs.pruefungen.steps.map((step) => step.run ?? "").join("\n");
   assert.match(fast, /npm run check/);
   assert.match(fast, /npm run test:legacy/);
@@ -135,4 +143,33 @@ test("Pushes bleiben schnell und Anwendungsbuilds verlangen die umfangreichen Pr
   assert.equal(tests.jobs.integration.needs, "pruefungen");
   assert.equal(tests.jobs.visuell.if, "inputs.full == true");
   assert.equal(tests.jobs.browsermatrix.if, "inputs.browser_matrix == true");
+});
+
+test("Jedes Nginx-Release prüft das gebaute Image vor der Veröffentlichung", () => {
+  for (const file of Object.keys(callers)) {
+    const steps = read(`.github/workflows/${file}`).jobs.build.steps;
+    const auditIndex = steps.findIndex(step => step.uses === "./.github/actions/audit-nginx");
+    const publicationIndex = steps.findIndex(step => step.name === "Geprüftes Nginx-Image veröffentlichen");
+    const image = steps[auditIndex]?.with.image;
+    const buildIndex = steps.findIndex(step => step.with?.tags?.includes(image));
+    assert.ok(buildIndex >= 0 && auditIndex > buildIndex && publicationIndex > auditIndex);
+    assert.equal(steps[buildIndex].with.push, undefined);
+    assert.equal(steps[buildIndex].with.load, true);
+    assert.equal(steps[buildIndex].with.pull, true);
+    assert.equal(steps[buildIndex].with["no-cache"], true);
+    assert.equal(steps[auditIndex]["continue-on-error"], undefined);
+    assert.equal(steps[publicationIndex].if, undefined);
+  }
+
+  const scan = read(".github/actions/audit-nginx/action.yml").runs.steps[0];
+  assert.equal(scan.with["exit-code"], "1");
+  assert.equal(scan.with["ignore-unfixed"], false);
+  assert.equal(scan.with.severity, "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL");
+  const workflow = read(".github/workflows/shared-security-audit.yml");
+  assert.equal(workflow.jobs.nginx.if, undefined);
+  assert.deepEqual(workflow.jobs.nginx.strategy.matrix.context, [
+    "infrastructure/nginx",
+    "apps/stellensuche/services/nginx",
+    "apps/marketplace/services/nginx",
+  ]);
 });

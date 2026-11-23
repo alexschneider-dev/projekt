@@ -6,6 +6,15 @@ TAG="${1:?Bitte Migration-Tag angeben, z. B. 13.37}"
 SERVICE="projekt_migration"
 IMAGE="ghcr.io/alexschneider-dev/projekt-migration:${TAG}"
 NETWORK="projekt_net"
+APPLICATION="${2:-nextjs}"
+case "$APPLICATION" in
+  nextjs) ;;
+  marketplace)
+    SERVICE="projekt_marketplace_migration"
+    IMAGE="ghcr.io/alexschneider-dev/projekt-marketplace-migration:${TAG}"
+    ;;
+  *) exit 1 ;;
+esac
 
 cleanup() {
   docker service rm "$SERVICE" >/dev/null 2>&1 || true
@@ -22,9 +31,9 @@ cd "$(dirname "$0")"
 umask 077
 runtime_copy=$(mktemp)
 trap 'rm -f -- "$runtime_copy"' EXIT
-node runtime-config.mjs /etc/projekt/runtime.json "$runtime_copy" nextjs
-DATABASE_SECRET=$(node -e 'const fs = require("node:fs"); const r = JSON.parse(fs.readFileSync(process.argv[1])); console.log(r.secrets.nextjs_DATABASE_URL.name)' "$runtime_copy")
-ENTRYPOINT_CONFIG=$(node -e 'const fs = require("node:fs"); const r = JSON.parse(fs.readFileSync(process.argv[1])); const c = r.services.nextjs.configs.find(c => c.target === "/production-entrypoint.sh"); console.log(r.configs[c.source].name)' "$runtime_copy")
+node runtime-config.mjs /etc/projekt/runtime.json "$runtime_copy" "$APPLICATION"
+DATABASE_SECRET=$(node -e 'const fs = require("node:fs"); const r = JSON.parse(fs.readFileSync(process.argv[1])); console.log(r.secrets[`${process.argv[2]}_DATABASE_URL`].name)' "$runtime_copy" "$APPLICATION")
+ENTRYPOINT_CONFIG=$(node -e 'const fs = require("node:fs"); const r = JSON.parse(fs.readFileSync(process.argv[1])); const c = r.services[process.argv[2]].configs.find(c => c.target === "/production-entrypoint.sh"); console.log(r.configs[c.source].name)' "$runtime_copy" "$APPLICATION")
 
 echo "Prüfe Image: $IMAGE"
 docker pull "$IMAGE"

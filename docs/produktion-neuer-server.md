@@ -51,11 +51,11 @@ einer neuen Domain in einer Env-Datei reicht nicht:
 
 | Datei / Bereich | Anpassung bei eigener Domain oder eigenem GitHub-Namespace |
 | --- | --- |
-| `apps/stellensuche/services/nginx/default.conf` | `server_name`, Weiterleitungen und beide Zertifikatspfade auf die neue Hauptdomain und `www` ändern. |
-| `.github/workflows/build-deploy-*.yml` | GHCR-Namespace und Paketnamen für Anwendung, Migration und Nginx. |
+| `infrastructure/nginx/default.conf` | `server_name`, Weiterleitungen und beide Zertifikatspfade auf die neue Hauptdomain und `www` ändern. |
+| `.github/workflows/stellensuche-deploy.yml`, `marketplace-deploy.yml`, `infrastructure-nginx.yml` | GHCR-Namespace und Paketnamen für Anwendung, Migration und Nginx. |
 | `production/deploy.sh`, `production/migrate.sh` | Dieselben Image-Namen wie in den Build-Workflows. |
-| `.github/workflows/observability.yml`, `infrastructure/observability/compose.swarm.yml` | Derselbe Namespace für das projektspezifische Loki-Image. |
-| `.github/workflows/deploy-production-service.yml`, weitere Smoke-Konfiguration | HTTPS- und Smoke-Test-Ziel auf die neue Domain setzen. |
+| `.github/workflows/infrastructure-observability.yml`, `infrastructure/observability/compose.swarm.yml` | Derselbe Namespace für das projektspezifische Loki-Image. |
+| `.github/workflows/shared-deploy-service.yml`, weitere Smoke-Konfiguration | HTTPS- und Smoke-Test-Ziel auf die neue Domain setzen. |
 | Spätere Serverkonfiguration | `NEXTAUTH_URL` und `GRAFANA_ROOT_URL` auf die neue Domain setzen. |
 
 Verbleibende Stellen suchen und bewusst prüfen, einschließlich Tests mit erwarteten
@@ -252,21 +252,29 @@ sudo install -o root -g root -m 0644 \
 
 `deploy-stack.sh` liest die Images aus vorhandenen Services und eignet sich daher
 noch nicht für den allerersten Start. Einmalig direkt aus Compose und dem gefilterten
-Runtime-Overlay bereitstellen. Der Edge-Stack wird erst nach der Migration gestartet:
+Runtime-Overlay bereitstellen. Der optionale Marketplace wird beim ersten Start
+weggelassen und anschließend über seinen eigenen Release-Workflow eingerichtet.
+Der Edge-Stack wird erst nach der Migration gestartet:
 
 ```sh
 sudo env \
   NEXTJS_IMAGE="$PROJEKT_REGISTRY/projekt:$PROJEKT_APP_VERSION" \
   NGINX_IMAGE="$PROJEKT_REGISTRY/nginx-projekt:$PROJEKT_NGINX_VERSION" \
+  STELLENSUCHE_NGINX_IMAGE="$PROJEKT_REGISTRY/projekt-stellensuche-nginx:$PROJEKT_APP_VERSION" \
+  STELLENSUCHE_HAPROXY_IMAGE="$PROJEKT_REGISTRY/projekt-stellensuche-haproxy:$PROJEKT_APP_VERSION" \
   POSTGRES_IMAGE=postgres:17 REDIS_IMAGE=redis:7-alpine \
   bash -euo pipefail <<'SH'
 cd /usr/local/lib/projekt-deploy
 umask 077
 overlay=$(mktemp /etc/projekt/bootstrap-overlay.XXXXXXXX.json)
-trap 'rm -f "$overlay"' EXIT
+base=$(mktemp /etc/projekt/bootstrap-base.XXXXXXXX.yml)
+trap 'rm -f "$overlay" "$base"' EXIT
 node runtime-overlay.mjs /etc/projekt/runtime.json "$overlay"
-docker stack config -c compose.swarm.yml -c "$overlay" >/dev/null
-docker stack deploy --with-registry-auth -c compose.swarm.yml -c "$overlay" projekt
+node -e 'const fs=require("node:fs"); const file=process.argv[1]; const value=JSON.parse(fs.readFileSync(file)); delete value.services.marketplace; fs.writeFileSync(file, JSON.stringify(value));' "$overlay"
+docker stack config --skip-interpolation -c compose.swarm.yml |
+  awk '/^services:/ { services=1 } /^[^ ]/ && !/^services:/ { services=0; skip=0 } services && /^  [^ ]/ { skip=($0 ~ /^  marketplace(-nginx|-haproxy)?:/) } !skip' > "$base"
+docker stack config -c "$base" -c "$overlay" >/dev/null
+docker stack deploy --with-registry-auth -c "$base" -c "$overlay" projekt
 SH
 sudo docker stack services projekt
 sudo docker stack ps --no-trunc projekt
