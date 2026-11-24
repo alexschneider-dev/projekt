@@ -3,8 +3,19 @@
 Die gemeinsame Action `.github/actions/audit-image` verwendet Trivy 0.76.2 mit
 `aquasecurity/trivy-action@v0.36.0`. Alle Schweregrade und auch noch nicht behobene
 Befunde blockieren standardmäßig. Scannerfehler bleiben immer blockierend.
-`report-only` ist als ausdrücklich zu setzende Option vorhanden; kein
-Projekt-Workflow aktiviert diese Ausnahme.
+Seit der Entscheidung vom 24. November 2026 gilt für `projekt_postgres`,
+`observability_grafana` und `observability_alloy` ausdrücklich `report-only`.
+Ihre Befunde werden vollständig angezeigt und gespeichert, blockieren aber
+nicht den täglichen Audit. Die gleiche Regel gilt für Grafana und Alloy in
+der Observability-Prüfung vor dem Deployment. Das ist eine bewusste
+Risikoakzeptanz, keine Behebung der Schwachstellen. Scanner- und Zugriffsfehler
+bleiben auch für diese Dienste blockierend.
+
+`audit_policy.py` definiert diese Ausnahmen zentral anhand exakter Dienstnamen.
+Wird ein Image zugleich von einem Dienst ohne Ausnahme verwendet, bleibt der
+Scan blockierend. Alle übrigen Dienste und alle eigenen Image-Builds behalten
+ihre strengen Prüfungen. Experimentelle VEX-Bewertungen werden nicht übernommen;
+die eingesetzten offiziellen Grafana-/Alloy-Images werden ungefiltert gescannt.
 
 Vor jedem Scan wird der alte Bericht entfernt. Die Zusammenfassung enthält
 höchstens 200.000 UTF-8-Bytes; der vollständige Bericht bleibt im Job-Protokoll
@@ -85,8 +96,8 @@ Grafana und Alloy verwenden neuere offizielle, per Digest festgelegte Releases.
 Auch diese können weiterhin Befunde haben. Die experimentellen Ersatzbuilds
 werden wegen offener Sicherheits- und Laufzeitprobleme nicht übernommen.
 PostgreSQL bleibt unverändert; ein Datenbankwechsel benötigt einen gesondert
-geprüften Sicherungs-/Wiederherstellungsablauf. Keine dieser offenen Komponenten
-wird durch `report-only`, niedrigere Schweregrade oder Ignore-Regeln freigestellt.
+geprüften Sicherungs-/Wiederherstellungsablauf. Für diese drei Dienste gilt die
+oben dokumentierte Berichtsregel; Schweregrade und Befundumfang bleiben unverändert.
 
 Der Loki-Releasepfad baut Version 3.6.22 mit dem bestehenden Abbruch-Logpatch.
 Anwendungs-Releases bauen ihre Images neu; Laufzeitimages enthalten keine
@@ -120,3 +131,10 @@ Die Docker-Funktionsprüfungen unter `testing/*-image-smoke.py` benötigen die
 jeweils fertig gebauten Images. Sie verwenden synthetische Daten und isolierte
 Container ohne Produktionszugänge. Vollständige Hersteller-Builds sind zusätzlich
 im neuen CI-Workflow verpflichtend; lokale Tests ersetzen sie nicht.
+
+### Stabiler Thanos-Akzeptanztest
+
+`images/thanos/acceptance-test.patch` richtet den Zeitstempel der Testdaten an
+der TSDB-Blockgrenze aus. Dadurch hängt die erwartete Chunk-Größe von 120 Samples
+nicht mehr von der Uhrzeit des Builds ab. Der Patch ändert ausschließlich den
+Upstream-Test; Laufzeitcode und Sicherheitsprüfung bleiben unverändert.

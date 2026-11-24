@@ -68,7 +68,7 @@ test("Produktionsprüfungen benötigen frische Live-Daten; PRs erhalten keine Se
   assert.match(workflow.jobs.inventory.if, /needs.live-inventory.result == 'success'/);
   const scan = workflow.jobs.images.steps.find(step => step.uses === "./.github/actions/audit-image");
   assert.equal(scan.with.image, "${{ matrix.image }}");
-  assert.equal(scan.with["report-only"], undefined);
+  assert.equal(scan.with["report-only"], "${{ matrix.report_only }}");
 });
 
 test("Hersteller-Builds verwenden vorhandene Kontexte und veröffentlichen erst nach Prüfung", () => {
@@ -93,7 +93,7 @@ test("Observability-Deploys warten auf die Prüfung aller konfigurierten Images"
     "audit-images",
   ]);
   assert.equal(workflow.jobs["audit-images"].needs, "validate");
-  assert.equal(workflow.jobs["audit-images"].strategy.matrix.image, "${{ fromJSON(needs.validate.outputs.images) }}");
+  assert.equal(workflow.jobs["audit-images"].strategy.matrix, "${{ fromJSON(needs.validate.outputs.images) }}");
 });
 
 test("Trivy-Berichte werden isoliert gespeichert und Fehler bleiben blockierend", () => {
@@ -161,4 +161,20 @@ test("App- und Importreleases prüfen native Laufzeit und Migrationswerkzeug vor
       assert.ok(scan > steps.indexOf(check));
     }
   }
+});
+
+
+test("Inventar und Observability verwenden dieselbe eng begrenzte Berichtsregel", () => {
+  const workflow = read(".github/workflows/infrastructure-observability.yml");
+  const generator = workflow.jobs.validate.steps.find(step => step.id === "image-matrix");
+  assert.match(generator.run, /from audit_policy import image_matrix/);
+  assert.match(generator.run, /"observability_" \+ name/);
+  const scan = workflow.jobs["audit-images"].steps.find(step => step.uses === "./.github/actions/audit-image");
+  assert.equal(scan.with["report-only"], "${{ matrix.report_only }}");
+  assert.equal(scan["continue-on-error"], undefined);
+
+  const action = read(".github/actions/audit-image/action.yml");
+  const trivy = action.runs.steps.find(step => step.uses?.startsWith("aquasecurity/trivy-action@"));
+  assert.equal(trivy.with["exit-code"], "${{ inputs.report-only == 'true' && '0' || '1' }}");
+  assert.equal(trivy["continue-on-error"], undefined);
 });

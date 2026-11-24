@@ -29,6 +29,38 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(result[0]["services"], "projekt_jobs, projekt_nextjs")
         self.assertEqual(result[0]["image"], PIN)
 
+    def test_only_approved_services_are_report_only(self):
+        approved = {
+            "projekt_postgres",
+            "observability_grafana",
+            "observability_alloy",
+        }
+        for name in [
+            *sorted(approved),
+            "projekt_nextjs",
+            "projekt_redis",
+            "observability_postgres-exporter",
+            "observability_grafana-backup",
+            "observability_loki",
+        ]:
+            with self.subTest(service=name):
+                row = audit.matrix({name: PIN})["include"][0]
+                self.assertEqual(row["report_only"], name in approved)
+
+    def test_shared_image_remains_blocking_for_strict_service(self):
+        row = audit.matrix({
+            "projekt_postgres": PIN,
+            "projekt_nextjs": PIN,
+        })["include"][0]
+        self.assertFalse(row["report_only"])
+
+    def test_shared_image_of_approved_services_is_report_only(self):
+        row = audit.matrix({
+            "observability_grafana": PIN,
+            "observability_alloy": PIN,
+        })["include"][0]
+        self.assertTrue(row["report_only"])
+
     def test_invalid_exports_fail(self):
         for value in [
             "",

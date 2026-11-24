@@ -1,0 +1,16 @@
+--- a/pkg/store/acceptance_test.go
++++ b/pkg/store/acceptance_test.go
+@@ -873,7 +873,12 @@
+ // Note: Only TSDB and Prometheus Stores do this.
+ func testStoreAPIsSeriesSplitSamplesIntoChunksWithMaxSizeOf120(t *testing.T, startStore startStoreFn) {
+ 	t.Run("should split into chunks of max size 120", func(t *testing.T) {
+-		baseT := timestamp.FromTime(time.Now().AddDate(0, 0, -2)) / 1000 * 1000
++		// TSDB schätzt Chunk-Größen aus der verbleibenden Zeit im Block.
++		// Ein Start nahe dem Blockende kann abhängig von der aktuellen Uhrzeit
++		// Chunks mit 121 Samples erzeugen. Die Testdaten an Blockgrenzen ausrichten,
++		// damit die 120-Sample-Prüfung deterministisch bleibt und die Daten aktuell sind.
++		blockRange := time.Duration(tsdb.DefaultBlockDuration) * time.Millisecond
++		baseT := timestamp.FromTime(time.Now().AddDate(0, 0, -2).Truncate(blockRange))
+ 		offset := int64(2*math.MaxUint16 + 5)
+ 
+ 		extLset := labels.FromStrings("region", "eu-west")

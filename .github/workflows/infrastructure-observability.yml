@@ -13,6 +13,7 @@ on:
       - infrastructure/observability/loki-image/**
       - apps/stellensuche/instrumentation.ts
       - .github/workflows/infrastructure-observability.yml
+      - infrastructure/security/audit_policy.py
   workflow_dispatch:
     inputs:
       deploy:
@@ -29,6 +30,7 @@ on:
       - infrastructure/observability/loki-image/**
       - apps/stellensuche/instrumentation.ts
       - .github/workflows/infrastructure-observability.yml
+      - infrastructure/security/audit_policy.py
 
 permissions:
   contents: read
@@ -60,12 +62,20 @@ jobs:
           python3 - <<'PYTHON'
           import json
           import os
+          import sys
           from pathlib import Path
           import yaml
 
 
+          sys.path.insert(0, "infrastructure/security")
+          from audit_policy import image_matrix
+
+
           config = yaml.safe_load(Path("infrastructure/observability/compose.swarm.yml").read_text())
-          images = sorted({service["image"] for service in config["services"].values()})
+          images = image_matrix({
+              "observability_" + name: service["image"]
+              for name, service in config["services"].items()
+          })
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("images=" + json.dumps(images) + "\n")
           PYTHON
@@ -134,8 +144,7 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 4
-      matrix:
-        image: ${{ fromJSON(needs.validate.outputs.images) }}
+      matrix: ${{ fromJSON(needs.validate.outputs.images) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -148,6 +157,7 @@ jobs:
       - uses: ./.github/actions/audit-image
         with:
           image: ${{ matrix.image }}
+          report-only: ${{ matrix.report_only }}
 
 
   deploy:

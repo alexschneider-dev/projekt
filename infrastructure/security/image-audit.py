@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 
+from audit_policy import image_matrix
 from errors.messages import ERRORS
 
 
@@ -41,18 +42,7 @@ def parse_export(text):
 
 
 def matrix(services):
-    grouped = {}
-    for service, image in sorted(validate(services).items()):
-        grouped.setdefault(image, []).append(service)
-    return {
-        "include": [
-            {
-                "image": image,
-                "services": ", ".join(names),
-            }
-            for image, names in grouped.items()
-        ]
-    }
+    return image_matrix(validate(services))
 
 
 def main():

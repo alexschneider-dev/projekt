@@ -16,8 +16,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 ADD --checksum=sha256:61a91cccc4fb400603ac729f7d9116f797f252eec7613eefa935ac6e8f976609 https://codeload.github.com/thanos-io/thanos/tar.gz/refs/tags/v0.42.5 /tmp/source.tar.gz
 WORKDIR /src
 RUN tar -xzf /tmp/source.tar.gz --strip-components=1 && rm /tmp/source.tar.gz
-COPY security.patch dependencies.patch /tmp/
-RUN patch -p1 < /tmp/security.patch && patch -p1 < /tmp/dependencies.patch
+COPY security.patch dependencies.patch acceptance-test.patch /tmp/
+RUN patch -p1 < /tmp/security.patch && patch -p1 < /tmp/dependencies.patch \
+    && patch -p1 < /tmp/acceptance-test.patch
 
 FROM source AS build
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \

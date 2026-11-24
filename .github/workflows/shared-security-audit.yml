@@ -119,6 +119,7 @@ jobs:
         uses: ./.github/actions/audit-image
         with:
           image: ${{ matrix.image }}
+          report-only: ${{ matrix.report_only }}
 
   nginx:
     runs-on: ubuntu-latest
