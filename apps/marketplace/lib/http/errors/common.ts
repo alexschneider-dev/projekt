@@ -3,6 +3,11 @@ import type { ApiErrorDefinition } from "./types";
 
 
 export const ERROR_API = {
+  ORIGIN: {
+    status: HTTP_STATUS.FORBIDDEN,
+    code: "REQUEST_ORIGIN",
+    message: "Diese Änderung muss von der Marktplatz-Website ausgehen.",
+  },
   INVALID_CONTENT_TYPE: {
     status: HTTP_STATUS.UNSUPPORTED_MEDIA_TYPE,
     code: "INVALID_CONTENT_TYPE",

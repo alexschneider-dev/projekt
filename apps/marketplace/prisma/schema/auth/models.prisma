@@ -1,0 +1,36 @@
+enum InternalRole {
+  CUSTOMER
+  SELLER
+  SUPER_ADMIN
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  name           String?
+  passwordHash   String
+  role           InternalRole @default(CUSTOMER)
+  active         Boolean      @default(true)
+  sessionVersion Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  seller         Seller?
+  cartItems      CartItem[]
+}
+
+model PendingRegistration {
+  email        String   @id
+  passwordHash String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+
+  @@index([expiresAt])
+}
+
+model LoginAttempt {
+  key       String   @id
+  attempts  Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}

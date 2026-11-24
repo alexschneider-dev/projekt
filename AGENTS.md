@@ -131,6 +131,14 @@ Anweisungen des Nutzers haben Vorrang.
   oder aufeinanderfolgende Aufrufe am selben Objekt bleiben jeweils zusammen.
   Die Gruppierung richtet sich nach dem Zweck der Anweisungen, nicht allein
   nach ihrer Syntax. Diese Regel im gesamten Projekt anwenden.
+- In API-Funktionen insbesondere Pfadparameter, Query-Parameter, Body,
+  abgeleitete Steuerwerte, Berechtigungsprüfung und Antwort als getrennte
+  fachliche Gruppen behandeln. Zwischen diesen Gruppen genau eine Leerzeile
+  setzen. Der Parse-Aufruf und sein unmittelbar folgendes `if (!result.ok)`
+  bleiben zusammen; ebenso Rollenprüfung und zugehöriger früher Rückgabepfad.
+  Eine abgeleitete Variable wie `includeInactive` steht als eigene Gruppe vor
+  dem bedingten Berechtigungsblock. Vor der abschließenden Antwort steht eine
+  weitere Leerzeile.
 - In jeder Quelldatei nach dem letzten Import genau zwei Leerzeilen vor dem
   folgenden Code setzen, etwa vor der ersten Funktion, Konstante oder
   Typdefinition. Das gilt auch, wenn dort zunächst ein Kommentar steht.

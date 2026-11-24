@@ -5,9 +5,11 @@ import { Text } from "@/components/ui/text";
 
 export function ProductImage({
   image,
-  detail = false
+  detail = false,
+  compact = false
 }: {
   image: CatalogProduct["image"];
+  compact?: boolean;
   detail?: boolean
 }) {
   return (
@@ -28,11 +30,11 @@ export function ProductImage({
       ) : (
         <div className="flex flex-col items-center gap-4 text-muted-foreground">
           <Armchair
-            size={detail ? 120 : 80}
+            size={compact ? 32 : detail ? 120 : 80}
             strokeWidth={1}
             aria-hidden="true"
           />
-          <Text variant="meta">Produktbild folgt</Text>
+          {!compact && <Text variant="meta">Produktbild folgt</Text>}
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@
     "node": ">=22.22.2 <23"
   },
   "scripts": {
+    "dev:services": "bash services/development/scripts/start_local_services.sh",
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",

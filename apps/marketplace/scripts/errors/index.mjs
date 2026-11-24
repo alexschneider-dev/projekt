@@ -1,4 +1,5 @@
 export const ERRORS = {
+  MASTER_DATA: "Bitte zuerst in der Website-Verwaltung aktive Materialien, Farben, Stuhltypen und Modellnamen für Stühle anlegen und die Migrationen anwenden.",
   CONFIG: "Die lokale Konfiguration fehlt oder ist ungültig. Prüfe die Anleitung und .env.local.",
   DATABASE: "Der Generator benötigt den Benutzer marketplace_app im Schema marketplace.",
   ARGUMENT: "Die Argumente sind ungültig. Prüfe Menge, Startwert und Dateipfad.",

@@ -16,7 +16,7 @@ import {
 
 
 describe("Katalogfilter", () => {
-  it("begrenzt Preise, Seitentiefe und erlaubte Eigenschaften", () => {
+  it("begrenzt Preise, Seitentiefe und Länge der Eigenschaften", () => {
     for (const values of [
       { min: -1 },
       { page: 1001 },
@@ -24,7 +24,7 @@ describe("Katalogfilter", () => {
         min: 200,
         max: 100,
       },
-      { color: "Unbekannt" },
+      { color: "x".repeat(81) },
       { q: "x".repeat(81) },
     ]) {
       expect(catalogSchema.safeParse(values).success).toBe(false);

@@ -1,3 +1,5 @@
+import { DemoProducts } from "./demo-products";
+import { MasterData } from "./master-data";
 import { AppLink } from "@/components/ui/app-link";
 import { ROUTES } from "@/lib/constants/routes";
 import { prisma } from "@/lib/prisma";
@@ -36,6 +38,8 @@ export async function Admin() {
           </div>
         ))}
       </dl>
+      <MasterData />
+      <DemoProducts />
     </PageWrapper>
   );
 }

@@ -1,0 +1,16 @@
+model ImageAsset {
+  id              String    @id
+  sourceUrl       String
+  photographer    String
+  photographerUrl String
+  alt             String
+  material        String
+  color           String
+  kind            String
+  smallUrl        String
+  mediumUrl       String
+  largeUrl        String
+  bytes           Int
+  contentHash     String    @unique
+  products        Product[]
+}

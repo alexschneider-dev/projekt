@@ -43,6 +43,26 @@ describe.skipIf(!enabled)("Isolierte Marketplace-Datenbank", () => {
       previous = price;
     }
   });
+  it.each([
+    "priceAsc",
+    "priceDesc",
+    "newest"
+  ])("sortiert den Katalog nach %s", async (sort) => {
+    const page = await listProducts(catalogSchema.parse({ sort }));
+    expect(page.items.length).toBeGreaterThan(1);
+    const actual = page.items.map((product) => ({
+      id: product.id,
+      createdAt: product.createdAt.getTime(),
+      price: product.offers[0]!.priceCents,
+    }));
+    const sorted = [...actual].sort((a, b) => {
+      if (sort === "priceAsc") return a.price - b.price || b.id - a.id;
+      if (sort === "priceDesc") return b.price - a.price || b.id - a.id;
+      return b.createdAt - a.createdAt || b.id - a.id;
+    });
+    expect(actual).toEqual(sorted);
+  });
+
   it("liefert nur Angebote des geprüften Benutzers", async () => {
     const offers = await listSellerOffers("demo-seller-1");
     expect(offers.length).toBeGreaterThan(0);
@@ -51,6 +71,59 @@ describe.skipIf(!enabled)("Isolierte Marketplace-Datenbank", () => {
   });
   it("verweigert Zugriff auf das fremde Anwendungsschema", async () => {
     await expect(prisma.$queryRawUnsafe("SELECT * FROM stellensuche.private_test")).rejects.toThrow();
+  });
+  it("verhindert freie Textwerte außerhalb der gemeinsamen Stammdaten", async () => {
+    await expect(prisma.productAttribute.update({
+      where: {
+        productId_attributeId: {
+          productId: 1,
+          attributeId: "chairs-material",
+        },
+      },
+      data: { textValue: "Nicht administrativ angelegtes Material" },
+    })).rejects.toThrow();
+  });
+
+  it("übernimmt Umbenennungen in Produkte und erhält deaktivierte Zuordnungen", async () => {
+    await prisma.$transaction(async (tx) => {
+      const option = await tx.attributeOption.findUniqueOrThrow({
+        where: {
+          attributeId_label: {
+            attributeId: "chairs-material",
+            label: "Holz"
+          }
+        },
+      });
+      const before = await tx.productAttribute.count({
+        where: {
+          attributeId: option.attributeId,
+          textValue: option.label
+        },
+      });
+      expect(before).toBeGreaterThan(0);
+
+      await tx.attributeOption.update({
+        where: { id: option.id },
+        data: {
+          label: "Holz (Teständerung)",
+          active: false
+        },
+      });
+      expect(await tx.productAttribute.count({
+        where: {
+          attributeId: option.attributeId,
+          textValue: "Holz (Teständerung)"
+        },
+      })).toBe(before);
+
+      await tx.attributeOption.update({
+        where: { id: option.id },
+        data: {
+          label: option.label,
+          active: option.active
+        },
+      });
+    });
   });
   it("verhindert negative Preise und mehrere Eigenschaftswerte", async () => {
     await expect(

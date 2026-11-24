@@ -1,3 +1,4 @@
+import { getChairFilters } from "@/lib/catalog/master-data";
 import { Catalog } from "./catalog";
 import { catalogSchema } from "@/lib/schemas/catalog";
 import { listProducts } from "@/lib/catalog/service";
@@ -23,12 +24,16 @@ export async function CatalogPage({
         <AppLink href={ROUTES.home}>Alle Stühle anzeigen</AppLink>
       </PageWrapper>
     );
-  const data = await listProducts(parsed.data).catch(() => {
+  const data = await Promise.all([
+    listProducts(parsed.data),
+    getChairFilters()
+  ]).catch(() => {
     log("error", ERROR_CATALOG.UNAVAILABLE.code);
     return null;
   });
   return <Catalog
     filters={parsed.data}
-    initialData={data}
+    initialData={data?.[0] ?? null}
+    options={data?.[1] ?? null}
   />;
 }

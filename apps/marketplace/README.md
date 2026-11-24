@@ -46,13 +46,53 @@ Für Prisma-Befehle lädt der folgende Node-Aufruf die lokale Konfiguration:
 ```bash
 node --env-file=.env.local node_modules/prisma/build/index.js generate
 node --env-file=.env.local node_modules/prisma/build/index.js migrate deploy
-npm run data:seed -- 120
 npm run dev
 ```
 
 Adresse ohne Docker-Proxy: `http://localhost:3001/marketplace`. Die Runtime liest `.env.local`; Prisma
 lädt diese Datei selbst nicht automatisch. Ohne Resend-Konfiguration ist der
 E-Mail-Versand geschlossen, bestehende Konten können sich weiterhin anmelden.
+
+## Stammdaten auf der Website
+
+Unter `/marketplace/verwaltung` findet ausschließlich `SUPER_ADMIN` die Links
+zu den Stammdaten. Materialien, Farben, Stuhltypen und Modellnamen haben jeweils
+eine eigene Tabellenseite unter `/marketplace/verwaltung/materialien`, `/farben`,
+`/stuhltypen` beziehungsweise `/modellnamen` (jeweils unter `/marketplace/verwaltung`).
+Der Plus-Link öffnet die Anlegeseite `/neu`; der Klick auf eine Tabellenzeile oder
+Bezeichnung öffnet `/[id]`. Auch per Tastatur ist jede Bezeichnung als Link erreichbar.
+Nach dem Anlegen wird direkt die Bearbeitungsseite des neuen Eintrags geöffnet. Einträge lassen sich anlegen,
+umbenennen, deaktivieren und wieder aktivieren. Verkäufer verwenden dieselben
+aktiven Einträge; sie dürfen keine Stammdaten ändern. Die bisherige Verkäuferansicht
+zeigt Angebote; ein Formular zum Anlegen neuer Produkte ist noch nicht enthalten.
+
+Die API liegt unter `/marketplace/api/materials`, `/colors`, `/chair-types` und
+`/model-names` (jeweils unter `/marketplace/api`). `GET` liefert aktive Einträge,
+`POST` legt einen Eintrag an. `GET /[id]`, `PATCH /[id]` und `DELETE /[id]`
+lesen, ändern oder deaktivieren einen Eintrag. Schreiboperationen benötigen eine
+Super-Admin-Session und den Origin der Website. Body für POST/PATCH:
+`{ "label": "Eiche", "active": true }`. Listen und POST unterstützen
+`?categoryId=chairs`; `?includeInactive=true` ist nur Super-Admins erlaubt.
+Die öffentlichen GET-Endpunkte werden auch für Verkäufer und Katalogfilter verwendet.
+
+Text-Eigenschaften referenzieren PostgreSQL-Stammdaten über einen zusammengesetzten
+Fremdschlüssel. Umbenennungen aktualisieren die Eigenschaftswerte bestehender Produkte;
+individuelle Produkttitel und Beschreibungen werden nicht umgeschrieben. Deaktivieren
+entfernt keine Produktzuordnungen. Migrationen übernehmen vorhandene Textwerte,
+legen aber keine feste Liste von Materialien, Farben oder Modellnamen an.
+
+Der Generator liest ausschließlich aktive Werte aus PostgreSQL. Vor dem ersten
+Import auf der Website mindestens einen Eintrag in jedem der vier Bereiche anlegen.
+Bei fehlenden Stammdaten bricht er vor dem Anlegen von Verkäufern oder Produkten ab.
+Die Dateien unter `testing/` enthalten ausschließlich isolierte Testdaten für CI.
+
+Prisma ist nach Zweck in Unterordner von `prisma/schema` gegliedert: `auth`,
+`catalog`, `offers` und `images`. Die zentrale Datei `prisma/schema/schema.prisma`
+enthält Generator und Datenquelle und ermöglicht die ordnerübergreifende
+Modellerkennung in der Prisma-6-Erweiterung. `prisma.config.ts` lädt alle Modelle; die gemeinsame Migrationshistorie
+bleibt unter `prisma/migrations`. Nach dem Aktualisieren des Codes die Migrationen
+selbst anwenden und den Prisma-Client neu erzeugen; beim Docker-Workflow die App neu
+bauen. Der Generator führt keine Migrationen aus.
 
 ## Datenmodell und große Datenmengen
 
@@ -79,9 +119,18 @@ Der Generator ist für eine separate Demo-Installation vorgesehen. Die IDs 1 bis
 Die erfolgreiche Erstellung kleiner Testdaten beweist keine ausreichende Leistung
 bei zehn Millionen Produkten. Vor einer solchen Vergrößerung Speicher, Importdauer,
 Query-Pläne und Last messen. Preisaggregation und tiefe Offset-Seiten sind bekannte
-Skalierungsgrenzen. Seitentiefe ist auf 1.000 begrenzt; kein teures COUNT pro Anfrage.
+Skalierungsgrenzen. Seitentiefe ist auf 1.000 begrenzt; die genaue Trefferzahl wird einschließlich der aktiven Filter angezeigt.
 Kein serverseitiger Cache für Benutzer- oder Verkäuferdaten. React Query hält
 öffentliche Ergebnisse 30 Sekunden im Browser frisch.
+
+## 1.000 Demo-Produkte ohne Bilder
+
+Als Super Admin unter `/marketplace/verwaltung` auf **Weitere 1.000 Demo-Produkte hinzufügen** klicken.
+Die Website verwendet die geschützte API; ein Seed-Aufruf ist dafür nicht nötig.
+Vorher aktive Materialien, Farben, Stuhltypen und Modellnamen in der Verwaltung anlegen.
+Jeder Klick erzeugt weitere 1.000 Produkte. Vorhandene Produkte werden nicht überschrieben. Details stehen unten unter
+„Demo-Produkte über die Website/API“. Die Skripte bleiben für isolierte Tests und
+optionale große Lasttest-Datensätze verfügbar.
 
 ## Bilder: Pexels → Auswahl → Sharp → R2
 
@@ -129,11 +178,29 @@ CDN-Caching über eine eigene Domain und unveränderliche Bildpfade reduziert Re
 
 ## Konten anlegen
 
-`MARKETPLACE_USER_EMAIL`, `MARKETPLACE_USER_PASSWORD` (12–128 Zeichen) und optional
-`MARKETPLACE_USER_ROLE` nur in die lokale Shell-Umgebung setzen. Erlaubte Rollen:
-`CUSTOMER`, `SELLER`, `SUPER_ADMIN`. Für Verkäufer optional `MARKETPLACE_SELLER_NAME`.
-Dann `npm run auth:create-user`. Das CLI erstellt neue Konten und überschreibt
-keine vorhandenen Konten. Passwörter nicht als Kommandozeilenargument übergeben.
+Im Anwendungsordner denselben Aufruf wie in der Stellensuche verwenden:
+
+```sh
+npm run auth:create-user -- info@example.com SUPER_ADMIN "Alex"
+```
+
+Das Passwort wird verdeckt mit Bestätigung abgefragt (12–128 Zeichen). Rolle und
+Name sind optional; ohne Rolle wird `CUSTOMER` verwendet. Erlaubte Rollen sind
+`CUSTOMER`, `SELLER` und `SUPER_ADMIN`. Für Verkäufer kann
+`MARKETPLACE_SELLER_NAME` weiterhin den Geschäftsnamen vorgeben.
+Das CLI erstellt neue Konten und überschreibt keine vorhandenen Konten.
+`MARKETPLACE_USER_EMAIL`, `MARKETPLACE_USER_PASSWORD` und `MARKETPLACE_USER_ROLE`
+werden nicht mehr verwendet. Die Datenbankkonfiguration bleibt in `.env.local`.
+
+Vom Repository-Hauptordner aus:
+
+```sh
+npm run auth:create-user:marketplace -- info@example.com SUPER_ADMIN "Alex"
+npm run auth:create-user:stellensuche -- info@example.com SUPER_ADMIN "Alex"
+```
+
+Der bisherige Root-Befehl `auth:create-user` bleibt aus Kompatibilitätsgründen
+auf die Stellensuche gerichtet.
 
 ## Observability und Bereitstellung
 
@@ -186,6 +253,7 @@ set +a
 psql -X -f testing/setup.sql
 npx prisma generate
 npx prisma migrate deploy
+psql -X -f testing/master-data-fixture.sql
 npm run data:seed -- 120
 npm test
 npm run build
@@ -197,3 +265,33 @@ npm run test:db:down
 Der HTTP-Test benötigt zusätzlich die gestartete Anwendung mit denselben Test-
 Umgebungsvariablen. `npm run test:db:down` entfernt ausschließlich die testbezogenen
 Compose-Ressourcen, niemals die gemeinsame Entwicklungsdatenbank.
+
+### Demo-Produkte über die Website/API
+
+Als Super Admin unter `/marketplace/verwaltung` auf **Weitere 1.000 Demo-Produkte hinzufügen** klicken.
+Der Button ruft `POST /marketplace/api/admin/demo-products` mit der angemeldeten Session auf.
+Vorher Materialien, Farben, Stuhltypen und Modellnamen auf ihren Verwaltungsseiten pflegen.
+Die API verwendet aktive PostgreSQL-Stammdaten, legt bei Bedarf zwölf deaktivierte
+Demo-Verkäuferkonten an und erzeugt pro Aufruf weitere 1.000 Produkte mit eigenen URLs.
+Sie erzeugt keine Bilder, überschreibt keine bestehenden Produkte und ist gegen
+parallele Aufrufe abgesichert. Jeder Aufruf erzeugt eine neue Serie mit eindeutigen URLs.
+Ein manuell ausgeführtes Seed-Skript ist für diesen Ablauf nicht erforderlich.
+
+### Gast-Warenkorb und Anmeldung
+
+Gäste speichern bis zu zehn verschiedene Produkte im lokalen Browserspeicher.
+Beim Anmelden führt `POST /marketplace/api/cart/sync` die Angebots-IDs mit dem
+Kontowarenkorb zusammen. Bestehende Kontoprodukte haben Vorrang. Nicht verfügbare
+oder überzählige Angebote werden mit einem Hinweis auf der Warenkorbseite übersprungen.
+Bei einem Netzwerkfehler bleiben die Gastdaten für einen erneuten Versuch erhalten.
+Angemeldete Benutzer ändern ihren Warenkorb über die API; Preise und Verfügbarkeit
+stammen dann aus PostgreSQL. Beim Abmelden wird der Kontowarenkorb nicht lokal übernommen.
+
+### Produkt-URLs
+
+Öffentliche Produktlinks enthalten die stabile Produkt-ID sowie Farbe, Material,
+Breite und Sitzhöhe, beispielsweise
+`/marketplace/produkte/stuhl-995-natur-polster-45cm-breit-46cm-sitzhoehe`.
+Preise werden nicht verwendet. Vorhandene gespeicherte URLs und frühere
+Eigenschaftsvarianten leiten mit HTTP 308 auf die aktuelle kanonische URL weiter.
+Die bestehende Einstellung `noindex, nofollow` bleibt aktiv.

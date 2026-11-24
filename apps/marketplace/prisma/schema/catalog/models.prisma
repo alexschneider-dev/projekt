@@ -1,0 +1,78 @@
+enum AttributeKind {
+  TEXT
+  NUMBER
+  BOOLEAN
+}
+
+model Category {
+  id         String                @id
+  slug       String                @unique
+  name       String
+  attributes AttributeDefinition[]
+  products   Product[]
+}
+
+model AttributeDefinition {
+  id         String             @id
+  categoryId String
+  category   Category           @relation(fields: [categoryId], references: [id])
+  key        String
+  label      String
+  kind       AttributeKind
+  unit       String?
+  filterable Boolean            @default(true)
+  values     ProductAttribute[]
+  options    AttributeOption[]
+
+  @@unique([categoryId, key])
+  @@unique([id, categoryId])
+}
+
+model AttributeOption {
+  id          String              @id @default(cuid())
+  attributeId String
+  definition  AttributeDefinition @relation(fields: [attributeId], references: [id])
+  label       String
+  active      Boolean             @default(true)
+  values      ProductAttribute[]
+
+  @@unique([attributeId, label])
+  @@index([attributeId, active, label])
+}
+
+model Product {
+  id          Int                @id @default(autoincrement())
+  slug        String             @unique
+  name        String
+  description String
+  categoryId  String
+  category    Category           @relation(fields: [categoryId], references: [id])
+  imageId     String?
+  image       ImageAsset?        @relation(fields: [imageId], references: [id])
+  published   Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  attributes  ProductAttribute[]
+  offers      Offer[]
+  cartItems   CartItem[]
+
+  @@unique([id, categoryId])
+  @@index([categoryId, published, id])
+  @@index([categoryId, published, createdAt, id])
+  @@index([imageId])
+}
+
+model ProductAttribute {
+  productId    Int
+  categoryId   String
+  attributeId  String
+  product      Product             @relation(fields: [productId, categoryId], references: [id, categoryId], onDelete: Cascade)
+  definition   AttributeDefinition @relation(fields: [attributeId, categoryId], references: [id, categoryId])
+  textValue    String?
+  option       AttributeOption?    @relation(fields: [attributeId, textValue], references: [attributeId, label], onDelete: Restrict, onUpdate: Cascade)
+  numberValue  Float?
+  booleanValue Boolean?
+
+  @@id([productId, attributeId])
+  @@index([attributeId, textValue, productId])
+  @@index([attributeId, numberValue, productId])
+}

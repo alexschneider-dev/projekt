@@ -6,7 +6,7 @@ compose=(docker compose --env-file "$app_dir/.env.local" -f "$script_dir/compose
 
 # Gemeinsame Infrastruktur wird separat betrieben; nur die eigene Anwendung verwalten.
 # Erst nach erfolgreicher Datenbankmigration und erreichbarer App Watch starten.
-if ! "${compose[@]}" up -d --build --wait --wait-timeout 150; then
+if ! "${compose[@]}" up -d --wait --wait-timeout 150; then
   "${compose[@]}" logs --tail=40 marketplace
   exit 1
 fi

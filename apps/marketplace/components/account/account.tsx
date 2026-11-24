@@ -30,6 +30,7 @@ export function Account({
         className="mt-8 justify-start"
       >
         <AppLink href={ROUTES.home}>Stühle entdecken</AppLink>
+        <AppLink href={ROUTES.cart}>Warenkorb</AppLink>
         {hasRole(role, SELLER) && <AppLink href={ROUTES.seller}>Meine Angebote</AppLink>}
         {hasRole(role, SUPER_ADMIN) && <AppLink href={ROUTES.superAdmin}>Verwaltung</AppLink>}
       </Navigation>

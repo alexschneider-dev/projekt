@@ -12,6 +12,25 @@ Zusätzlich zu den Repository-Regeln:
 - Keine `next/image`-Nutzung. Bildvarianten vorab erzeugen und über R2 ausliefern.
 - Ohne konfigurierte Bildquelle keine externen Fotos vortäuschen.
 - Standardmäßig noindex, nofollow. Öffentliche Indexierung nur nach ausdrücklichem Auftrag.
+- Prisma-Modelle nach Zweck in Unterordnern von `prisma/schema/` halten:
+  `auth`, `catalog`, `offers`, `images` und `cart`. Generator und Datenquelle stehen
+  direkt in `prisma/schema/schema.prisma`, damit auch der Prisma-6-Editor die
+  Unterordner als gemeinsames Schema erkennt. `prisma.config.ts` bindet
+  diese gemeinsam ein; Migrationen bleiben unter `prisma/migrations/`.
+- Materialien, Farben, Stuhltypen und Modellnamen sind kategorienbezogene
+  PostgreSQL-Stammdaten. Ausschließlich `SUPER_ADMIN` pflegt sie auf der Website.
+  Verkäufer nutzen die aktive Auswahl; API-Schreibrechte serverseitig erzwingen.
+  Filter und Produktgenerator lesen diese Daten, statt eigene Wertelisten zu führen.
+  Bestehende Produktzuordnungen beim Deaktivieren erhalten.
+
+- Gäste speichern ihren Warenkorb lokal im Browser. Beim Anmelden ausschließlich
+  Angebots-IDs übertragen und serverseitig zusammenführen; Preise und Verfügbarkeit
+  erneut prüfen. Bei Fehlern lokale Daten behalten. Nach erfolgreichem Sync Gastdaten
+  entfernen; Kontodaten beim Abmelden nicht in den Gast-Warenkorb kopieren.
+- Serverseitige Warenkörbe gehören ausschließlich zur geprüften Benutzer-ID.
+  Maximal zehn verschiedene Produkte, ein Verkäuferangebot je Produkt, keine
+  Mengen oder Bestellungen. Schreibzugriffe pro Benutzer serialisieren; die
+  PostgreSQL-Grenze aus zehn eindeutigen Plätzen beibehalten.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

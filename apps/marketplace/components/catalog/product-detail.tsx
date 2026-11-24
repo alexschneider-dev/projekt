@@ -1,3 +1,4 @@
+import { AddToCart } from "@/components/cart/add-to-cart";
 import type { CatalogProduct } from "@/lib/catalog/service";
 import { formatPrice } from "@/lib/catalog/config";
 import { ROUTES } from "@/lib/constants/routes";
@@ -44,7 +45,19 @@ export function ProductDetail({ product }: { product: CatalogProduct }) {
                     {offer.stock > 0 ? `Lieferzeit: ${offer.deliveryDays} Werktage` : "Derzeit ausverkauft"}
                   </Text>
                 </div>
-                <Text className="text-xl font-semibold">{formatPrice(offer.priceCents)}</Text>
+                <div className="space-y-3">
+                  <Text className="text-xl font-semibold">{formatPrice(offer.priceCents)}</Text>
+                  <AddToCart
+                    item={{
+                      productId: product.id,
+                      offer: {
+                        ...offer,
+                        product
+                      }
+                    }}
+                    available={offer.stock > 0}
+                  />
+                </div>
               </div>
             ))}
             {!product.offers.length && <Text variant="description">Aktuell sind keine Angebote verfügbar.</Text>}

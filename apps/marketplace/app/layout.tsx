@@ -7,7 +7,7 @@ import "./globals.css";
 
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXTAUTH_URL ?? "http://localhost:3001/marketplace/api/auth"),
+  metadataBase: new URL(new URL(process.env.NEXTAUTH_URL ?? "http://localhost:3001").origin),
   title: {
     default: "Marktplatz – Stühle entdecken",
     template: "%s | Marktplatz",

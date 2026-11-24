@@ -37,6 +37,7 @@ services:
             - data/
             - .env*
             - prisma/
+            - prisma.config.ts
             - tools/
             - services/
             - package.json
@@ -47,6 +48,8 @@ services:
           path: ../../../package-lock.json
         - action: rebuild
           path: ../../../prisma
+        - action: rebuild
+          path: ../../../prisma.config.ts
         - action: rebuild
           path: ../../../tools
         - action: rebuild

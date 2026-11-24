@@ -22,6 +22,11 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3001
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
+# Der Demo-Katalog lässt sich mit dem eingeschränkten App-Zugang befüllen.
+COPY --from=build --chown=node:node /app/scripts/seed.mjs /app/scripts/common.mjs ./scripts/
+COPY --from=build --chown=node:node /app/scripts/errors ./scripts/errors
+COPY --from=build --chown=node:node /app/lib/auth/password.mjs ./lib/auth/password.mjs
+COPY --from=build --chown=node:node /app/lib/http/errors/password.mjs ./lib/http/errors/password.mjs
 USER node
 EXPOSE 3001
 CMD ["node", "server.js"]

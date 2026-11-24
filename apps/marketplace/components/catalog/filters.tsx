@@ -1,5 +1,6 @@
 "use client";
 
+import type { ChairFilters } from "@/lib/catalog/master-data";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,10 +16,7 @@ import { Input } from "@/components/ui/input";
 import { InputNumber } from "@/components/ui/input-number";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import {
-  chairFilters,
-  sortLabels
-} from "@/lib/catalog/config";
+import { sortLabels } from "@/lib/catalog/config";
 import {
   catalogSchema,
   type CatalogFilters
@@ -27,9 +25,11 @@ import {
 
 export function Filters({
   values,
+  options,
   onApply
 }: {
   values: CatalogFilters;
+  options: ChairFilters | null;
   onApply: (value: CatalogFilters) => void
 }) {
   const form = useForm<z.input<typeof catalogSchema>, unknown, CatalogFilters>({
@@ -64,7 +64,7 @@ export function Filters({
             </FormItem>
           )}
         />
-        {Object.entries(chairFilters).map(([
+        {Object.entries(options ?? {}).map(([
           key,
           config
         ]) => (
@@ -80,10 +80,10 @@ export function Filters({
                     <option value="">Alle</option>
                     {config.values.map((value) => (
                       <option
-                        key={value}
-                        value={value}
+                        key={value.id}
+                        value={value.label}
                       >
-                        {value}
+                        {value.label}
                       </option>
                     ))}
                   </Select>

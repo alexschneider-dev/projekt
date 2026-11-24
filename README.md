@@ -104,4 +104,15 @@ Jede Anwendung hat ihre eigene `package.json` und Lockdatei. `npm run dev`,
 `npm run dev:marketplace` oder `npm run dev:stellensuche`; entsprechend gibt es
 `build:APP`, `start:APP`, `check:APP` und `test:APP`.
 `npm run check` und `npm test` prüfen beide Anwendungen. Die vollständigen lokalen
-Proxy-Ketten werden mit den jeweiligen Docker-Startskripten gestartet.
+Die Docker-Anwendungen werden aus dem Repository-Hauptverzeichnis jeweils in einem
+eigenen Terminal gestartet:
+
+```bash
+npm run dev:services:stellensuche
+npm run dev:services:marketplace
+```
+
+Beide Befehle starten das jeweilige Docker-Startskript und anschließend Compose Watch.
+Die Terminals bleiben dafür geöffnet. Die gemeinsame PostgreSQL-Infrastruktur und
+der gemeinsame Nginx werden weiterhin separat gestartet; die Datenbankschemas und
+die lokalen `.env.local`-Dateien müssen bereits eingerichtet sein.

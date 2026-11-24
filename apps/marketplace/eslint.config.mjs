@@ -15,7 +15,7 @@ const eslintConfig = defineConfig([
     rules: { "@next/next/no-img-element": "off" },
   },
   {
-    files: ["components/account/offers-table.tsx"],
+    files: ["components/ui/data-table.tsx"],
     // TanStack Table wird ohne React Compiler eingesetzt.
     rules: { "react-hooks/incompatible-library": "off" },
   },

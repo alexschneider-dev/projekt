@@ -1,3 +1,4 @@
+import { AddToCart } from "@/components/cart/add-to-cart";
 import type { CatalogProduct } from "@/lib/catalog/service";
 import { formatPrice } from "@/lib/catalog/config";
 import { productHref } from "@/lib/constants/routes";
@@ -35,6 +36,18 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
           </div>
         </div>
       </AppLink>
+      {offer && (
+        <AddToCart
+          item={{
+            productId: product.id,
+            offer: {
+              ...offer,
+              product
+            }
+          }}
+          available={offer.stock > 0}
+        />
+      )}
     </article>
   );
 }

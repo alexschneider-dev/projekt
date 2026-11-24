@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import {
+  notFound,
+  permanentRedirect
+} from "next/navigation";
 import { cache } from "react";
 import { getProduct } from "@/lib/catalog/service";
 import { productParamsSchema } from "@/lib/schemas/catalog";
@@ -31,5 +34,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
-  return <ProductDetail product={await load((await params).slug)} />;
+  const { slug } = await params;
+  const product = await load(slug);
+  if (slug !== product.slug) permanentRedirect(productHref(product.slug));
+
+  return <ProductDetail product={product} />;
 }

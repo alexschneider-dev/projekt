@@ -1,12 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
-  type ColumnDef
-} from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/ui/data-table";
 import type { SellerOffers } from "@/lib/catalog/service";
 import { fetchJson } from "@/lib/http/fetch-json";
 import {
@@ -53,11 +49,6 @@ export function OffersTable() {
     queryKey: ["seller-offers"],
     queryFn: () => fetchJson<SellerOffers>(ROUTES.offersApi, { method: "GET" }),
   });
-  const table = useReactTable({
-    data: query.data ?? empty,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
   return (
     <PageWrapper>
       <h1>Meine Angebote</h1>
@@ -71,43 +62,11 @@ export function OffersTable() {
         </Text>
       )}
       {query.isPending && <Text role="status">Angebote werden geladen …</Text>}
-      <div className="overflow-x-auto rounded-xl border bg-white">
-        <table className="w-full text-left text-sm">
-          <caption className="sr-only">Eigene Verkäuferangebote</caption>
-          <thead className="border-b bg-muted">
-            {table.getHeaderGroups().map((group) => (
-              <tr key={group.id}>
-                {group.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="whitespace-nowrap p-4"
-                    scope="col"
-                  >
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className="border-b"
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className="p-4"
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        data={query.data ?? empty}
+        columns={columns}
+        caption="Eigene Verkäuferangebote"
+      />
       {query.isSuccess && !query.data.length && <Text variant="hint">Du hast noch keine Angebote.</Text>}
     </PageWrapper>
   );

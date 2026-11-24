@@ -1,0 +1,16 @@
+// Zehn eindeutige Plätze je Benutzer begrenzen den Warenkorb auch in PostgreSQL.
+model CartItem {
+  userId    String
+  productId Int
+  offerId   String
+  slot      Int
+  createdAt DateTime @default(now())
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  offer     Offer   @relation(fields: [offerId, productId], references: [id, productId], onDelete: Cascade)
+
+  @@id([userId, productId])
+  @@unique([userId, slot])
+  @@index([offerId, productId])
+  @@index([productId])
+}

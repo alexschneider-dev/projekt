@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { ERROR_CATALOG } from "@/lib/http/errors/catalog";
-import { chairFilters } from "@/lib/catalog/config";
 
 
 const price = z.coerce
@@ -12,18 +11,9 @@ const price = z.coerce
 export const catalogSchema = z
   .object({
     q: z.string().trim().max(80, ERROR_CATALOG.FILTER.message).default(""),
-    material: z.enum([
-      "",
-      ...chairFilters.material.values
-    ], { error: ERROR_CATALOG.FILTER.message }).default(""),
-    color: z.enum([
-      "",
-      ...chairFilters.color.values
-    ], { error: ERROR_CATALOG.FILTER.message }).default(""),
-    kind: z.enum([
-      "",
-      ...chairFilters.kind.values
-    ], { error: ERROR_CATALOG.FILTER.message }).default(""),
+    material: z.string().trim().max(80, ERROR_CATALOG.FILTER.message).default(""),
+    color: z.string().trim().max(80, ERROR_CATALOG.FILTER.message).default(""),
+    kind: z.string().trim().max(80, ERROR_CATALOG.FILTER.message).default(""),
     min: price,
     max: price,
     sort: z.enum([

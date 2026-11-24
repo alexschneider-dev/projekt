@@ -73,6 +73,7 @@ jobs:
           psql -X -f testing/setup.sql
           npx prisma generate
           npx prisma migrate deploy
+          psql -X -f testing/master-data-fixture.sql
           npm run data:seed -- 120
           npm run data:seed -- 120
       - name: Statische Prüfungen und Datenbanktests

@@ -15,6 +15,10 @@ import { Navigation } from "@/components/ui/navigation";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/lib/constants/routes";
 import { withBasePath } from "@/lib/constants/base-path";
+import {
+  hasRole,
+  SUPER_ADMIN
+} from "@/lib/auth/roles";
 
 
 export function SiteHeader() {
@@ -28,6 +32,12 @@ export function SiteHeader() {
       >
         Stühle entdecken
       </AppLink>
+      <AppLink
+        href={ROUTES.cart}
+        variant="navigation"
+      >
+        Warenkorb
+      </AppLink>
       {session?.user ? (
         <>
           <AppLink
@@ -36,6 +46,14 @@ export function SiteHeader() {
           >
             <UserRound size={18} /> Mein Konto
           </AppLink>
+          {hasRole(session.user.role, SUPER_ADMIN) && (
+            <AppLink
+              href={ROUTES.superAdmin}
+              variant="navigation"
+            >
+              Verwaltung
+            </AppLink>
+          )}
           <Button
             variant="outline"
             onClick={() => signOut({ callbackUrl: withBasePath(ROUTES.home) })}
@@ -72,13 +90,13 @@ export function SiteHeader() {
         </AppLink>
         <Navigation
           aria-label="Hauptnavigation"
-          className="hidden items-center md:flex"
+          className="hidden items-center lg:flex"
         >
           {links}
         </Navigation>
         <details
           key={pathname}
-          className="relative md:hidden"
+          className="relative lg:hidden"
         >
           <summary
             aria-label="Menü öffnen"

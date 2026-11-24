@@ -1,44 +1,51 @@
 import {
-  PrismaClient,
-  InternalRole
+  InternalRole,
+  PrismaClient
 } from "@prisma/client";
 import { hashPassword } from "../lib/auth/password.mjs";
 import {
-  databaseGuard,
-  reportFailure
-} from "./common.mjs";
-import { ERRORS } from "./errors/index.mjs";
+  parseAccountArguments,
+  readAccountPassword,
+  reportAccountFailure
+} from "./account-input.mjs";
+import { databaseGuard } from "./common.mjs";
 
 
 const db = new PrismaClient();
+
 try {
-  databaseGuard();
-  const email = process.env.MARKETPLACE_USER_EMAIL?.trim().toLowerCase();
-  const password = process.env.MARKETPLACE_USER_PASSWORD;
-  const role = process.env.MARKETPLACE_USER_ROLE ?? InternalRole.CUSTOMER;
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password || !Object.values(InternalRole).includes(role))
-    throw new Error(ERRORS.CONFIG);
+  const account = parseAccountArguments(
+    process.argv.slice(2),
+    Object.values(InternalRole),
+    InternalRole.CUSTOMER
+  );
+  const password = await readAccountPassword();
   const passwordHash = await hashPassword(password);
-  await db.$transaction(async (tx) => {
-    const user = await tx.user.create({
+
+  databaseGuard();
+  const user = await db.$transaction(async (tx) => {
+    const createdUser = await tx.user.create({
       data: {
-        email,
-        passwordHash,
-        role,
-      },
+        ...account,
+        passwordHash
+      }
     });
-    if (role === InternalRole.SELLER)
+    if (account.role === InternalRole.SELLER) {
       await tx.seller.create({
         data: {
-          userId: user.id,
+          userId: createdUser.id,
           name: process.env.MARKETPLACE_SELLER_NAME || "Mein Geschäft",
-          slug: user.id,
-        },
+          slug: createdUser.id
+        }
       });
+    }
+
+    return createdUser;
   });
-  console.log("Konto wurde angelegt.");
+
+  console.log(`Konto angelegt: ${user.email} (${user.role}), Benutzer-ID: ${user.id}`);
 } catch (error) {
-  reportFailure(error);
+  reportAccountFailure(error);
 } finally {
   await db.$disconnect();
 }

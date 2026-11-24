@@ -9,6 +9,7 @@ import {
   catalogQuery,
   type CatalogFilters
 } from "@/lib/schemas/catalog";
+import type { ChairFilters } from "@/lib/catalog/master-data";
 import type { ProductsPage } from "@/lib/catalog/service";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -20,9 +21,11 @@ import { ProductCard } from "./product-card";
 
 export function Catalog({
   filters,
-  initialData
+  initialData,
+  options
 }: {
   filters: CatalogFilters;
+  options: ChairFilters | null;
   initialData: ProductsPage | null
 }) {
   const router = useRouter();
@@ -57,6 +60,7 @@ export function Catalog({
           <h2 className="mb-6">Deine Auswahl</h2>
           <Filters
             key={queryString}
+            options={options}
             values={filters}
             onApply={apply}
           />
@@ -72,13 +76,21 @@ export function Catalog({
             <div className="mt-6">
               <Filters
                 key={queryString}
+                options={options}
                 values={filters}
                 onApply={apply}
               />
             </div>
           </details>
           <div className="mb-5 flex items-center justify-between">
-            <h2>Stühle entdecken</h2>
+            <div>
+              <h2>Stühle entdecken</h2>
+              {query.data && (
+                <Text role="status">
+                  {query.data.filteredTotal.toLocaleString("de-DE")} von {query.data.total.toLocaleString("de-DE")} Produkten
+                </Text>
+              )}
+            </div>
             <Text variant="meta">Seite {filters.page}</Text>
           </div>
           {query.isPending && <Text role="status">Produkte werden geladen …</Text>}
