@@ -31,7 +31,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -Eeuo pipefail
-          [[ "$SERVICE" =~ ^(nextjs|nginx|jobs|marketplace)$ ]]
+          [[ "$SERVICE" =~ ^(nextjs|nginx|jobs|marketplace|marketplace-websocket)$ ]]
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]
 
       - name: SSH konfigurieren

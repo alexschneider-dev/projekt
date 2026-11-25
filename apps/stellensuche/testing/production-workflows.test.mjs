@@ -11,6 +11,7 @@ const callers = {
   "stellensuche-deploy.yml": "nextjs",
   "infrastructure-nginx.yml": "nginx",
   "marketplace-deploy.yml": "marketplace",
+  "marketplace-websocket-deploy.yml": "marketplace-websocket",
 };
 
 for (const [file, service] of Object.entries(callers)) {
@@ -18,7 +19,7 @@ for (const [file, service] of Object.entries(callers)) {
     const workflow = read(`.github/workflows/${file}`);
 
     assert.equal(workflow.on.workflow_dispatch.inputs.deploy.type, "boolean");
-    assert.equal(workflow.on.workflow_dispatch.inputs.deploy.default, true);
+    assert.equal(workflow.on.workflow_dispatch.inputs.deploy.default, service !== "marketplace-websocket");
 
     const build = workflow.jobs.build.steps;
 
@@ -146,7 +147,7 @@ test("Pushes bleiben schnell und Anwendungsbuilds verlangen die umfangreichen Pr
 });
 
 test("Jedes Nginx-Release prüft das gebaute Image vor der Veröffentlichung", () => {
-  for (const file of Object.keys(callers)) {
+  for (const file of Object.keys(callers).filter(name => name !== "marketplace-websocket-deploy.yml")) {
     const steps = read(`.github/workflows/${file}`).jobs.build.steps;
     const auditIndex = steps.findIndex(step => step.uses === "./.github/actions/audit-image" && step.with.image.includes("nginx"));
     const publicationIndex = steps.findIndex(step => step.name === "Geprüftes Nginx-Image veröffentlichen");
@@ -172,4 +173,13 @@ test("Jedes Nginx-Release prüft das gebaute Image vor der Veröffentlichung", (
     "apps/stellensuche/services/nginx",
     "apps/marketplace/services/nginx",
   ]);
+});
+
+test("WebSocket-Release prüft Workspace-Laufzeit und Sicherheitsbefund vor der Veröffentlichung", () => {
+  const steps = read(".github/workflows/marketplace-websocket-deploy.yml").jobs.build.steps;
+  const runtime = steps.findIndex(step => step.name === "WebSocket-Laufzeit isoliert prüfen");
+  const audit = steps.findIndex(step => step.uses === "./.github/actions/audit-image");
+  const publish = steps.findIndex(step => step.name === "Geprüftes WebSocket-Image veröffentlichen");
+  assert.ok(runtime >= 0 && audit > runtime && publish > audit);
+  assert.equal(steps[audit]["continue-on-error"], undefined);
 });

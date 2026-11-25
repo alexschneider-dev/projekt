@@ -1,0 +1,86 @@
+name: Marketplace – WebSocket bauen und bereitstellen
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release-Version, zum Beispiel 1.00"
+        required: true
+        type: string
+      deploy:
+        description: Nach dem Build den vorbereiteten WebSocket-Dienst bereitstellen
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: projekt-marketplace-websocket-production
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/marketplace-tests.yml
+
+  build:
+    needs: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version prüfen
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: WebSocket-Image aus dem npm-Workspace bauen
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/marketplace
+          file: apps/marketplace/services/websocket/Dockerfile
+          platforms: linux/amd64
+          load: true
+          pull: true
+          no-cache: true
+          tags: |
+            ghcr.io/alexschneider-dev/projekt-marketplace-websocket:${{ inputs.version }}
+            ghcr.io/alexschneider-dev/projekt-marketplace-websocket:${{ github.sha }}
+      - name: WebSocket-Laufzeit isoliert prüfen
+        env:
+          IMAGE: ghcr.io/alexschneider-dev/projekt-marketplace-websocket:${{ github.sha }}
+        run: |
+          docker run --rm --network none "$IMAGE" node --test server.test.mjs
+          docker run --rm --network none "$IMAGE" node --input-type=module \
+            -e "await import('ioredis'); await import('./server.mjs');"
+      - name: Container-Image auf Sicherheitslücken prüfen
+        uses: ./.github/actions/audit-image
+        with:
+          image: ghcr.io/alexschneider-dev/projekt-marketplace-websocket:${{ github.sha }}
+      - name: Geprüftes WebSocket-Image veröffentlichen
+        env:
+          VERSION: ${{ inputs.version }}
+          REVISION: ${{ github.sha }}
+        run: |
+          docker push "ghcr.io/alexschneider-dev/projekt-marketplace-websocket:$VERSION"
+          docker push "ghcr.io/alexschneider-dev/projekt-marketplace-websocket:$REVISION"
+
+  deploy:
+    if: ${{ inputs.deploy }}
+    needs: build
+    uses: ./.github/workflows/shared-deploy-service.yml
+    with:
+      service: marketplace-websocket
+      version: ${{ inputs.version }}
+    secrets: inherit
