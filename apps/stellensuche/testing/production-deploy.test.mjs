@@ -316,7 +316,8 @@ for (const service of [
   "nextjs",
   "nginx",
   "jobs",
-  "marketplace"
+  "marketplace",
+  "marketplace-websocket"
 ]) {
   for (const rollback of [
     false,
@@ -331,6 +332,7 @@ for (const service of [
         nginx: "nginx-projekt",
         jobs: "projekt-jobs",
         marketplace: "projekt-marketplace",
+        "marketplace-websocket": "projekt-marketplace-websocket",
       };
       const repository = repositories[service];
       const dockerPath = run("sh", [

@@ -51,7 +51,7 @@ try {
         name: `Wohnstudio ${index + 1}`,
         passwordHash,
         role: InternalRole.SELLER,
-        active: false,
+        active: true,
       },
       update: {},
     });

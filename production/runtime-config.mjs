@@ -133,7 +133,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 
   const input = JSON.parse(readFileSync(source, "utf8"));
   const services = selected.length ? selected : Object.keys(runtimeKeys)
-    .filter(service => service !== "marketplace" || input.services?.marketplace);
+    .filter(service => ![
+      "marketplace",
+      "marketplace-websocket"
+    ].includes(service) || input.services?.[service]);
   const runtime = resolveRuntime(input, services);
 
   writeFileSync(output, JSON.stringify(runtime, null, 2) + "\n", { mode: 0o600 });

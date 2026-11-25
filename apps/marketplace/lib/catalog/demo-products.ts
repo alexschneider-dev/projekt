@@ -8,14 +8,19 @@ import { hashPassword } from "@/lib/auth/password.mjs";
 import { SELLER } from "@/lib/auth/roles";
 import { createApiError } from "@/lib/http/errors";
 import { ERROR_DEMO_PRODUCTS } from "@/lib/http/errors/demo-products";
+import {
+  lockCatalogStatistics,
+  readCatalogStatistics
+} from "@/lib/statistics/snapshot";
+import { publishCatalogChanged } from "@/lib/statistics/publish";
 
 
 export async function createDemoProducts() {
   const batchId = randomUUID();
   const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
-  return prisma.$transaction(async tx => {
+  const result = await prisma.$transaction(async tx => {
     // Parallele Aufrufe serialisieren; jeder Aufruf erzeugt eine eigene Produktserie.
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(724001)::text AS lock`;
+    await lockCatalogStatistics(tx);
     const definitions = await tx.attributeDefinition.findMany({
       where: { categoryId: "chairs" },
       include: {
@@ -50,7 +55,7 @@ export async function createDemoProducts() {
           name: `Wohnstudio ${index + 1}`,
           passwordHash,
           role: SELLER,
-          active: false
+          active: true
         },
         update: {}
       });
@@ -122,10 +127,15 @@ export async function createDemoProducts() {
     await tx.offer.createMany({ data: offers });
 
     return {
-      created: created.length
+      created: created.length,
+      snapshot: await readCatalogStatistics(tx)
     };
   }, {
     timeout: 30000,
     maxWait: 5000
   });
+
+  await publishCatalogChanged(result.snapshot);
+
+  return { created: result.created };
 }

@@ -30,7 +30,7 @@ if ! docker compose \
   --env-file "$ENV_FILE" \
   -f "$COMPOSE_FILE" \
   --profile dev \
-  up -d --wait --wait-timeout 150; then
+  up -d --no-build --wait --wait-timeout 150; then
   docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=40 nextjs-projekt
   exit 1
 fi

@@ -33,6 +33,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 56381:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
       postgres:
         image: postgres:17
         env:
@@ -80,6 +87,7 @@ jobs:
         run: |
           npm run check
           npm test
+          npm run websocket:test:integration
       - run: npm run build
       - name: Chromium installieren
         run: npx --no-install playwright install --with-deps chromium

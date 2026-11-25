@@ -25,6 +25,10 @@ case "$SERVICE" in
     SWARM_SERVICE="projekt_marketplace"
     IMAGE="ghcr.io/alexschneider-dev/projekt-marketplace"
     ;;
+  marketplace-websocket)
+    SWARM_SERVICE="projekt_marketplace-websocket"
+    IMAGE="ghcr.io/alexschneider-dev/projekt-marketplace-websocket"
+    ;;
   nginx)
     SWARM_SERVICE="projekt_nginx"
     IMAGE="ghcr.io/alexschneider-dev/nginx-projekt"
@@ -48,7 +52,7 @@ cd "$(dirname "$0")"
 RUNTIME=/etc/projekt/runtime.json
 [[ -s "$RUNTIME" ]] || { echo "Datei fehlt oder ist leer: $RUNTIME" >&2; exit 1; }
 # Bestehende Services prüfen; der Importservice darf hier erstmals angelegt werden.
-if [[ "$SERVICE" != "jobs" && "$SERVICE" != "marketplace" ]]; then
+if [[ "$SERVICE" != "jobs" && "$SERVICE" != "marketplace" && "$SERVICE" != "marketplace-websocket" ]]; then
   docker service inspect "$SWARM_SERVICE" >/dev/null
 fi
 
@@ -109,7 +113,7 @@ fs.writeFileSync(`${directory}/image.json`, JSON.stringify({
 NODE
 
 # Nach dem Filtern bleibt nur der Image-Platzhalter des ausgewählten Service übrig.
-key="$(printf '%s' "$SERVICE" | tr '[:lower:]' '[:upper:]')_IMAGE"
+key="$(printf '%s' "$SERVICE" | tr '[:lower:]-' '[:upper:]_')_IMAGE"
 export "$key=${IMAGE}:${VERSION}"
 docker stack config -c "$work_dir/service.yml" -c "$work_dir/runtime.json" -c "$work_dir/image.json" >/dev/null
 docker pull "${IMAGE}:${VERSION}"

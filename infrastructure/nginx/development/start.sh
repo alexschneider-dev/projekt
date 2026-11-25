@@ -11,4 +11,4 @@ compose+=(-f "$script_dir/compose.dev.yml")
 if ! docker network inspect nextjs_dev >/dev/null 2>&1; then
   docker network create nextjs_dev >/dev/null
 fi
-"${compose[@]}" up -d --build
+"${compose[@]}" up -d --no-build

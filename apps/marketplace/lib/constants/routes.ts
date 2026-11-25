@@ -1,5 +1,6 @@
 export const ROUTES = {
   home: "/",
+  statisticsSocket: "/socket.io",
   grafana: "/grafana/",
   observabilityAuth: "/api/observability/auth",
   login: "/login",
@@ -25,6 +26,7 @@ export const ROUTES = {
   chairTypesApi: "/api/chair-types",
   modelNamesApi: "/api/model-names",
   productsApi: "/api/products",
+  adminSellersApi: "/api/admin/sellers",
   offersApi: "/api/seller/offers",
   credits: "/bildnachweise",
 } as const;
@@ -35,3 +37,9 @@ export const masterDataCreateHref = (listHref: string) => `${listHref}/neu`;
 export const masterDataEditHref = (listHref: string, id: string) => `${listHref}/${encodeURIComponent(id)}`;
 
 export const cartItemApiHref = (productId: number) => `${ROUTES.cartApi}/${productId}`;
+
+export const offerAvailabilityApiHref = (offerId: string) =>
+  `${ROUTES.offersApi}/${encodeURIComponent(offerId)}/availability`;
+
+export const sellerStatusApiHref = (sellerId: string) =>
+  `${ROUTES.adminSellersApi}/${encodeURIComponent(sellerId)}/status`;

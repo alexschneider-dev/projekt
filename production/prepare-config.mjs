@@ -47,7 +47,10 @@ const pending = [];
 for (const service of Object.keys(runtimeKeys)) {
   // Der Stellenimport verwendet die Datenbank-Einbindung von Next.js im Resolver.
   if (service === "jobs") continue;
-  if (service === "marketplace" && !existsSync(resolve(envDirectory, "marketplace.env"))) continue;
+  if ([
+    "marketplace",
+    "marketplace-websocket"
+  ].includes(service) && !existsSync(resolve(envDirectory, `${service}.env`))) continue;
 
   const values = parseEnv(readFileSync(resolve(envDirectory, `${service}.env`), "utf8"));
   const spec = {

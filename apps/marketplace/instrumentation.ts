@@ -1,11 +1,19 @@
 import type { Instrumentation } from "next";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { ERROR_OBSERVABILITY } from "@/lib/http/errors/observability";
 
 
 export async function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs" && process.env.OBSERVABILITY_ENABLED === "true") {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+
+  if (process.env.OBSERVABILITY_ENABLED === "true") {
     const { initializeTelemetry } = await import("./lib/observability/server");
     initializeTelemetry();
+  }
+
+  if (process.env.REDIS_URL && process.env.NEXT_PHASE !== PHASE_PRODUCTION_BUILD) {
+    const { initializeCatalogStatistics } = await import("./lib/statistics/initialize");
+    await initializeCatalogStatistics();
   }
 }
 

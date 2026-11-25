@@ -6,6 +6,7 @@ services:
       context: ../../..
       dockerfile: services/development/Dockerfile
     environment:
+      REDIS_URL: redis://marketplace-redis:6379
       NODE_ENV: development
       DATABASE_URL: postgresql://marketplace_app:${MARKETPLACE_DATABASE_PASSWORD:?Eigenes Passwort für den Marketplace setzen}@postgres-projekt:5432/postgres?schema=marketplace
     volumes:
@@ -53,7 +54,39 @@ services:
         - action: rebuild
           path: ../../../tools
         - action: rebuild
+          path: ../../../services/websocket/package.json
+        - action: rebuild
           path: ../../../services/development/Dockerfile
+    networks:
+      - nextjs_dev
+
+  marketplace-websocket:
+    build:
+      context: ../../..
+      dockerfile: services/websocket/Dockerfile
+    image: projekt-marketplace-websocket-dev:${MARKETPLACE_DEV_VERSION:-1.00}
+    environment:
+      REDIS_URL: redis://marketplace-redis:6379
+      WEBSOCKET_ORIGIN: https://localhost
+    depends_on:
+      marketplace-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3010/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks:
+      - nextjs_dev
+
+  marketplace-redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - nextjs_dev
 

@@ -17,7 +17,8 @@ const serviceNames = selectedService ? [selectedService] : [
   "nginx",
   "postgres",
   "redis",
-  ...(inputRuntime.services?.marketplace ? ["marketplace"] : [])
+  ...(inputRuntime.services?.marketplace ? ["marketplace"] : []),
+  ...(inputRuntime.services?.["marketplace-websocket"] ? ["marketplace-websocket"] : [])
 ];
 const runtime = resolveRuntime(inputRuntime, serviceNames);
 const allowedFields = [

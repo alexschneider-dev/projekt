@@ -112,7 +112,7 @@ npm run data:seed -- 10000000 1000001
 
 500 Produkte pro Transaktion, deterministische IDs und Inhalte, 1–3 Angebote pro
 Produkt. Ein erneuter Lauf ergänzt fehlende Datensätze ohne bestehende Daten zu
-löschen. Demo-Verkäufer sind deaktiviert und besitzen zufällige unbekannte Passwörter.
+löschen. Demo-Verkäufer sind aktiv und besitzen zufällige unbekannte Passwörter.
 Der Generator ist für eine separate Demo-Installation vorgesehen. Die IDs 1 bis
 10.000.000 sind für generierte Produkte reserviert.
 
@@ -295,3 +295,11 @@ Breite und Sitzhöhe, beispielsweise
 Preise werden nicht verwendet. Vorhandene gespeicherte URLs und frühere
 Eigenschaftsvarianten leiten mit HTTP 308 auf die aktuelle kanonische URL weiter.
 Die bestehende Einstellung `noindex, nofollow` bleibt aktiv.
+
+## Live-Zähler und WebSocket-Workspace
+
+Der Footer zeigt verfügbare Produkte und aktive Verkäuferkonten in Echtzeit.
+Der separate Socket.IO-Server ist der npm-Workspace `marketplace-websocket`;
+`npm ci` im Marketplace installiert ihn mit derselben Lockdatei.
+Details zu APIs, Redis, Tests und manueller Bereitstellung stehen in
+[der WebSocket-Dokumentation](services/websocket/README.md).

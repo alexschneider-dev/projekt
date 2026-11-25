@@ -3,6 +3,7 @@ WORKDIR /app
 RUN apk upgrade --no-cache && apk add --no-cache openssl
 COPY package.json package-lock.json ./
 COPY tools ./tools
+COPY services/websocket/package.json ./services/websocket/package.json
 RUN npm ci
 
 FROM dependencies AS build

@@ -3,6 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY tools ./tools
+COPY services/websocket/package.json ./services/websocket/package.json
 RUN npm ci
 COPY . .
 RUN npx prisma generate && chown -R node:node /app

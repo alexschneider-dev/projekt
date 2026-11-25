@@ -46,9 +46,14 @@ for app in stellensuche marketplace; do
     export "$key=$image"
   done
 done
+websocket_enabled=$(node -e 'const fs=require("node:fs"); const r=JSON.parse(fs.readFileSync(process.argv[1])); process.stdout.write(r.services?.["marketplace-websocket"] ? "true" : "false")' "$RUNTIME")
+if [[ "$websocket_enabled" == "true" ]]; then
+  MARKETPLACE_WEBSOCKET_IMAGE=$(docker service inspect projekt_marketplace-websocket --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}')
+  export MARKETPLACE_WEBSOCKET_IMAGE
+fi
 docker stack config --skip-interpolation -c compose.swarm.yml > "$work_dir/base.yml"
-if [[ "$marketplace_enabled" != "true" ]]; then
-  node - "$work_dir/base.yml" <<'NODE'
+if [[ "$marketplace_enabled" != "true" || "$websocket_enabled" != "true" ]]; then
+  node - "$work_dir/base.yml" "$marketplace_enabled" "$websocket_enabled" <<'NODE'
 const fs = require("node:fs");
 const file = process.argv[2];
 const lines = fs.readFileSync(file, "utf8").split("\n");
@@ -58,7 +63,8 @@ const selected = [];
 for (const line of lines) {
   if (/^services:\s*$/.test(line)) inServices = true;
   else if (/^\S/.test(line)) { inServices = false; skip = false; }
-  if (inServices && /^  \S/.test(line)) skip = /^  marketplace(?:-nginx|-haproxy)?:\s*$/.test(line);
+  if (inServices && /^  \S/.test(line)) skip = (process.argv[3] !== "true" && /^  marketplace(?:-nginx|-haproxy)?:\s*$/.test(line))
+    || (process.argv[4] !== "true" && /^  marketplace-websocket:\s*$/.test(line));
   if (!skip) selected.push(line);
 }
 fs.writeFileSync(file, selected.join("\n"));
@@ -86,6 +92,7 @@ for ((attempt=0; attempt<150; attempt++)); do
   pending=false
   services=(projekt_nextjs projekt_jobs projekt_nginx projekt_postgres projekt_redis projekt-edge_edge projekt_stellensuche-nginx projekt_stellensuche-haproxy)
   if [[ "$marketplace_enabled" == "true" ]]; then services+=(projekt_marketplace projekt_marketplace-nginx projekt_marketplace-haproxy); fi
+  if [[ "$websocket_enabled" == "true" ]]; then services+=(projekt_marketplace-websocket); fi
   for service in "${services[@]}"; do
     state=$(docker service inspect "$service" \
       --format '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}')

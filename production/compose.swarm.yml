@@ -127,6 +127,47 @@ services:
         reservations:
           memory: 128M
 
+  marketplace-websocket:
+    image: ${MARKETPLACE_WEBSOCKET_IMAGE:-ghcr.io/alexschneider-dev/projekt-marketplace-websocket:initial}
+    entrypoint:
+      - /bin/sh
+      - /production-entrypoint.sh
+      - docker-entrypoint.sh
+    command: ["node", "index.mjs"]
+    environment:
+      NODE_ENV: production
+      PORT: "3010"
+      BASE_PATH: /marketplace
+    networks:
+      - projekt_net
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3010/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      replicas: 1
+      update_config:
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        order: start-first
+      restart_policy:
+        condition: any
+        delay: 5s
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+
   stellensuche-nginx:
     image: ${STELLENSUCHE_NGINX_IMAGE:-ghcr.io/alexschneider-dev/projekt-stellensuche-nginx:1.00}
     networks:

@@ -54,7 +54,19 @@
     "secrets": [
       "DATABASE_URL",
       "NEXTAUTH_SECRET",
-      "RESEND_API_KEY"
+      "RESEND_API_KEY",
+      "REDIS_URL"
+    ]
+  },
+  "marketplace-websocket": {
+    "public": [
+      "NODE_ENV",
+      "PORT",
+      "BASE_PATH",
+      "WEBSOCKET_ORIGIN"
+    ],
+    "secrets": [
+      "REDIS_URL"
     ]
   }
 }
