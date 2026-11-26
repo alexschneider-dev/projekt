@@ -19,6 +19,7 @@
   "projekt_marketplace",
   "projekt_marketplace-haproxy",
   "projekt_marketplace-nginx",
+  "projekt_marketplace-websocket",
   "projekt_nextjs",
   "projekt_nginx",
   "projekt_postgres",
