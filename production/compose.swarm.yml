@@ -362,7 +362,7 @@ services:
         limits:
           memory: 2G
         reservations:
-          memory: 256M
+          memory: 128M
 
   postgres:
     image: ${POSTGRES_IMAGE}
