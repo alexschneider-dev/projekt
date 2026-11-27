@@ -138,3 +138,13 @@ im neuen CI-Workflow verpflichtend; lokale Tests ersetzen sie nicht.
 der TSDB-Blockgrenze aus. Dadurch hängt die erwartete Chunk-Größe von 120 Samples
 nicht mehr von der Uhrzeit des Builds ab. Der Patch ändert ausschließlich den
 Upstream-Test; Laufzeitcode und Sicherheitsprüfung bleiben unverändert.
+
+### Inventarerfassung direkt nach einem Rollout
+
+Die CI-Action wiederholt den Export bei startenden oder auslaufenden Tasks,
+einem noch nicht abgeschlossenen Deployment oder einem während des Exports
+geänderten Dienst bis zu 13-mal mit zehn Sekunden Abstand (höchstens zwölf
+Warteintervalle). Andere Export-, Zugriffs- und Integritätsfehler brechen sofort
+ab. Jeder Versuch ersetzt die vorherige Textausgabe; nur ein erfolgreicher,
+anschließend vollständig validierter Export wird als Inventar veröffentlicht.
+Der vorhandene Server-Exporter muss hierfür nicht neu installiert werden.

@@ -26,7 +26,7 @@ export async function checkApiRequest<TSchema extends z.ZodType>(
   if (contentType !== (isFormData ? "multipart/form-data" : "application/json")) {
     return {
       ok: false,
-      response: errorResponse(createApiError(ERROR_API.INVALID_CONTENT_TYPE)),
+      response: errorResponse(createApiError(ERROR_API.INVALID_CONTENT_TYPE), { source: "body" }),
     };
   }
 
@@ -37,7 +37,10 @@ export async function checkApiRequest<TSchema extends z.ZodType>(
   } catch {
     return {
       ok: false,
-      response: errorResponse(createApiError(isFormData ? ERROR_API.INVALID_FORM_DATA : ERROR_API.INVALID_JSON)),
+      response: errorResponse(
+        createApiError(isFormData ? ERROR_API.INVALID_FORM_DATA : ERROR_API.INVALID_JSON),
+        { source: "body" }
+      ),
     };
   }
 
@@ -46,7 +49,10 @@ export async function checkApiRequest<TSchema extends z.ZodType>(
   if (!parsed.success) {
     return {
       ok: false,
-      response: errorResponse(createApiError(ERROR_API.INVALID_BODY, z.flattenError(parsed.error))),
+      response: errorResponse(createApiError(ERROR_API.INVALID_BODY), {
+        source: "body",
+        issues: parsed.error.issues,
+      }),
     };
   }
 

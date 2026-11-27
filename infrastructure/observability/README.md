@@ -743,3 +743,25 @@ Der gemeinsame Sicherheitsworkflow baut und prüft die drei Produktions-Proxys
 zusätzlich täglich, bei relevanten Pull Requests und auf manuellen Aufruf.
 Die Prüfung betrifft die neu gebauten Images; bereits laufende Container werden
 erst durch eine anschließende Bereitstellung aktualisiert.
+
+### API-Fehler und interne Diagnose
+
+Beide Anwendungen protokollieren behandelte API-Fehler zentral einmal als
+`api_error`, einschließlich Statuscode, Fehlercode, Stackframes und vorhandener
+Trace-ID. Prisma-Zuordnungen behalten den ursprünglichen `prisma_code` im Log.
+Validierungsfehler ergänzen `validation_source` und strukturierte
+`validation_issues` (Pfad, Typ und erwartetes Format), jedoch keine Eingabewerte,
+freien Validierungsmeldungen oder Listen unbekannter Schlüssel.
+
+`createApiError(definition, { cause })` hält interne Ursachen getrennt von
+`createApiError(definition, { publicDetails })`. Ursachen werden auf fünf Ebenen
+begrenzt und zyklensicher protokolliert; beliebige zusätzliche Objektfelder,
+Anfrage-Bodies und Provider-Antworten werden nicht serialisiert. Fehlermeldungen
+in Ursachen müssen dennoch frei von Zugangsdaten sein, da sie im internen Log
+erscheinen können.
+
+Außerhalb der Entwicklung erhalten Clients bei HTTP 5xx einen allgemeinen
+Fehlercode und eine allgemeine Meldung; der ursprüngliche HTTP-Status bleibt
+erhalten. Serverfehler veröffentlichen nie Details. Bei HTTP 4xx werden nur
+explizit als `publicDetails` übergebene Angaben ausgegeben. Validierungsfehler
+liefern die zentrale Meldung ohne interne Zod-Diagnosen zurück.

@@ -16,7 +16,10 @@ export async function checkApiQuery<TSchema extends z.ZodType>(
   if (!parsed.success) {
     return {
       ok: false,
-      response: errorResponse(createApiError(ERROR_API.INVALID_QUERY, z.flattenError(parsed.error)))
+      response: errorResponse(createApiError(ERROR_API.INVALID_QUERY), {
+        source: "query",
+        issues: parsed.error.issues,
+      })
     };
   }
 

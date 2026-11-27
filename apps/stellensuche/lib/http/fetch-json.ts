@@ -30,7 +30,7 @@ export async function fetchJson<T>(input: RequestInfo | URL, options: FetchJsonO
   } catch (error) {
     if (options.signal?.aborted || (error instanceof Error && error.name === "AbortError")) throw error;
 
-    throw createApiError(ERROR_API.NETWORK_ERROR);
+    throw createApiError(ERROR_API.NETWORK_ERROR, { cause: error });
   }
 
   if (!response.ok) {
@@ -41,7 +41,7 @@ export async function fetchJson<T>(input: RequestInfo | URL, options: FetchJsonO
       response.status,
       typeof data.code === "string" ? data.code : ERROR_API.INTERNAL_SERVER_ERROR.code,
       typeof data.error === "string" ? data.error : ERROR_API.INTERNAL_SERVER_ERROR.message,
-      data.details
+      { publicDetails: data.details }
     );
   }
 
@@ -49,7 +49,7 @@ export async function fetchJson<T>(input: RequestInfo | URL, options: FetchJsonO
 
   try {
     return await response.json() as T;
-  } catch {
-    throw createApiError(ERROR_API.INVALID_RESPONSE);
+  } catch (cause) {
+    throw createApiError(ERROR_API.INVALID_RESPONSE, { cause });
   }
 }

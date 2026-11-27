@@ -18,10 +18,20 @@ runs:
         PROD_USER: ${{ inputs.user }}
       run: |
         set -Eeuo pipefail
-        ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=yes \
-          "${PROD_USER}@${PROD_HOST}" \
-          'sudo -n /usr/local/lib/projekt-audit/export-audit-images.py' \
-          > "$RUNNER_TEMP/deployed-images.txt"
+        for attempt in {1..13}; do
+          if ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${PROD_USER}@${PROD_HOST}" \
+            'sudo -n /usr/local/lib/projekt-audit/export-audit-images.py' \
+            > "$RUNNER_TEMP/deployed-images.txt" 2> "$RUNNER_TEMP/image-export-error.txt"; then
+            break
+          fi
+          cat "$RUNNER_TEMP/image-export-error.txt" >&2
+          if (( attempt == 13 )) || ! grep -Eq 'Tasks starten noch oder werden beendet\.|Bereitstellung ist noch nicht abgeschlossen\.|Dienst hat sich während des Exports geändert\.' "$RUNNER_TEMP/image-export-error.txt"; then
+            exit 1
+          fi
+          echo 'Vor erneuter Image-Erfassung 10 Sekunden auf den Rollout warten.'
+          sleep 10
+        done
         python3 infrastructure/security/image-audit.py \
           --inventory "$RUNNER_TEMP/deployed-images.json" \
           --import-export "$RUNNER_TEMP/deployed-images.txt" > /dev/null

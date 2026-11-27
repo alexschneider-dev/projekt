@@ -125,7 +125,12 @@ describe("useAppMutation", () => {
       wrapper,
     } = setup();
     const definition = ERROR_JOBS.INVALID_SEARCH_URL;
-    const error = new ApiError(definition.status, definition.code, definition.message, { field: "url" });
+    const error = new ApiError(
+      definition.status,
+      definition.code,
+      definition.message,
+      { publicDetails: { field: "url" } }
+    );
     const onError = vi.fn();
     const { result } = renderHook(() => useAppMutation<never, void, { field: string }>({
       mutationFn: async () => { throw error; },

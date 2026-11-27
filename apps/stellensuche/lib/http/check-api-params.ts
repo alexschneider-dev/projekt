@@ -16,7 +16,10 @@ export async function checkApiParams<TSchema extends z.ZodType>(
   if (!parsed.success) {
     return {
       ok: false,
-      response: errorResponse(createApiError(ERROR_API.INVALID_PARAMS, z.flattenError(parsed.error)))
+      response: errorResponse(createApiError(ERROR_API.INVALID_PARAMS), {
+        source: "params",
+        issues: parsed.error.issues,
+      })
     };
   }
 

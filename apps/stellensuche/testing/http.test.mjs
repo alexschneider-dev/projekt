@@ -46,7 +46,7 @@ const request = (body, contentType = "application/json") => new Request("https:/
   body,
 });
 
-test("request validation distinguishes format errors and returns field details", async () => {
+test("Validierung unterscheidet Formatfehler und veröffentlicht keine Diagnosen", async () => {
   const schema = z.object({ name: z.string().min(1) });
 
   for (const [req, code, status] of [
@@ -75,7 +75,7 @@ test("request validation distinguishes format errors and returns field details",
 
     assert.equal(payload.code, code);
 
-    if (code === "INVALID_BODY") assert.ok(payload.details.fieldErrors.name);
+    assert.equal(payload.details, undefined);
   }
 
   assert.deepEqual(await checkApiRequest(request('{"name":"Ada"}'), schema), {
@@ -116,7 +116,7 @@ test("handler serializes intentional errors, maps Prisma conflicts and hides une
 
   for (const [error, code, status] of [
     [
-      createApiError(ERROR_API.INVALID_BODY, { field: "name" }),
+      createApiError(ERROR_API.INVALID_BODY, { publicDetails: { field: "name" } }),
       "INVALID_BODY",
       400
     ],

@@ -68,7 +68,7 @@ jobs:
 
       - name: Container-Sicherheitsabläufe prüfen
         run: |
-          node --test ../../infrastructure/security/testing/workflows.test.mjs
+          node --test ../../infrastructure/security/testing/*.test.mjs
           python3 -B -m unittest discover -s ../../infrastructure/security/testing -p 'test_*.py'
 
       - name: Komponenten und Logik
